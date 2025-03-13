@@ -1,0 +1,28 @@
+<svg width="800" height="400" viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+  <!-- 塔斯马尼亚形状 -->
+  <g transform="translate(400, 180) scale(1.2)">
+    <polygon points="0,0 30,-50 70,-20 50,20 90,60 30,90 -20,50" fill="#e74c3c" />
+    <polygon points="30,-50 70,-20 50,20 10,-10" fill="#e67e22" />
+    <polygon points="50,20 90,60 30,90 10,50" fill="#c0392b" />
+    <polygon points="10,50 30,90 -20,50 0,20" fill="#d35400" />
+    <polygon points="0,0 0,20 -20,50 -10,10" fill="#c0392b" />
+    <polygon points="70,-20 90,-40 110,-25 90,0" fill="#e67e22" />
+  </g>
+  
+  <!-- 水平线 -->
+  <line x1="50" y1="250" x2="320" y2="250" stroke="#333" strokeWidth="3" />
+  <line x1="480" y1="250" x2="750" y2="250" stroke="#333" strokeWidth="3" />
+  
+  <!-- 文字 - HAPPY TASSIE HOLIDAY -->
+  <text x="400" y="320" fontFamily="Arial, sans-serif" fontSize="48" fontWeight="bold" textAnchor="middle" fill="#333">
+    HAPPY TASSIE HOLIDAY
+  </text>
+  
+  <!-- 水平线 -->
+  <line x1="50" y1="350" x2="750" y2="350" stroke="#333" strokeWidth="3" />
+  
+  <!-- 副标题 -->
+  <text x="400" y="385" fontFamily="Arial, sans-serif" fontSize="24" fontStyle="italic" textAnchor="middle" fill="#e67e22">
+    Your Local Experts at Tasmania
+  </text>
+</svg> 

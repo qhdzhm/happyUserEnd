@@ -1,0 +1,72 @@
+.inner-banner-wrap .inner-banner-container {
+  background-image: url("../../assets/images/about/img7.jpg");
+  background-repeat: no-repeat;
+  background-position: center center;
+  text-align: center;
+  background-size: cover;
+  padding-top: 40px;
+  position: relative;
+}
+
+.inner-banner-wrap .inner-banner-container::before {
+  background-color: #151515;
+  content: "";
+  display: block;
+  opacity: 0.65;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.inner-banner-wrap .inner-banner-container .inner-banner-content {
+  padding: 90px 0 75px 0;
+  position: relative;
+}
+
+.navbar-link {
+  background-color: transparent;
+}
+
+.navbar-link .breadcrumb {
+  padding: 0;
+  margin: 0;
+}
+
+/* 首页面包屑导航使用白色文字 */
+.home-page .navbar-link .breadcrumb .breadcrumb-item,
+.home-page .navbar-link .breadcrumb a {
+  color: #ffffff;
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.home-page .navbar-link .breadcrumb-item+.breadcrumb-item::before {
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* 其他页面面包屑导航使用黑色文字 */
+body:not(.home-page) .navbar-link .breadcrumb .breadcrumb-item,
+body:not(.home-page) .navbar-link .breadcrumb a {
+  color: #000000;
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+  font-weight: 500;
+  text-shadow: none;
+}
+
+body:not(.home-page) .navbar-link .breadcrumb-item+.breadcrumb-item::before {
+  color: #000000;
+  text-shadow: none;
+}
+
+.navbar-link .breadcrumb a:hover {
+  color: var(--primaryClr);
+  text-decoration: underline;
+}

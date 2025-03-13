@@ -1,0 +1,271 @@
+/* 筛选框样式 */
+.filter_box {
+  padding: 18px;
+  border: 1px solid #f0f0f0;
+  border-radius: 15px;
+  background-color: #ffffff;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 手风琴项目样式 */
+.accordion-item {
+  border: none;
+  margin-bottom: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.accordion-button {
+  padding: 10px 15px;
+  font-weight: 600;
+  color: #444;
+  background-color: #f8f9fa;
+  border-radius: 10px !important;
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  transition: all 0.3s ease;
+}
+
+.accordion-button:not(.collapsed) {
+  color: #0d6efd;
+  background-color: #e7f1ff;
+  box-shadow: none;
+}
+
+.accordion-button:focus {
+  box-shadow: none;
+  border-color: rgba(13, 110, 253, 0.25);
+}
+
+.accordion-button:hover {
+  background-color: #f0f4ff;
+}
+
+.accordion-body {
+  padding: 10px 8px;
+  width: 100%;
+  box-sizing: border-box;
+  max-height: 180px; /* 限制展开高度 */
+  overflow-y: auto; /* 添加垂直滚动条 */
+}
+
+/* 复选框样式 */
+.form-check {
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+
+.form-check-input {
+  margin-top: 0.25rem;
+  flex-shrink: 0;
+  border-radius: 4px;
+  border-color: #ccc;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.form-check-input:checked {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+
+.form-check-label {
+  font-size: 13.5px;
+  color: #444;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  margin-left: 8px;
+  flex-grow: 1;
+  word-break: break-word;
+  padding-left: 5px;
+  cursor: pointer;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .filter_box {
+    margin-bottom: 20px;
+  }
+}
+
+/* 侧边栏样式 */
+.side_bar {
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 筛选标题样式 */
+.filter-title {
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 15px;
+  color: #333;
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 10px;
+}
+
+/* 筛选子标题样式 */
+.filter-subtitle {
+  font-size: 15px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+/* 行程类型按钮样式 */
+.tour-type-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.tour-type-btn {
+  border-radius: 8px;
+  font-size: 14px;
+  padding: 8px 15px;
+  transition: all 0.3s ease;
+  flex: 1 0 calc(50% - 5px);
+  max-width: calc(50% - 5px);
+  text-align: center;
+  white-space: nowrap;
+  margin-bottom: 0;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  border: 1px solid #e0e0e0;
+  font-weight: 500;
+}
+
+.tour-type-btn.active {
+  background-color: var(--primaryClr) !important;
+  border-color: var(--primaryClr) !important;
+  color: white !important;
+  font-weight: 600;
+  box-shadow: 0 3px 8px rgba(var(--primaryRgb), 0.3);
+  transform: translateY(-2px);
+}
+
+.tour-type-btn:not(.active) {
+  color: #444;
+  border-color: #e0e0e0;
+  background-color: #f8f9fa;
+}
+
+.tour-type-btn:not(.active):hover {
+  background-color: #f0f4ff;
+  color: var(--primaryClr);
+  border-color: var(--primaryClr);
+  transform: translateY(-2px);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+}
+
+/* 筛选部分样式 */
+.filter-section {
+  border-bottom: 1px solid #eee;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 清除筛选按钮样式 */
+.text-danger.p-0 {
+  font-size: 13px;
+  text-decoration: none;
+  color: #dc3545 !important;
+}
+
+.text-danger.p-0:hover {
+  text-decoration: underline;
+}
+
+/* 紧凑型筛选选项样式 */
+.compact-filters .accordion-button {
+  padding: 6px 10px;
+  font-size: 14px;
+}
+
+.compact-filters .accordion-body {
+  padding: 8px 6px;
+}
+
+/* 筛选选项网格布局 */
+.filter-options-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 筛选条件摘要样式 */
+.selected-filters-summary {
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+.selected-filters-summary p {
+  margin-bottom: 4px !important;
+}
+
+.selected-filters-summary strong {
+  font-weight: 600;
+}
+
+/* 回到顶部按钮悬浮效果 */
+.back-to-top {
+  transition: all 0.3s ease;
+}
+
+.back-to-top:hover {
+  background-color: #0b5ed7;
+  transform: translateY(-3px);
+}
+
+/* 筛选结果计数样式 */
+.filter-results-count {
+  font-size: 13px;
+  color: #666;
+  text-align: right;
+}
+
+/* 清除所有筛选按钮 */
+.clear-all-filters {
+  display: inline-block;
+  color: #dc3545;
+  font-size: 13px;
+  text-decoration: none;
+  margin-top: 5px;
+  margin-bottom: 10px;
+  padding: 0;
+}
+
+/* 筛选栏滚动条样式 */
+.accordion-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.accordion-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.accordion-body::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 10px;
+}
+
+.accordion-body::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
