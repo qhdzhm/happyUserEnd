@@ -1,0 +1,97 @@
+/* 联系我们页面样式 */
+.contact {
+  padding: 50px 0;
+}
+
+.contact h1 {
+  color: #333;
+  margin-bottom: 20px;
+}
+
+.contact p {
+  color: #666;
+  line-height: 1.6;
+}
+
+.contact .card {
+  transition: all 0.3s ease;
+  border-radius: 10px;
+}
+
+.contact .card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+.contact .card-title {
+  color: #333;
+  margin-top: 10px;
+  margin-bottom: 15px;
+}
+
+.contact .rounded-circle {
+  width: 70px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.contact .btn-light {
+  transition: all 0.3s ease;
+}
+
+.contact .btn-light:hover {
+  background-color: #ff6b6b;
+  color: white;
+  border-color: #ff6b6b;
+}
+
+.contact .list-group-item i {
+  font-size: 24px;
+  transition: all 0.3s ease;
+}
+
+.contact .list-group-item i:hover {
+  transform: scale(1.2);
+}
+
+.contact .form-box {
+  padding: 10px;
+}
+
+.contact .form-control {
+  border-radius: 5px;
+  border: 1px solid #ced4da;
+}
+
+.contact .form-control:focus {
+  border-color: #ff6b6b;
+  box-shadow: 0 0 0 0.25rem rgba(255, 107, 107, 0.25);
+}
+
+.contact .form-floating label {
+  color: #666;
+}
+
+.contact button[type="button"] {
+  border-radius: 30px;
+  padding: 10px 30px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.contact button[type="button"]:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+}
+
+@media (max-width: 768px) {
+  .contact {
+    padding: 30px 0;
+  }
+  
+  .contact h1 {
+    font-size: 28px;
+  }
+} 

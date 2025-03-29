@@ -1,36 +1,408 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Container, Row, Col, Form, InputGroup, Button, Badge, Dropdown } from "react-bootstrap";
-import { useLocation, useNavigate } from "react-router-dom";
-import { FaSearch, FaFilter, FaSortAmountDown, FaThLarge, FaList, FaTimes } from "react-icons/fa";
-import PopularCard from "../../components/Cards/PopularCard";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { Container, Row, Col, Form, InputGroup, Button, Dropdown, Spinner, Alert, Card } from "react-bootstrap";
+import { useLocation, useNavigate, Link } from "react-router-dom";
+import { useSelector } from 'react-redux';
+import { FaSearch, FaFilter, FaSortAmountDown, FaThLarge, FaList, FaTimes, FaCalendarAlt, FaStar, FaMapMarkerAlt } from "react-icons/fa";
 import Breadcrumbs from "../../components/Breadcrumbs/Breadcrumbs";
 import Filters from "./Filters";
-import { tasmaniaAttractions, popularsData } from "../../utils/data";
+import LoginPrompt from "../../components/Common/LoginPrompt/LoginPrompt";
+import { getAllDayTours, getAllGroupTours } from "../../utils/api";
 import "./tour.css";
+import PriceDisplay from "../../components/PriceDisplay";
+import Cards from "../../components/Cards/Cards";
 
 const Tours = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isAuthenticated } = useSelector(state => state.auth);
   const queryParams = new URLSearchParams(location.search);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 992);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState("grid"); // grid 或 list
   const [sortBy, setSortBy] = useState("推荐"); // 默认排序方式
+  
+  // 添加加载状态和错误状态
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // 添加数据状态
+  const [dayTours, setDayTours] = useState([]);
+  const [groupTours, setGroupTours] = useState([]);
+  
+  // 使用ref来防止重复请求
+  const isInitialMount = useRef(true);
+  const previousSearchParams = useRef("");
 
-  // 从URL获取筛选参数
-  const selectedTourType = queryParams.get('tourTypes') || '';
-  const selectedLocation = queryParams.get('location') ? queryParams.get('location').split(',') : [];
-  const selectedDuration = queryParams.get('duration') ? queryParams.get('duration').split(',') : [];
-  const selectedPriceRange = queryParams.get('priceRange') ? queryParams.get('priceRange').split(',') : [];
-  const selectedRatings = queryParams.get('ratings') ? queryParams.get('ratings').split(',').map(Number) : [];
-  const selectedThemes = queryParams.get('themes') ? queryParams.get('themes').split(',') : [];
-  const selectedSuitableFor = queryParams.get('suitableFor') ? queryParams.get('suitableFor').split(',') : [];
+  // 使用useMemo缓存所有查询参数，避免引起不必要的重渲染
+  const selectedTourType = useMemo(() => {
+    // 首先检查URL路径是否有明确指示
+    const path = location.pathname.toLowerCase();
+    
+    // 如果URL路径明确指示了旅游类型，优先使用
+    if (path.includes('day-tours')) {
+      console.log('从URL路径检测到一日游类型');
+      return '一日游';
+    } else if (path.includes('group-tours')) {
+      console.log('从URL路径检测到跟团游类型');
+      return '跟团游';
+    }
+    
+    // 如果URL路径没有指示，使用查询参数
+    const tourType = queryParams.get('tourTypes');
+    if (tourType === 'day_tour') return '一日游';
+    if (tourType === 'group_tour') return '跟团游';
+    
+    // 默认选择一日游
+    return '一日游'; 
+  }, [location.pathname, location.search]);
+  const selectedLocation = useMemo(() => queryParams.get('location') ? queryParams.get('location').split(',') : [], [location.search]);
+  const selectedDuration = useMemo(() => queryParams.get('duration') ? queryParams.get('duration').split(',') : [], [location.search]);
+  const selectedPriceRange = useMemo(() => queryParams.get('priceRange') ? queryParams.get('priceRange').split(',') : [], [location.search]);
+  const selectedRatings = useMemo(() => queryParams.get('ratings') ? queryParams.get('ratings').split(',').map(Number) : [], [location.search]);
+  const selectedThemes = useMemo(() => queryParams.get('themes') ? queryParams.get('themes').split(',') : [], [location.search]);
+  const selectedSuitableFor = useMemo(() => queryParams.get('suitableFor') ? queryParams.get('suitableFor').split(',') : [], [location.search]);
+  const startDate = useMemo(() => queryParams.get('startDate') || '', [location.search]);
+  const endDate = useMemo(() => queryParams.get('endDate') || '', [location.search]);
+
+  // 整合所有查询参数为一个单一的对象
+  const searchParams = useMemo(() => {
+    // 处理tourTypes参数，映射到API需要的值
+    let tourType = '';
+    
+    // 首先检查URL路径
+    const path = location.pathname.toLowerCase();
+    if (path.includes('day-tours')) {
+      tourType = 'day_tour';
+      console.log('从URL路径获取旅游类型: day_tour');
+    } else if (path.includes('group-tours')) {
+      tourType = 'group_tour';
+      console.log('从URL路径获取旅游类型: group_tour');
+    }
+    // 如果URL路径没有包含类型信息，则从查询参数获取
+    else if (selectedTourType === '一日游') {
+      tourType = 'day_tour';
+    } else if (selectedTourType === '跟团游') {
+      tourType = 'group_tour';
+    } else if (queryParams.get('tourTypes')) {
+      // 从URL参数获取
+      const urlTourType = queryParams.get('tourTypes');
+      if (urlTourType === 'day_tour' || urlTourType === 'group_tour') {
+        tourType = urlTourType;
+      }
+    }
+    
+    return {
+      keyword: searchTerm,
+      tourType: tourType,
+      location: selectedLocation,
+      themes: selectedThemes,
+      ratings: selectedRatings,
+      priceRange: selectedPriceRange,
+      duration: selectedDuration,
+      suitableFor: selectedSuitableFor,
+      startDate,
+      endDate
+    };
+  }, [searchTerm, selectedTourType, selectedLocation, selectedThemes, selectedRatings, selectedPriceRange, selectedDuration, selectedSuitableFor, startDate, endDate, queryParams, location.pathname]);
+  
+  // 使用useCallback包装fetchData函数，使用稳定版本的函数参数
+  const fetchData = useCallback(async (params) => {
+    // 准备查询参数
+    const apiParams = {};
+    
+    // 添加日志
+    console.log('筛选参数:', params);
+    
+    // 首先确认是否有旅游类型参数，这是最基本的筛选条件
+    if (!params.tourType) {
+      console.log('没有指定旅游类型，无法获取数据');
+      setDayTours([]);
+      setGroupTours([]);
+      setLoading(false);
+      return;
+    }
+    
+    // 设置旅游类型参数
+    apiParams.tourType = params.tourType;
+    
+    if (params.keyword) apiParams.keyword = params.keyword;
+    
+    // 地点参数 - 使用所有选择的地点（后端API支持多地点查询，使用逗号分隔）
+    if (params.location && params.location.length > 0) {
+      // 如果只选择了一个地点，才发送到后端
+      if (params.location.length === 1) {
+        apiParams.location = params.location[0];
+        console.log('发送单地点筛选参数到后端:', apiParams.location);
+      } else {
+        // 如果选择了多个地点，不发送地点参数到后端，而是在前端进行筛选
+        console.log('选择了多个地点，将在前端进行筛选:', params.location.join(','));
+      }
+    }
+    
+    // 主题参数 - 使用所有选择的主题
+    if (params.themes && params.themes.length > 0) {
+      // 将主题参数作为逗号分隔的字符串传递给API
+      apiParams.themes = params.themes.join(',');
+    }
+    
+    // 评分参数 - 使用最低评分要求，参数名调整为minRating
+    if (params.ratings && params.ratings.length > 0) {
+      apiParams.minRating = Math.min(...params.ratings);
+    }
+    
+    // 价格范围 - 使用所有选择的价格区间的最小值和最大值
+    if (params.priceRange && params.priceRange.length > 0) {
+      const minValues = [];
+      const maxValues = [];
+      
+      params.priceRange.forEach(range => {
+        if (range.includes('-')) {
+          const [min, max] = range.split('-').map(Number);
+          minValues.push(min);
+          maxValues.push(max);
+        } else if (range.includes('以上')) {
+          const min = parseFloat(range.replace(/[^\d.]/g, ''));
+          minValues.push(min);
+          // 最大值使用一个非常大的数字表示无上限
+          maxValues.push(99999);
+        }
+      });
+      
+      if (minValues.length > 0) {
+        apiParams.minPrice = Math.min(...minValues);
+      }
+      if (maxValues.length > 0 && maxValues.some(v => v !== 99999)) {
+        // 如果有除了"以上"之外的其他区间，才设置最大值
+        apiParams.maxPrice = Math.max(...maxValues);
+      }
+    }
+    
+    // 时长参数 - 处理所有选择的时长区间
+    if (params.duration && params.duration.length > 0) {
+      const minDurations = [];
+      const maxDurations = [];
+      const minDays = [];
+      const maxDays = [];
+      
+      params.duration.forEach(duration => {
+        // 根据不同类型的时长格式处理
+        if (params.tourType === 'day_tour') {
+          if (duration === "2-4小时") {
+            minDurations.push(2);
+            maxDurations.push(4);
+          } else if (duration === "4-6小时") {
+            minDurations.push(4);
+            maxDurations.push(6);
+          } else if (duration === "6-8小时") {
+            minDurations.push(6);
+            maxDurations.push(8);
+          } else if (duration === "8小时以上") {
+            minDurations.push(8);
+            // 最大值使用一个非常大的数字表示无上限
+            maxDurations.push(24);
+          }
+        } else if (params.tourType === 'group_tour') {
+          if (duration === "2-3天") {
+            minDays.push(2);
+            maxDays.push(3);
+          } else if (duration === "4-5天") {
+            minDays.push(4);
+            maxDays.push(5);
+          } else if (duration === "6-7天") {
+            minDays.push(6);
+            maxDays.push(7);
+          } else if (duration === "7天以上") {
+            minDays.push(7);
+            // 最大值使用一个非常大的数字表示无上限
+            maxDays.push(30);
+          }
+        }
+      });
+      
+      if (params.tourType === 'day_tour' && minDurations.length > 0) {
+        apiParams.minDuration = Math.min(...minDurations);
+        if (maxDurations.length > 0 && !maxDurations.every(d => d === 24)) {
+          // 如果有除了"以上"之外的其他区间，才设置最大值
+          apiParams.maxDuration = Math.max(...maxDurations.filter(d => d !== 24));
+        }
+      } else if (params.tourType === 'group_tour' && minDays.length > 0) {
+        apiParams.minDays = Math.min(...minDays);
+        if (maxDays.length > 0 && !maxDays.every(d => d === 30)) {
+          // 如果有除了"以上"之外的其他区间，才设置最大值
+          apiParams.maxDays = Math.max(...maxDays.filter(d => d !== 30));
+        }
+      }
+    }
+    
+    // 适合人群参数 - 使用所有选择的选项
+    if (params.suitableFor && params.suitableFor.length > 0) {
+      // 将适合人群参数作为逗号分隔的字符串传递给API
+      apiParams.suitableFor = params.suitableFor.join(',');
+    }
+    
+    // 将参数序列化为字符串，用于比较
+    const paramsString = JSON.stringify(apiParams);
+    
+    // 如果与上次请求参数相同，则跳过
+    if (previousSearchParams.current === paramsString) {
+      console.log('参数未变化，跳过重复请求');
+      return;
+    }
+    
+    // 更新请求参数缓存
+    previousSearchParams.current = paramsString;
+    
+    setLoading(true);
+    try {
+      console.log('发送API请求，使用参数:', apiParams);
+      
+      // 获取旅游数据，根据类型决定是否请求特定类型
+      const requests = [];
+      
+      if (params.tourType === 'day_tour') {
+        // 一日游请求
+        requests.push(getAllDayTours(apiParams)
+          .then(response => {
+            if (response && response.code === 1) {
+              console.log('一日游数据:', response.data);
+              
+              // 确保是数组，并且每个项目都有ID
+              const dayToursData = Array.isArray(response.data) 
+                ? response.data 
+                : (response.data && Array.isArray(response.data.records) 
+                    ? response.data.records 
+                    : []);
+                    
+              setDayTours(dayToursData.map(tour => ({
+                ...tour,
+                id: tour.id || tour.tour_id,
+                type: 'day_tour'
+              })));
+              // 确保清空另一种类型的数据
+              setGroupTours([]);
+            } else {
+              console.error('获取一日游数据失败:', response);
+              setDayTours([]);
+              setGroupTours([]);
+            }
+          })
+          .catch(err => {
+            console.error('获取一日游数据错误:', err);
+            setDayTours([]);
+            setGroupTours([]);
+          })
+        );
+      } else if (params.tourType === 'group_tour') {
+        // 跟团游请求
+        requests.push(getAllGroupTours(apiParams)
+          .then(response => {
+            if (response && response.code === 1) {
+              console.log('跟团游数据:', response.data);
+              
+              // 确保是数组，并且每个项目都有ID
+              const groupToursData = Array.isArray(response.data) 
+                ? response.data 
+                : (response.data && Array.isArray(response.data.records) 
+                    ? response.data.records 
+                    : []);
+                    
+              setGroupTours(groupToursData.map(tour => ({
+                ...tour,
+                id: tour.id || tour.tour_id,
+                type: 'group_tour'
+              })));
+              // 确保清空另一种类型的数据
+              setDayTours([]);
+            } else {
+              console.error('获取跟团游数据失败:', response);
+              setGroupTours([]);
+              setDayTours([]);
+            }
+          })
+          .catch(err => {
+            console.error('获取跟团游数据错误:', err);
+            setGroupTours([]);
+            setDayTours([]);
+          })
+        );
+      } else {
+        // 如果没有指定有效的类型，则不发送请求
+        console.log('未指定有效的旅游类型，不发送请求');
+        setDayTours([]);
+        setGroupTours([]);
+        setLoading(false);
+        return;
+      }
+      
+      // 等待所有请求完成
+      await Promise.all(requests);
+      
+      setError(null);
+    } catch (err) {
+      console.error('获取旅游数据失败:', err);
+      setError('获取旅游数据失败，请稍后重试');
+      setDayTours([]);
+      setGroupTours([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  
+  // 添加URL路径检测逻辑
+  useEffect(() => {
+    // 基于URL路径设置初始筛选状态
+    const path = location.pathname.toLowerCase();
+    
+    // 检查URL路径，优先级高于查询参数
+    if (path.includes('/day-tours')) {
+      console.log('检测到URL路径为day-tours，设置筛选为一日游');
+      // 将queryParams更新为一日游
+      const newParams = new URLSearchParams(location.search);
+      newParams.set('tourTypes', 'day_tour');
+      navigate({ search: newParams.toString() }, { replace: true });
+    } 
+    else if (path.includes('/group-tours')) {
+      console.log('检测到URL路径为group-tours，设置筛选为跟团游');
+      // 将queryParams更新为跟团游
+      const newParams = new URLSearchParams(location.search);
+      newParams.set('tourTypes', 'group_tour');
+      navigate({ search: newParams.toString() }, { replace: true });
+    }
+  }, [location.pathname]);  // 当URL路径变化时重新检查
+  
+  // 首次加载和参数变化时获取数据，使用防抖避免频繁请求
+  useEffect(() => {
+    // 对于首次渲染，检查是否有旅游类型，如果没有则默认选择一日游
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      
+      // 如果URL中没有旅游类型参数，则添加默认的一日游类型
+      if (!queryParams.get('tourTypes')) {
+        const newParams = new URLSearchParams(queryParams.toString());
+        newParams.set('tourTypes', 'day_tour');
+        navigate({ search: newParams.toString() }, { replace: true });
+        return; // 导航后会触发useEffect，所以这里直接返回
+      }
+      
+      fetchData(searchParams);
+      console.log("首次加载，获取数据");
+      return;
+    }
+    
+    // 记录日志
+    console.log("参数发生变化，准备重新获取数据", searchParams);
+    
+    // 非首次渲染，使用最小的延迟时间
+    const timer = setTimeout(() => {
+      fetchData(searchParams);
+    }, 50); // 将延迟时间降低到最小值，确保筛选条件变化后能够快速响应
+    
+    return () => clearTimeout(timer);
+  }, [fetchData, searchParams, navigate, queryParams]);
 
   // 监听窗口大小变化
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 992);
       if (window.innerWidth >= 992) {
         setShowFilters(true);
       } else {
@@ -42,7 +414,44 @@ const Tours = () => {
     handleResize();
     return () => window.removeEventListener("resize", handleResize);
   }, []);
-
+  
+  // 定义排序函数
+  const sortTours = useCallback((toursData) => {
+    switch (sortBy) {
+      case "价格从低到高":
+        return [...toursData].sort((a, b) => parseFloat(a.price || 0) - parseFloat(b.price || 0));
+      case "价格从高到低":
+        return [...toursData].sort((a, b) => parseFloat(b.price || 0) - parseFloat(a.price || 0));
+      case "评分":
+        return [...toursData].sort((a, b) => parseFloat(b.rating || 0) - parseFloat(a.rating || 0));
+      case "时长":
+        // 对于混合的一日游和跟团游数据，需要根据不同的时长格式处理
+        return [...toursData].sort((a, b) => {
+          const getDuration = (item) => {
+            if (item.duration_hours) return parseInt(item.duration_hours);
+            if (item.duration_days) return parseInt(item.duration_days) * 24;
+            if (typeof item.duration === 'string') {
+              if (item.duration.includes('天')) {
+                return parseInt(item.duration) * 24;
+              } else {
+                return parseInt(item.duration);
+              }
+            }
+            return 0;
+          };
+          return getDuration(a) - getDuration(b);
+        });
+      case "推荐":
+      default:
+        // 推荐排序可能基于多种因素，这里简化为评分和热门度的结合
+        return [...toursData].sort((a, b) => {
+          const scoreA = (parseFloat(a.rating || 0) * 2) + (parseInt(a.popularity || 0) / 100);
+          const scoreB = (parseFloat(b.rating || 0) * 2) + (parseInt(b.popularity || 0) / 100);
+          return scoreB - scoreA;
+        });
+    }
+  }, [sortBy]);
+  
   // 筛选一日游数据
   const filteredDayTours = useMemo(() => {
     // 如果选择了跟团游，则不显示一日游数据
@@ -50,27 +459,34 @@ const Tours = () => {
       return [];
     }
 
-    let filtered = [...tasmaniaAttractions];
+    let filtered = [...dayTours];
 
-    // 如果选择了一日游，则只显示一日游数据
-    if (selectedTourType === '一日游') {
-      filtered = filtered.filter(item => 
-        Array.isArray(item.tourType) 
-          ? item.tourType.includes('一日游')
-          : item.tourType === '一日游'
+    // 根据搜索关键词筛选
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        item => (item.title || item.name || '').toLowerCase().includes(term) || 
+                (item.description || item.intro || item.des || '').toLowerCase().includes(term)
       );
     }
 
-    // 根据地点筛选
+    // 根据地点筛选 - 使用"或"关系
     if (selectedLocation.length > 0) {
-      filtered = filtered.filter(item => selectedLocation.includes(item.location));
+      filtered = filtered.filter(item => {
+        // 考虑各种可能的地点字段
+        const itemLocation = (item.location || item.departure || item.region || '').toLowerCase();
+        // 如果项目的地点包含任一选定地点，则保留该项目
+        return selectedLocation.some(loc => 
+          itemLocation.includes(loc.toLowerCase())
+        );
+      });
     }
 
     // 根据时长筛选 - 一日游时长格式为 "X小时"
     if (selectedDuration.length > 0) {
       filtered = filtered.filter(item => {
         // 处理一日游时长筛选
-        const hours = parseInt(item.duration);
+        const hours = parseInt(item.duration_hours || item.duration || 0);
         return selectedDuration.some(duration => {
           if (duration === "2-4小时" && hours >= 2 && hours <= 4) return true;
           if (duration === "4-6小时" && hours >= 4 && hours <= 6) return true;
@@ -81,66 +497,57 @@ const Tours = () => {
       });
     }
 
-    // 根据价格范围筛选
-    if (selectedPriceRange.length > 0) {
+    // 根据适合人群筛选
+    if (selectedSuitableFor.length > 0) {
       filtered = filtered.filter(item => {
-        const price = parseFloat(item.price);
-        return selectedPriceRange.some(range => {
-          if (range.includes('-')) {
-            const [min, max] = range.split('-').map(Number);
-            return price >= min && price <= max;
-          } else if (range.includes('以上')) {
-            const min = parseFloat(range.replace(/[^\d.]/g, ''));
-            return price >= min;
-          }
-          return false;
-        });
+        // 检查item.suitableFor是否存在（注意后端返回的是suitableFor而不是suitable_for）
+        if (!item.suitableFor) return false;
+        
+        const suitableForArray = Array.isArray(item.suitableFor) 
+          ? item.suitableFor
+          : typeof item.suitableFor === 'string' ? item.suitableFor.split(',') : [];
+        
+        // 检查是否有任何选中的适合人群在当前项目的适合人群列表中
+        return selectedSuitableFor.some(selectedGroup => 
+          suitableForArray.some(itemGroup => 
+            typeof itemGroup === 'string' && 
+            itemGroup.toLowerCase() === selectedGroup.toLowerCase()
+          )
+        );
+      });
+    }
+
+    // 根据主题筛选
+    if (selectedThemes.length > 0) {
+      filtered = filtered.filter(item => {
+        // 检查item.themes是否为数组或字符串
+        if (!item.themes) return false;
+        
+        const themesArray = Array.isArray(item.themes) 
+          ? item.themes
+          : item.themes.split(',');
+        
+        // 检查是否有任何选中的主题在当前项目的主题列表中
+        return selectedThemes.some(selectedTheme => 
+          themesArray.some(itemTheme => 
+            itemTheme.toLowerCase().includes(selectedTheme.toLowerCase())
+          )
+        );
       });
     }
 
     // 根据评分筛选
     if (selectedRatings.length > 0) {
       filtered = filtered.filter(item => {
-        const rating = parseFloat(item.rating);
-        return selectedRatings.some(r => rating >= r);
+        const rating = parseFloat(item.rating || 0);
+        // 评分筛选逻辑修改为判断是否≥选中的任一评分
+        return selectedRatings.some(selectedRating => rating >= selectedRating);
       });
     }
 
-    // 根据主题筛选
-    if (selectedThemes.length > 0) {
-      filtered = filtered.filter(item => 
-        item.themes.some(theme => selectedThemes.includes(theme))
-      );
-    }
-
-    // 根据适合人群筛选
-    if (selectedSuitableFor.length > 0) {
-      filtered = filtered.filter(item => 
-        item.suitableFor.some(suitable => selectedSuitableFor.includes(suitable))
-      );
-    }
-
-    // 根据搜索词筛选
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase().trim();
-      filtered = filtered.filter(
-        item => 
-          item.name.toLowerCase().includes(term) || 
-          item.description.toLowerCase().includes(term)
-      );
-    }
-
-    return filtered;
-  }, [
-    selectedTourType,
-    selectedLocation,
-    selectedDuration,
-    selectedPriceRange,
-    selectedRatings,
-    selectedThemes,
-    selectedSuitableFor,
-    searchTerm
-  ]);
+    // 排序
+    return sortTours(filtered);
+  }, [dayTours, searchTerm, selectedTourType, selectedDuration, selectedSuitableFor, selectedThemes, selectedRatings, sortTours]);
 
   // 筛选跟团游数据
   const filteredGroupTours = useMemo(() => {
@@ -149,22 +556,35 @@ const Tours = () => {
       return [];
     }
 
-    let filtered = [...popularsData];
+    let filtered = [...groupTours];
 
-    // 如果选择了跟团游，则只显示跟团游数据
-    if (selectedTourType === '跟团游') {
-      filtered = filtered.filter(item => 
-        Array.isArray(item.tourType) 
-          ? item.tourType.includes('跟团游')
-          : item.tourType === '跟团游'
+    // 根据搜索关键词筛选
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        item => (item.title || item.name || '').toLowerCase().includes(term) || 
+                (item.description || item.intro || item.des || '').toLowerCase().includes(term)
       );
+    }
+
+    // 根据地点筛选 - 使用"或"关系
+    if (selectedLocation.length > 0) {
+      filtered = filtered.filter(item => {
+        // 考虑各种可能的地点字段
+        const itemLocation = (item.location || item.departure || item.region || '').toLowerCase();
+        // 如果项目的地点包含任一选定地点，则保留该项目
+        return selectedLocation.some(loc => 
+          itemLocation.includes(loc.toLowerCase())
+        );
+      });
     }
 
     // 根据时长筛选 - 跟团游时长格式为 "X天X晚"
     if (selectedDuration.length > 0) {
       filtered = filtered.filter(item => {
         // 从 "X天X晚" 中提取天数
-        const days = parseInt(item.duration.split('天')[0]);
+        const days = parseInt(item.duration_days || 
+                             (item.duration && item.duration.split('天')[0]) || 0);
         return selectedDuration.some(duration => {
           if (duration === "2-3天" && days >= 2 && days <= 3) return true;
           if (duration === "4-5天" && days >= 4 && days <= 5) return true;
@@ -178,7 +598,7 @@ const Tours = () => {
     // 根据价格范围筛选
     if (selectedPriceRange.length > 0) {
       filtered = filtered.filter(item => {
-        const price = parseFloat(item.afterDiscount || item.price);
+        const price = parseFloat(item.discount_price || item.price || 0);
         return selectedPriceRange.some(range => {
           if (range.includes('-')) {
             const [min, max] = range.split('-').map(Number);
@@ -195,110 +615,122 @@ const Tours = () => {
     // 根据评分筛选
     if (selectedRatings.length > 0) {
       filtered = filtered.filter(item => {
-        const rating = parseFloat(item.rating);
-        return selectedRatings.some(r => rating >= r);
+        const rating = parseFloat(item.rating || 0);
+        // 评分筛选逻辑修改为判断是否≥选中的任一评分
+        return selectedRatings.some(selectedRating => rating >= selectedRating);
+      });
+    }
+
+    // 根据适合人群筛选
+    if (selectedSuitableFor.length > 0) {
+      filtered = filtered.filter(item => {
+        // 检查item.suitableFor是否存在（注意后端返回的是suitableFor而不是suitable_for）
+        if (!item.suitableFor) return false;
+        
+        const suitableForArray = Array.isArray(item.suitableFor) 
+          ? item.suitableFor
+          : typeof item.suitableFor === 'string' ? item.suitableFor.split(',') : [];
+        
+        // 检查是否有任何选中的适合人群在当前项目的适合人群列表中
+        return selectedSuitableFor.some(selectedGroup => 
+          suitableForArray.some(itemGroup => 
+            typeof itemGroup === 'string' && 
+            itemGroup.toLowerCase() === selectedGroup.toLowerCase()
+          )
+        );
       });
     }
 
     // 根据主题筛选
     if (selectedThemes.length > 0) {
-      filtered = filtered.filter(item => 
-        item.themes.some(theme => selectedThemes.includes(theme))
-      );
+      filtered = filtered.filter(item => {
+        // 检查item.themes是否为数组或字符串
+        if (!item.themes) return false;
+        
+        const themesArray = Array.isArray(item.themes) 
+          ? item.themes
+          : item.themes.split(',');
+        
+        // 检查是否有任何选中的主题在当前项目的主题列表中
+        return selectedThemes.some(selectedTheme => 
+          themesArray.some(itemTheme => 
+            itemTheme.toLowerCase().includes(selectedTheme.toLowerCase())
+          )
+        );
+      });
     }
 
-    // 根据适合人群筛选
-    if (selectedSuitableFor.length > 0) {
-      filtered = filtered.filter(item => 
-        item.suitableFor.some(suitable => selectedSuitableFor.includes(suitable))
-      );
-    }
+    // 排序
+    return sortTours(filtered);
+  }, [groupTours, searchTerm, selectedTourType, selectedDuration, selectedPriceRange, selectedRatings, selectedSuitableFor, selectedThemes, sortTours]);
 
-    // 根据搜索词筛选
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase().trim();
-      filtered = filtered.filter(
-        item => 
-          item.title.toLowerCase().includes(term) || 
-          (item.description && item.description.toLowerCase().includes(term))
-      );
-    }
-
-    return filtered;
-  }, [
-    selectedTourType,
-    selectedDuration,
-    selectedPriceRange,
-    selectedRatings,
-    selectedThemes,
-    selectedSuitableFor,
-    searchTerm
-  ]);
-
-  // 合并筛选结果
-  const allFilteredTours = useMemo(() => {
-    const dayTours = filteredDayTours.map(item => ({
-      ...item,
-      title: item.name,
-      afterDiscount: item.price,
-      tourTypeBadge: Array.isArray(item.tourType) ? item.tourType[0] : item.tourType,
-      img: item.image // 确保图片路径正确
-    }));
-
-    const groupTours = filteredGroupTours.map(item => ({
-      ...item,
-      tourTypeBadge: Array.isArray(item.tourType) ? item.tourType[0] : item.tourType,
-      img: item.image // 确保图片路径正确
-    }));
-
-    let combined = [...dayTours, ...groupTours];
-    
-    // 根据排序方式排序
-    switch(sortBy) {
-      case "价格从低到高":
-        combined.sort((a, b) => parseFloat(a.afterDiscount || a.price) - parseFloat(b.afterDiscount || b.price));
-        break;
-      case "价格从高到低":
-        combined.sort((a, b) => parseFloat(b.afterDiscount || b.price) - parseFloat(a.afterDiscount || a.price));
-        break;
-      case "评分最高":
-        combined.sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating));
-        break;
-      case "最新上线":
-        // 假设有上线日期字段，这里仅作示例
-        combined.sort((a, b) => new Date(b.createdAt || "2023-01-01") - new Date(a.createdAt || "2023-01-01"));
-        break;
-      default:
-        // 推荐排序，可以根据需要实现自定义逻辑
-        break;
-    }
-    
-    return combined;
-  }, [filteredDayTours, filteredGroupTours, sortBy]);
-
-  // 处理搜索输入
+  // 使用防抖处理搜索
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
   };
 
-  // 切换筛选面板显示（移动端）
+  // 切换筛选面板
   const toggleFilters = () => {
     setShowFilters(!showFilters);
   };
 
-  // 切换视图模式
-  const toggleViewMode = (mode) => {
-    setViewMode(mode);
-  };
-
-  // 处理排序方式变更
+  // 排序选择
   const handleSortChange = (sortOption) => {
     setSortBy(sortOption);
   };
 
+  // 导入useRef来存储Filters组件引用
+  const filtersRef = useRef();
+  
   // 清除所有筛选条件
   const clearAllFilters = () => {
-    navigate('/tours');
+    // 仅保留默认的旅游类型，清除其他所有筛选
+    const tourType = selectedTourType; // 保存当前旅游类型
+    
+    // 保留原有的查询参数
+    const params = new URLSearchParams();
+    const startDate = queryParams.get('startDate');
+    const endDate = queryParams.get('endDate');
+    const adults = queryParams.get('adults');
+    const children = queryParams.get('children');
+    
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    if (adults) params.append('adults', adults);
+    if (children) params.append('children', children);
+    
+    // 保留旅游类型参数
+    if (tourType) {
+      if (tourType === '一日游') {
+        params.append('tourTypes', 'day_tour');
+      } else if (tourType === '跟团游') {
+        params.append('tourTypes', 'group_tour');
+      } else {
+        params.append('tourTypes', 'day_tour'); // 如果没有有效类型，默认设置为一日游
+      }
+    } else {
+      // 如果没有选择旅游类型，默认设置为一日游
+      params.append('tourTypes', 'day_tour');
+    }
+    
+    // 更新URL
+    navigate({ search: params.toString() });
+    
+    // 如果Filters组件有clearFilters方法，则调用它
+    if (filtersRef.current && filtersRef.current.clearFilters) {
+      filtersRef.current.clearFilters();
+    }
+  };
+
+  // 格式化日期
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("zh-CN", {
+      year: "numeric",
+      month: "long",
+      day: "numeric"
+    });
   };
 
   return (
@@ -333,206 +765,336 @@ const Tours = () => {
           </Row>
         </Container>
       </div>
-      
-      <Container fluid className="filter-results-section py-5">
+
+      {/* 主内容区域 */}
+      <div className="tour-main-content">
         <Container>
-          {/* 已选筛选条件展示 */}
-          {(selectedLocation.length > 0 || selectedDuration.length > 0 || selectedPriceRange.length > 0 || 
-            selectedRatings.length > 0 || selectedThemes.length > 0 || selectedSuitableFor.length > 0 || 
-            selectedTourType) && (
-            <div className="selected-filters mb-4">
-              <div className="d-flex flex-wrap align-items-center">
-                <span className="me-2 selected-filters-label">已选条件:</span>
-                
-                {selectedTourType && (
-                  <Badge bg="primary" className="selected-filter-badge me-2 mb-2">
-                    {selectedTourType}
-                    <span className="ms-2 filter-remove" onClick={() => {
-                      const params = new URLSearchParams(location.search);
-                      params.delete('tourTypes');
-                      navigate(`/tours?${params.toString()}`);
-                    }}><FaTimes /></span>
-                  </Badge>
+          {/* 期间选择和结果计数 */}
+          <div className="tour-header">
+            <div className="d-flex justify-content-between align-items-center flex-wrap mb-4">
+              <div className="d-flex align-items-center mb-3 mb-md-0">
+                {startDate && endDate && (
+                  <div className="selected-dates me-3">
+                    <FaCalendarAlt className="me-2" />
+                    <span>{formatDate(startDate)} - {formatDate(endDate)}</span>
+                    <Button 
+                      variant="link" 
+                      className="clear-dates p-0 ms-2" 
+                      onClick={() => navigate(location.pathname)}
+                    >
+                      <FaTimes />
+                    </Button>
+                  </div>
                 )}
+                <div className="results-count">
+                  {loading ? (
+                    <span>加载中...</span>
+                  ) : (
+                    <span>
+                      显示 {filteredDayTours.length + filteredGroupTours.length} 个结果
+                      {Object.keys(queryParams).length > 0 && (
+                        <Button 
+                          variant="link"
+                          className="clear-all p-0 ms-2"
+                          onClick={clearAllFilters}
+                        >
+                          清除所有筛选
+                        </Button>
+                      )}
+                    </span>
+                  )}
+                </div>
+              </div>
+              
+              <div className="tour-controls d-flex align-items-center">
+                {/* 排序下拉菜单 */}
+                <Dropdown className="sort-dropdown me-3">
+                  <Dropdown.Toggle variant="outline-secondary" id="dropdown-sort">
+                    <FaSortAmountDown className="me-2" />
+                    <span className="d-none d-md-inline">排序: </span>{sortBy}
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu>
+                    <Dropdown.Item active={sortBy === "推荐"} onClick={() => handleSortChange("推荐")}>推荐</Dropdown.Item>
+                    <Dropdown.Item active={sortBy === "价格从低到高"} onClick={() => handleSortChange("价格从低到高")}>价格从低到高</Dropdown.Item>
+                    <Dropdown.Item active={sortBy === "价格从高到低"} onClick={() => handleSortChange("价格从高到低")}>价格从高到低</Dropdown.Item>
+                    <Dropdown.Item active={sortBy === "评分"} onClick={() => handleSortChange("评分")}>评分最高</Dropdown.Item>
+                    <Dropdown.Item active={sortBy === "时长"} onClick={() => handleSortChange("时长")}>时长最短</Dropdown.Item>
+                  </Dropdown.Menu>
+                </Dropdown>
                 
-                {selectedLocation.map((loc, index) => (
-                  <Badge key={index} bg="primary" className="selected-filter-badge me-2 mb-2">
-                    {loc}
-                    <span className="ms-2 filter-remove" onClick={() => {
-                      const newLocations = selectedLocation.filter(item => item !== loc);
-                      const params = new URLSearchParams(location.search);
-                      if (newLocations.length > 0) {
-                        params.set('location', newLocations.join(','));
-                      } else {
-                        params.delete('location');
-                      }
-                      navigate(`/tours?${params.toString()}`);
-                    }}><FaTimes /></span>
-                  </Badge>
-                ))}
+                {/* 视图切换按钮 */}
+                <div className="view-switcher d-none d-md-flex">
+                  <Button 
+                    variant={viewMode === "grid" ? "primary" : "outline-secondary"} 
+                    className="me-2" 
+                    onClick={() => setViewMode("grid")}
+                  >
+                    <FaThLarge />
+                  </Button>
+                  <Button 
+                    variant={viewMode === "list" ? "primary" : "outline-secondary"} 
+                    onClick={() => setViewMode("list")}
+                  >
+                    <FaList />
+                  </Button>
+                </div>
                 
-                {selectedDuration.map((duration, index) => (
-                  <Badge key={index} bg="primary" className="selected-filter-badge me-2 mb-2">
-                    {duration}
-                    <span className="ms-2 filter-remove" onClick={() => {
-                      const newDurations = selectedDuration.filter(item => item !== duration);
-                      const params = new URLSearchParams(location.search);
-                      if (newDurations.length > 0) {
-                        params.set('duration', newDurations.join(','));
-                      } else {
-                        params.delete('duration');
-                      }
-                      navigate(`/tours?${params.toString()}`);
-                    }}><FaTimes /></span>
-                  </Badge>
-                ))}
-                
-                {selectedPriceRange.map((range, index) => (
-                  <Badge key={index} bg="primary" className="selected-filter-badge me-2 mb-2">
-                    {range}
-                    <span className="ms-2 filter-remove" onClick={() => {
-                      const newRanges = selectedPriceRange.filter(item => item !== range);
-                      const params = new URLSearchParams(location.search);
-                      if (newRanges.length > 0) {
-                        params.set('priceRange', newRanges.join(','));
-                      } else {
-                        params.delete('priceRange');
-                      }
-                      navigate(`/tours?${params.toString()}`);
-                    }}><FaTimes /></span>
-                  </Badge>
-                ))}
-                
-                {selectedThemes.map((theme, index) => (
-                  <Badge key={index} bg="primary" className="selected-filter-badge me-2 mb-2">
-                    {theme}
-                    <span className="ms-2 filter-remove" onClick={() => {
-                      const newThemes = selectedThemes.filter(item => item !== theme);
-                      const params = new URLSearchParams(location.search);
-                      if (newThemes.length > 0) {
-                        params.set('themes', newThemes.join(','));
-                      } else {
-                        params.delete('themes');
-                      }
-                      navigate(`/tours?${params.toString()}`);
-                    }}><FaTimes /></span>
-                  </Badge>
-                ))}
-                
-                <Button 
-                  variant="outline-secondary" 
-                  size="sm" 
-                  className="clear-filters-btn mb-2"
-                  onClick={clearAllFilters}
-                >
-                  清除全部
-                </Button>
+                {/* 移动端筛选按钮 */}
+                <div className="d-md-none">
+                  <Button 
+                    variant="outline-primary"
+                    onClick={toggleFilters}
+                  >
+                    <FaFilter className="me-2" />
+                    筛选
+                  </Button>
+                </div>
               </div>
             </div>
+          </div>
+          
+          {/* 登录提示 */}
+          {!isAuthenticated && (
+            <LoginPrompt message="登录后可以查看更多旅游产品和享受会员价格。" />
           )}
           
           <Row>
-            {/* 筛选面板 */}
-            <Col lg={3} className="filter-column">
-              {isMobile && (
-                <button 
-                  className="btn btn-primary w-100 mb-3 d-lg-none filter-toggle-btn" 
-                  onClick={toggleFilters}
-                >
-                  <FaFilter className="me-2" />
-                  {showFilters ? "隐藏筛选" : "显示筛选"}
-                </button>
-              )}
+            {/* 筛选侧边栏 */}
+            <Col lg={3} className={`filters-sidebar ${showFilters ? 'show' : 'd-none d-lg-block'}`}>
+              <div className="sidebar-header d-flex justify-content-between align-items-center d-lg-none mb-3">
+                <h3 className="mb-0">筛选条件</h3>
+                <Button variant="link" className="close-filters p-0" onClick={toggleFilters}>
+                  <FaTimes />
+                </Button>
+              </div>
               
-              {(showFilters || !isMobile) && (
-                <div className="filters-wrapper">
-                  <div className="filters-header">
-                    <h5>筛选条件</h5>
-                    <Button 
-                      variant="link" 
-                      className="reset-filters-link"
-                      onClick={clearAllFilters}
-                    >
-                      重置
-                    </Button>
-                  </div>
-                  <Filters onApplyFilters={() => {}} />
-                </div>
-              )}
+              <Filters 
+                ref={filtersRef}
+                selectedTourType={selectedTourType}
+                selectedLocation={selectedLocation}
+                selectedDuration={selectedDuration}
+                selectedPriceRange={selectedPriceRange}
+                selectedRatings={selectedRatings}
+                selectedThemes={selectedThemes}
+                selectedSuitableFor={selectedSuitableFor}
+                startDate={startDate}
+                endDate={endDate}
+              />
             </Col>
             
-            {/* 产品列表 */}
+            {/* 旅游列表 */}
             <Col lg={9}>
-              <div className="filter-results">
-                <div className="results-header mb-4">
-                  <div className="d-flex justify-content-between align-items-center flex-wrap">
-                    <h5 className="results-count mb-0">找到 {allFilteredTours.length} 个结果</h5>
-                    
-                    <div className="d-flex align-items-center">
-                      {/* 排序下拉菜单 */}
-                      <Dropdown className="me-3">
-                        <Dropdown.Toggle variant="outline-secondary" id="dropdown-sort">
-                          <FaSortAmountDown className="me-2" />
-                          {sortBy}
-                        </Dropdown.Toggle>
-                        
-                        <Dropdown.Menu>
-                          <Dropdown.Item onClick={() => handleSortChange("推荐")}>推荐</Dropdown.Item>
-                          <Dropdown.Item onClick={() => handleSortChange("价格从低到高")}>价格从低到高</Dropdown.Item>
-                          <Dropdown.Item onClick={() => handleSortChange("价格从高到低")}>价格从高到低</Dropdown.Item>
-                          <Dropdown.Item onClick={() => handleSortChange("评分最高")}>评分最高</Dropdown.Item>
-                          <Dropdown.Item onClick={() => handleSortChange("最新上线")}>最新上线</Dropdown.Item>
-                        </Dropdown.Menu>
-                      </Dropdown>
-                      
-                      {/* 视图切换按钮 */}
-                      <div className="view-toggle">
-                        <Button 
-                          variant={viewMode === "grid" ? "primary" : "outline-secondary"} 
-                          className="me-2"
-                          onClick={() => toggleViewMode("grid")}
-                        >
-                          <FaThLarge />
-                        </Button>
-                        <Button 
-                          variant={viewMode === "list" ? "primary" : "outline-secondary"}
-                          onClick={() => toggleViewMode("list")}
-                        >
-                          <FaList />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+              {loading ? (
+                <div className="text-center py-5">
+                  <Spinner animation="border" variant="primary" />
+                  <p className="mt-3">正在加载旅游数据...</p>
                 </div>
-                
-                {allFilteredTours.length > 0 ? (
-                  <Row xs={1} md={viewMode === "grid" ? 2 : 1} lg={viewMode === "grid" ? 3 : 1} className="g-4">
-                    {allFilteredTours.map((item, index) => (
-                      <Col key={index}>
-                        <PopularCard val={item} viewMode={viewMode} />
-                      </Col>
-                    ))}
-                  </Row>
-                ) : (
-                  <div className="no-results text-center py-5">
-                    <div className="no-results-icon mb-3">
-                      <FaSearch size={48} color="#ccc" />
+              ) : error ? (
+                <Alert variant="danger">
+                  <Alert.Heading>加载失败</Alert.Heading>
+                  <p>{error}</p>
+                </Alert>
+              ) : (
+                <>
+                  {/* 一日游列表 */}
+                  {filteredDayTours.length > 0 && (
+                    <div className="tour-section mb-5">
+                      <h3 className="section-title">一日游</h3>
+                      <Row className={viewMode === "list" ? "list-view" : ""}>
+                        {filteredDayTours.map((tour) => (
+                          <Col key={tour.id} lg={viewMode === "list" ? 12 : 4} md={viewMode === "list" ? 12 : 6} className="mb-4">
+                            {viewMode === "list" ? (
+                              // 列表视图使用自定义布局
+                              <div className="list-view-card">
+                                <div className="row g-0">
+                                  <div className="col-md-4">
+                                    <div className="tour-card-img-container h-100">
+                                      <img 
+                                        src={tour.image_url || tour.cover_image || "/images/placeholder.jpg"}
+                                        className="tour-card-img h-100" 
+                                        alt={tour.title || tour.name || "一日游"} 
+                                      />
+                                      <div className="tour-duration-overlay">
+                                        <FaCalendarAlt className="me-1" />
+                                        {tour.duration_hours ? `${tour.duration_hours}小时` : tour.duration || "8小时"}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="col-md-8">
+                                    <div className="d-flex flex-column h-100 p-3">
+                                      <h5 className="tour-title">
+                                        {tour.title || tour.name || "一日游"}
+                                      </h5>
+                                      <div className="d-flex justify-content-between align-items-center mb-2">
+                                        <div className="d-flex align-items-center">
+                                          <FaMapMarkerAlt className="text-danger me-1" />
+                                          <span className="text-muted small">{tour.location || "塔斯马尼亚"}</span>
+                                        </div>
+                                        <div className="d-flex align-items-center rating-stars">
+                                          <FaStar className="text-warning me-1" />
+                                          <span className="text-warning">{tour.rating || 4.5}</span>
+                                        </div>
+                                      </div>
+                                      <p className="tour-description mb-3">
+                                        {tour.description || tour.intro || tour.des || ""}
+                                      </p>
+                                      <div className="mt-auto">
+                                        <div className="d-flex justify-content-between align-items-center mt-2">
+                                          <div className="tour-price-container">
+                                            <PriceDisplay 
+                                              price={Number(tour.price)} 
+                                              discountPrice={tour.discount_price ? Number(tour.discount_price) : null} 
+                                              currency="$"
+                                              size="sm"
+                                            />
+                                            <span className="text-muted small">/人</span>
+                                          </div>
+                                          <Link to={`/day-tours/${tour.id}`} className="btn btn-sm btn-outline-primary view-details-btn">
+                                            查看详情
+                                          </Link>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              // 网格视图使用Cards组件
+                              <Cards destination={{
+                                ...tour,
+                                id: tour.id,
+                                name: tour.title || tour.name,
+                                description: tour.description || tour.intro || tour.des,
+                                price: Number(tour.price),
+                                discountPrice: tour.discount_price ? Number(tour.discount_price) : null,
+                                location: tour.location,
+                                rating: tour.rating,
+                                type: 'day-tour',
+                                duration: tour.duration_hours ? `${tour.duration_hours}小时` : tour.duration,
+                                hours: tour.duration_hours,
+                                image_url: tour.image_url || tour.cover_image,
+                                suitable_for: tour.suitable_for || tour.suitableFor,
+                                category: tour.themes && tour.themes.length > 0 ? tour.themes[0] : null
+                              }} />
+                            )}
+                          </Col>
+                        ))}
+                      </Row>
                     </div>
-                    <h4>没有找到符合条件的结果</h4>
-                    <p>请尝试调整筛选条件或使用不同的搜索词</p>
-                    <Button 
-                      variant="primary" 
-                      onClick={clearAllFilters}
-                    >
-                      清除所有筛选条件
-                    </Button>
-                  </div>
-                )}
-              </div>
+                  )}
+                  
+                  {/* 跟团游列表 */}
+                  {filteredGroupTours.length > 0 && (
+                    <div className="tour-section">
+                      <h3 className="section-title">跟团游</h3>
+                      <Row className={viewMode === "list" ? "list-view" : ""}>
+                        {filteredGroupTours.map((tour) => (
+                          <Col key={tour.id} lg={viewMode === "list" ? 12 : 4} md={viewMode === "list" ? 12 : 6} className="mb-4">
+                            {viewMode === "list" ? (
+                              // 列表视图使用自定义布局
+                              <div className="list-view-card">
+                                <div className="row g-0">
+                                  <div className="col-md-4">
+                                    <div className="tour-card-img-container h-100">
+                                      <img 
+                                        src={tour.image_url || tour.cover_image || "/images/placeholder.jpg"}
+                                        className="tour-card-img h-100" 
+                                        alt={tour.title || tour.name || "跟团游"} 
+                                      />
+                                      <div className="tour-duration-overlay">
+                                        <FaCalendarAlt className="me-1" />
+                                        {tour.duration_days && tour.duration_nights 
+                                          ? `${tour.duration_days}天${tour.duration_nights}晚` 
+                                          : tour.duration}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="col-md-8">
+                                    <div className="d-flex flex-column h-100 p-3">
+                                      <h5 className="tour-title">
+                                        {tour.title || tour.name || "跟团游"}
+                                      </h5>
+                                      <div className="d-flex justify-content-between align-items-center mb-2">
+                                        <div className="d-flex align-items-center">
+                                          <FaMapMarkerAlt className="text-danger me-1" />
+                                          <span className="text-muted small">{tour.departure || tour.location}</span>
+                                        </div>
+                                        <div className="d-flex align-items-center rating-stars">
+                                          <FaStar className="text-warning me-1" />
+                                          <span className="text-warning">{tour.rating || 4.5}</span>
+                                        </div>
+                                      </div>
+                                      <p className="tour-description mb-3">
+                                        {tour.description || tour.intro || tour.des || ""}
+                                      </p>
+                                      <div className="mt-auto">
+                                        <div className="d-flex justify-content-between align-items-center mt-2">
+                                          <div className="tour-price-container">
+                                            <PriceDisplay 
+                                              price={Number(tour.price)} 
+                                              discountPrice={tour.discount_price ? Number(tour.discount_price) : null} 
+                                              currency="$"
+                                              size="sm"
+                                            />
+                                            <span className="text-muted small">/人</span>
+                                          </div>
+                                          <Link to={`/group-tours/${tour.id}`} className="btn btn-sm btn-outline-primary view-details-btn">
+                                            查看详情
+                                          </Link>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              // 网格视图使用Cards组件
+                              <Cards destination={{
+                                ...tour,
+                                id: tour.id,
+                                name: tour.title || tour.name,
+                                description: tour.description || tour.intro || tour.des,
+                                price: Number(tour.price),
+                                discountPrice: tour.discount_price ? Number(tour.discount_price) : null,
+                                location: tour.departure || tour.location,
+                                rating: tour.rating,
+                                type: 'group-tour',
+                                duration: tour.duration_days && tour.duration_nights 
+                                  ? `${tour.duration_days}天${tour.duration_nights}晚` 
+                                  : tour.duration,
+                                days: tour.duration_days,
+                                nights: tour.duration_nights,
+                                image_url: tour.image_url || tour.cover_image,
+                                suitable_for: tour.suitable_for || tour.suitableFor,
+                                departure_info: tour.departure_info,
+                                category: tour.themes && tour.themes.length > 0 ? tour.themes[0] : null
+                              }} />
+                            )}
+                          </Col>
+                        ))}
+                      </Row>
+                    </div>
+                  )}
+                  
+                  {/* 没有结果 */}
+                  {filteredDayTours.length === 0 && filteredGroupTours.length === 0 && (
+                    <div className="no-results text-center py-5">
+                      <h4>没有找到符合条件的旅游产品</h4>
+                      <p>尝试调整您的筛选条件或清除所有筛选</p>
+                      <Button 
+                        variant="outline-primary"
+                        onClick={clearAllFilters}
+                      >
+                        清除所有筛选
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
             </Col>
           </Row>
         </Container>
-      </Container>
+      </div>
     </div>
   );
 };

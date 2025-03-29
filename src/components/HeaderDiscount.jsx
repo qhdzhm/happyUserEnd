@@ -1,0 +1,108 @@
+import React, { useState, useEffect } from 'react';
+import './DiscountDisplay.css';
+import { calculateTourDiscount, getAgentDiscountRate } from '../utils/api';
+
+/**
+ * 顶部折扣信息提示组件，根据用户类型显示不同的折扣信息
+ */
+const HeaderDiscount = () => {
+  const [discountRate, setDiscountRate] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  
+  // 从localStorage获取代理商ID
+  const isAgent = localStorage.getItem('userType') === 'agent';
+  const agentId = localStorage.getItem('agentId');
+  
+  // 从API获取折扣率
+  const fetchDiscountRate = async () => {
+    console.log('HeaderDiscount - 开始获取代理商折扣率...');
+    setLoading(true);
+    
+    try {
+      // 尝试从localStorage获取缓存的折扣率
+      const cachedRate = localStorage.getItem('discountRate');
+      if (cachedRate) {
+        console.log('HeaderDiscount - 从localStorage获取的折扣率:', cachedRate);
+        setDiscountRate(parseFloat(cachedRate));
+      }
+      
+      // 如果没有缓存或需要更新，从API获取
+      console.log('HeaderDiscount - 从API获取最新折扣率');
+      const rateFromApi = await getAgentDiscountRate();
+      console.log('HeaderDiscount - API返回的折扣率:', rateFromApi);
+      
+      // 更新状态
+      setDiscountRate(parseFloat(rateFromApi));
+      
+      // 使用获取的折扣率做一次测试API调用
+      console.log('HeaderDiscount - 测试折扣计算...');
+      
+      // 使用GET方法调用API
+      try {
+        const testResult = await calculateTourDiscount({
+          tourId: 1,
+          tourType: 'day',
+          originalPrice: 100,
+          agentId: agentId
+        });
+        console.log('HeaderDiscount - 折扣计算测试结果:', testResult);
+      } catch (testError) {
+        console.error('HeaderDiscount - 折扣计算测试API调用失败:', testError);
+      }
+      
+      // 清除错误
+      setError(null);
+    } catch (err) {
+      console.error('HeaderDiscount - 获取折扣率失败:', err);
+      setError('无法获取折扣率，请稍后再试');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // 组件加载时获取折扣率
+  useEffect(() => {
+    if (isAgent && agentId) {
+      fetchDiscountRate();
+    }
+  }, [isAgent, agentId]);
+  
+  // 如果不是代理商，不显示组件
+  if (!isAgent || !agentId) {
+    return null;
+  }
+  
+  // 根据不同状态渲染不同内容
+  if (loading) {
+    return (
+      <div className="discount-display header-discount loading">
+        <span>正在获取折扣...</span>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="discount-display header-discount error">
+        <span>{error}</span>
+      </div>
+    );
+  }
+  
+  if (discountRate && discountRate < 1) {
+    // 将折扣率转换为百分比
+    const discountPercentage = Math.round((1 - discountRate) * 100);
+    
+    return (
+      <div className="discount-display header-discount">
+        <span className="discount-badge">代理商专享{discountPercentage}%折扣</span>
+      </div>
+    );
+  }
+  
+  // 默认返回空
+  return null;
+}
+
+export default HeaderDiscount; 

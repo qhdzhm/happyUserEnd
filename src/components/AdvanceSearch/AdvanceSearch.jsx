@@ -3,25 +3,21 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
 import "../AdvanceSearch/search.css";
-import { Container, Row, Col, Button, Form, Dropdown } from "react-bootstrap";
-// import
+import { Container, Row, Col, Button, Dropdown } from "react-bootstrap";
 import CustomDropdown from "../CustomDropdown/CustomDropdown";
-import { location, TourTypes } from "../../utils/data";
 import { useNavigate } from "react-router-dom";
 
 const AdvanceSearch = () => {
   const navigate = useNavigate();
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
-  const [selectedLocation, setSelectedLocation] = useState("");
   const [selectedTourType, setSelectedTourType] = useState("");
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [showGuestDropdown, setShowGuestDropdown] = useState(false);
 
-  const handleLocationSelect = (value) => {
-    setSelectedLocation(value);
-  };
+  // 直接在组件中定义行程类型选项
+  const tourTypeOptions = ["一日游", "跟团游"];
 
   const handleTourTypeSelect = (value) => {
     setSelectedTourType(value);
@@ -54,26 +50,37 @@ const AdvanceSearch = () => {
   const handleSearch = () => {
     const queryParams = new URLSearchParams();
     
-    if (selectedLocation) {
-      queryParams.append('location', selectedLocation);
+    // 设置正确的tourTypes参数格式，与Tours.jsx组件期望的一致
+    if (selectedTourType === "一日游") {
+      queryParams.append('tourTypes', 'day_tour');
+    } else if (selectedTourType === "跟团游") {
+      queryParams.append('tourTypes', 'group_tour');
+    } else {
+      // 如果没有选择，默认为一日游
+      queryParams.append('tourTypes', 'day_tour');
     }
     
-    if (selectedTourType) {
-      queryParams.append('tourType', selectedTourType);
-    }
-    
+    // 添加日期信息
     if (startDate) {
-      queryParams.append('startDate', startDate.toISOString());
+      queryParams.append('startDate', startDate.toISOString().split('T')[0]); // 只传递日期部分 YYYY-MM-DD
     }
     
     if (endDate) {
-      queryParams.append('endDate', endDate.toISOString());
+      queryParams.append('endDate', endDate.toISOString().split('T')[0]); // 只传递日期部分 YYYY-MM-DD
     }
     
+    // 添加人数信息
     queryParams.append('adults', adults);
     queryParams.append('children', children);
     
-    navigate(`/search?${queryParams.toString()}`);
+    // 添加一个标记，表示这是从高级搜索进入的
+    queryParams.append('fromAdvanceSearch', 'true');
+    
+    // 导航到旅游路线页面
+    navigate(`/tours?${queryParams.toString()}`);
+    
+    // 打印日志以便调试
+    console.log("高级搜索参数:", queryParams.toString());
   };
 
   // 自定义旅客选择器组件
@@ -92,7 +99,6 @@ const AdvanceSearch = () => {
                 <span>成人</span>
                 <div className="guest-controls">
                   <button 
-                    type="button" 
                     className="guest-btn" 
                     onClick={decreaseAdults}
                     disabled={adults <= 1}
@@ -101,7 +107,6 @@ const AdvanceSearch = () => {
                   </button>
                   <span className="guest-count">{adults}</span>
                   <button 
-                    type="button" 
                     className="guest-btn" 
                     onClick={increaseAdults}
                   >
@@ -109,12 +114,10 @@ const AdvanceSearch = () => {
                   </button>
                 </div>
               </div>
-              
               <div className="guest-type">
                 <span>儿童</span>
                 <div className="guest-controls">
                   <button 
-                    type="button" 
                     className="guest-btn" 
                     onClick={decreaseChildren}
                     disabled={children <= 0}
@@ -123,7 +126,6 @@ const AdvanceSearch = () => {
                   </button>
                   <span className="guest-count">{children}</span>
                   <button 
-                    type="button" 
                     className="guest-btn" 
                     onClick={increaseChildren}
                   >
@@ -146,20 +148,11 @@ const AdvanceSearch = () => {
             <Col md={12} xs={12}>
               <div className="box-search shadow-sm">
                 <div className="item-search">
-                  {/*  使用位置下拉菜单 */}
-                  <CustomDropdown
-                    label="目的地"
-                    onSelect={handleLocationSelect}
-                    options={location}
-                  />
-                </div>
-                
-                <div className="item-search">
                   {/*  添加行程类型下拉菜单 */}
                   <CustomDropdown
                     label="行程类型"
                     onSelect={handleTourTypeSelect}
-                    options={TourTypes}
+                    options={tourTypeOptions}
                   />
                 </div>
                 
@@ -172,6 +165,7 @@ const AdvanceSearch = () => {
                     startDate={startDate}
                     endDate={endDate}
                     placeholderText="选择日期"
+                    dateFormat="yyyy-MM-dd"
                   />
                 </div>
                 
@@ -185,6 +179,7 @@ const AdvanceSearch = () => {
                     endDate={endDate}
                     minDate={startDate}
                     placeholderText="选择日期"
+                    dateFormat="yyyy-MM-dd"
                   />
                 </div>
                 

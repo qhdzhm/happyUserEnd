@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import "../Footer/footer.css"
+import "./footer.css"
 import { Col, Container, Row ,ListGroup} from "react-bootstrap";
 import { NavLink } from "react-router-dom";
 

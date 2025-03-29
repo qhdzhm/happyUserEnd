@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Dropdown, Form } from "react-bootstrap";
 import "../CustomDropdown/customdropdown.css";
 
-const CustomDropdown = ({ label, options, onSelect }) => {
+const CustomDropdown = ({ label, options = [], onSelect }) => {
   const [value, setValue] = useState("");
   const [selectedValue, setSelectedValue] = useState("");
 
@@ -28,18 +28,16 @@ const CustomDropdown = ({ label, options, onSelect }) => {
             value={value}
           />
           <ul className="list-unstyled">
-
-            {options
+            {Array.isArray(options) && options
               .filter(
                 (option) =>
                   !value || option.toLowerCase().startsWith(value.toLowerCase())
               )
               .map((option, index) => (
-                <li  key={index}>
-
-                <Dropdown.Item eventKey={option}>
-                  {option}
-                </Dropdown.Item>
+                <li key={index}>
+                  <Dropdown.Item eventKey={option}>
+                    {option}
+                  </Dropdown.Item>
                 </li>
               ))}
           </ul>

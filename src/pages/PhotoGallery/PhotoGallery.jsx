@@ -5,13 +5,13 @@ import Breadcrumbs from "../../components/Breadcrumbs/Breadcrumbs";
 
 const PhotoGallery = () => {
   useEffect(() => {
-    document.title = " Gallery   ";
+    document.title = "图片库 | 塔斯马尼亚旅游";
     window.scroll(0, 0);
   }, []);
 
   return (
     <>
-      <Breadcrumbs title="Gallery" pagename="Gallery" />
+      <Breadcrumbs title="图片库" pagename="图片库" />
       <section className="py-5" style={{ overflow: "hidden" }}>
         <Container>
           <Row>

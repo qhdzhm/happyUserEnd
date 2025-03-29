@@ -1,8 +1,47 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Accordion, Form } from 'react-bootstrap';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { location as locationData, Categories, TourTypes, DayTourDuration, GroupTourDuration, PriceRange, Ratings } from '../../utils/data';
 import './filters.css';
+
+// 直接在组件中定义数据
+const Categories = [
+  "自然风光",
+  "海滩",
+  "城市观光",
+  "岛屿",
+  "历史文化",
+  "购物美食",
+  "美食体验"
+];
+
+const TourTypes = [
+  "一日游",
+  "跟团游"
+];
+
+const DayTourDuration = [
+  "2-4小时",
+  "4-6小时",
+  "6-8小时",
+  "8小时以上"
+];
+
+const GroupTourDuration = [
+  "2-3天",
+  "4-5天",
+  "6-7天",
+  "7天以上"
+];
+
+const PriceRange = [
+  "0-500",
+  "500-1000",
+  "1000-2000",
+  "2000-3000",
+  "3000以上"
+];
+
+const Ratings = [3, 3.5, 4, 4.5, 5];
 
 const Filters = ({ onApplyFilters }) => {
   const navigate = useNavigate();
@@ -10,10 +49,7 @@ const Filters = ({ onApplyFilters }) => {
   const queryParams = new URLSearchParams(locationHook.search);
   const isInitialMount = useRef(true);
   
-  // 初始化筛选状态 - 将位置改为多选
-  const [selectedLocations, setSelectedLocations] = useState(
-    queryParams.get('location') ? queryParams.get('location').split(',') : []
-  );
+  // 初始化筛选状态
   const [selectedCategories, setSelectedCategories] = useState(
     queryParams.get('categories') ? queryParams.get('categories').split(',') : []
   );
@@ -45,16 +81,7 @@ const Filters = ({ onApplyFilters }) => {
     
     // 清除上一个定时器
     return () => clearTimeout(timer);
-  }, [selectedLocations, selectedCategories, selectedTourTypes, selectedDuration, selectedPriceRange, selectedRatings]);
-
-  // 处理位置选择 - 改为多选
-  const handleLocationChange = (loc) => {
-    if (selectedLocations.includes(loc)) {
-      setSelectedLocations(selectedLocations.filter(item => item !== loc));
-    } else {
-      setSelectedLocations([...selectedLocations, loc]);
-    }
-  };
+  }, [selectedCategories, selectedTourTypes, selectedDuration, selectedPriceRange, selectedRatings]);
 
   // 处理类别选择
   const handleCategoryChange = (category) => {
@@ -105,13 +132,6 @@ const Filters = ({ onApplyFilters }) => {
   const applyFilters = () => {
     const params = new URLSearchParams(locationHook.search);
     
-    // 更新查询参数 - 位置改为多选
-    if (selectedLocations.length > 0) {
-      params.set('location', selectedLocations.join(','));
-    } else {
-      params.delete('location');
-    }
-    
     if (selectedCategories.length > 0) {
       params.set('categories', selectedCategories.join(','));
     } else {
@@ -147,11 +167,13 @@ const Filters = ({ onApplyFilters }) => {
     const endDate = queryParams.get('endDate');
     const adults = queryParams.get('adults');
     const children = queryParams.get('children');
+    const tourType = queryParams.get('tourType');
     
     if (startDate) params.set('startDate', startDate);
     if (endDate) params.set('endDate', endDate);
     if (adults) params.set('adults', adults);
     if (children) params.set('children', children);
+    if (tourType) params.set('tourType', tourType);
     
     // 导航到新的URL
     navigate(`/search?${params.toString()}`);
@@ -167,25 +189,6 @@ const Filters = ({ onApplyFilters }) => {
       <div className="filter_box shadow-sm rounded-2">
         <Accordion defaultActiveKey="0">
           <Accordion.Item eventKey="0">
-            <Accordion.Header>位置</Accordion.Header>
-            <Accordion.Body>
-              {locationData.map((loc, index) => (
-                <Form.Check
-                  key={index}
-                  type="checkbox"
-                  id={`location-${index}`}
-                  label={loc}
-                  checked={selectedLocations.includes(loc)}
-                  onChange={() => handleLocationChange(loc)}
-                  className="mb-2"
-                />
-              ))}
-            </Accordion.Body>
-          </Accordion.Item>
-        </Accordion>
-
-        <Accordion defaultActiveKey="0">
-          <Accordion.Item eventKey="1">
             <Accordion.Header>类别</Accordion.Header>
             <Accordion.Body>
               {Categories.map((category, index) => (
@@ -204,7 +207,7 @@ const Filters = ({ onApplyFilters }) => {
         </Accordion>
 
         <Accordion defaultActiveKey="0">
-          <Accordion.Item eventKey="2">
+          <Accordion.Item eventKey="1">
             <Accordion.Header>行程类型</Accordion.Header>
             <Accordion.Body>
               {TourTypes.map((tourType, index) => (
@@ -223,7 +226,7 @@ const Filters = ({ onApplyFilters }) => {
         </Accordion>
 
         <Accordion defaultActiveKey="0">
-          <Accordion.Item eventKey="3">
+          <Accordion.Item eventKey="2">
             <Accordion.Header>时长</Accordion.Header>
             <Accordion.Body>
               {/* 根据选择的旅游类型显示不同的时长选项 */}
@@ -249,11 +252,12 @@ const Filters = ({ onApplyFilters }) => {
                   className="mb-2"
                 />
               ))}
+              {/* 如果没有选择特定类型，显示所有选项 */}
               {selectedTourTypes.length === 0 && [...DayTourDuration, ...GroupTourDuration].map((duration, index) => (
                 <Form.Check
-                  key={index}
+                  key={`all-${index}`}
                   type="checkbox"
-                  id={`duration-${index}`}
+                  id={`duration-all-${index}`}
                   label={duration}
                   checked={selectedDuration.includes(duration)}
                   onChange={() => handleDurationChange(duration)}
@@ -265,17 +269,17 @@ const Filters = ({ onApplyFilters }) => {
         </Accordion>
 
         <Accordion defaultActiveKey="0">
-          <Accordion.Item eventKey="4">
+          <Accordion.Item eventKey="3">
             <Accordion.Header>价格范围</Accordion.Header>
             <Accordion.Body>
-              {PriceRange.map((priceRange, index) => (
+              {PriceRange.map((range, index) => (
                 <Form.Check
                   key={index}
                   type="checkbox"
                   id={`priceRange-${index}`}
-                  label={priceRange}
-                  checked={selectedPriceRange.includes(priceRange)}
-                  onChange={() => handlePriceRangeChange(priceRange)}
+                  label={range}
+                  checked={selectedPriceRange.includes(range)}
+                  onChange={() => handlePriceRangeChange(range)}
                   className="mb-2"
                 />
               ))}
@@ -284,7 +288,7 @@ const Filters = ({ onApplyFilters }) => {
         </Accordion>
 
         <Accordion defaultActiveKey="0">
-          <Accordion.Item eventKey="5">
+          <Accordion.Item eventKey="4">
             <Accordion.Header>评分</Accordion.Header>
             <Accordion.Body>
               {Ratings.map((rating, index) => (
@@ -292,7 +296,7 @@ const Filters = ({ onApplyFilters }) => {
                   key={index}
                   type="checkbox"
                   id={`rating-${index}`}
-                  label={`${rating} ⭐及以上`}
+                  label={`${rating}星及以上`}
                   checked={selectedRatings.includes(rating)}
                   onChange={() => handleRatingChange(rating)}
                   className="mb-2"

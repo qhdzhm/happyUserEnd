@@ -1,0 +1,1800 @@
+/* 旅游详情页面样式 */
+:root {
+  --theme-color: #ff6b6b; /* 定义主题色为暖红色 */
+  --theme-color-light: #ffe8e8; /* 主题色的浅色版本 */
+  --theme-color-dark: #e05050; /* 主题色的深色版本 */
+}
+
+.tour-details-page {
+  background-color: #f8f9fa;
+}
+
+/* 面包屑导航 */
+.breadcrumbs {
+  font-size: 14px;
+  color: #777;
+  margin-bottom: 15px;
+}
+
+.breadcrumbs a {
+  color: #ff6b6b;
+  text-decoration: none;
+}
+
+.breadcrumbs a:hover {
+  text-decoration: underline;
+}
+
+/* 标题区域 */
+.tour-header {
+  margin-bottom: 30px;
+}
+
+.tour-title {
+  font-size: 2.0rem;
+  font-weight: 700;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+/* 图片画廊 */
+.gallery-container {
+  position: relative;
+  margin-bottom: 30px;
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: #fff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.gallery-container:hover {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+/* 大图样式重新设计 */
+.image-gallery-slide img {
+  height: 450px;
+  width: 100%;
+  object-fit: contain;
+  transition: all 0.5s ease;
+  background-color: #f8f9fa;
+}
+
+/* 轮播图图片容器样式优化 */
+.tour-image-gallery .image-gallery-image {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f8f9fa;
+  min-height: 450px;
+  max-height: 450px;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 图片加载优化 */
+.image-gallery-image-main {
+  width: auto;
+  height: auto;
+  max-height: 450px !important;
+  max-width: 100%;
+  object-fit: contain;
+  transition: transform 0.5s ease;
+}
+
+/* 缩略图容器样式优化 */
+.image-gallery-thumbnail {
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+  margin: 0 5px;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: #f0f0f0;
+}
+
+.image-gallery-thumbnail.active {
+  border-color: var(--theme-color) !important;
+  transform: translateY(-3px);
+}
+
+/* 缩略图内部样式 */
+.image-gallery-thumbnail-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+/* 轮播图导航按钮样式 */
+.tour-image-gallery .image-gallery-left-nav,
+.tour-image-gallery .image-gallery-right-nav {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.tour-image-gallery .image-gallery-left-nav:hover,
+.tour-image-gallery .image-gallery-right-nav:hover {
+  background-color: rgba(255, 107, 107, 0.3);
+  transform: scale(1.1);
+}
+
+/* 左右导航箭头样式 */
+.image-gallery-left-nav .image-gallery-svg,
+.image-gallery-right-nav .image-gallery-svg {
+  height: 40px;
+  width: 25px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+  transition: transform 0.3s ease;
+}
+
+.image-gallery-left-nav:hover .image-gallery-svg {
+  transform: translateX(-3px);
+}
+
+.image-gallery-right-nav:hover .image-gallery-svg {
+  transform: translateX(3px);
+}
+
+/* 轮播图标题区 */
+.gallery-container .gallery-header {
+  padding: 12px 15px;
+  background-color: #fff;
+  position: relative;
+  z-index: 10;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.gallery-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 3px;
+}
+
+.gallery-header p {
+  color: #666;
+  font-size: 13px;
+  margin-bottom: 0;
+}
+
+/* 图片描述样式 */
+.image-gallery-description {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+  bottom: 20px !important;
+  padding: 10px 20px !important;
+  border-radius: 30px !important;
+  max-width: 80%;
+  text-align: center;
+  bottom: 20px;
+  color: #fff;
+}
+
+.image-gallery-description img.location-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  filter: brightness(10);
+}
+
+.image-gallery-description .description-text {
+  font-weight: 500;
+}
+
+/* 照片信息标签 */
+.image-gallery-tag {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  opacity: 0;
+  transform: translateY(-5px);
+  transition: all 0.4s ease;
+}
+
+.image-gallery-slide.center .image-gallery-tag {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.image-gallery-tag i {
+  font-size: 12px;
+}
+
+/* 全屏按钮样式 */
+.image-gallery-fullscreen-button {
+  padding: 8px;
+  top: 10px;
+  right: 10px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.tour-image-gallery:hover .image-gallery-fullscreen-button {
+  opacity: 0.8;
+}
+
+.image-gallery-fullscreen-button:hover {
+  opacity: 1 !important;
+}
+
+/* 图片载入动画效果 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.image-gallery-slide.center img {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+/* 标签导航 */
+.tour-tabs {
+  border-bottom: 1px solid #dee2e6;
+  margin-bottom: 25px;
+}
+
+.tour-tabs .nav-link {
+  color: #495057;
+  font-weight: 500;
+  padding: 12px 20px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background-color: transparent;
+  transition: all 0.3s ease;
+}
+
+.tour-tabs .nav-link:hover {
+  color: var(--theme-color);
+}
+
+.tour-tabs .nav-link.active {
+  color: var(--theme-color);
+  background-color: transparent;
+  border-bottom: 3px solid var(--theme-color);
+}
+
+/* 内容区域通用样式 */
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #212529;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+/* 概览标签内容 */
+.tour-overview p {
+  font-size: 16px;
+  line-height: 1.7;
+  color: #495057;
+  margin-bottom: 20px;
+}
+
+.info-item {
+  margin-bottom: 15px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.highlights-list {
+  padding-left: 20px;
+}
+
+.highlights-list li {
+  margin-bottom: 12px;
+  position: relative;
+  padding-left: 10px;
+  line-height: 1.6;
+}
+
+.highlights-list li::before {
+  content: "•";
+  color: var(--theme-color);
+  font-weight: bold;
+  position: absolute;
+  left: -15px;
+}
+
+.tips-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.tips-list li {
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+
+/* 行程安排标签内容 */
+.itinerary-accordion .accordion-item {
+  margin-bottom: 15px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e9ecef;
+}
+
+.itinerary-accordion .accordion-button {
+  padding: 15px 20px;
+  font-weight: 600;
+  background-color: #f8f9fa;
+}
+
+.itinerary-accordion .accordion-button:not(.collapsed) {
+  background-color: var(--theme-color-light);
+  color: var(--theme-color);
+}
+
+.itinerary-accordion .accordion-body {
+  padding: 20px;
+  background-color: #fff;
+}
+
+.day-content p {
+  font-size: 15px;
+  line-height: 1.7;
+  color: #495057;
+}
+
+.activities-tags .badge {
+  font-weight: 500;
+  font-size: 13px;
+  border-radius: 20px;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+}
+
+/* 费用说明标签内容 */
+.included-list, .excluded-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.included-list li, .excluded-list li {
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+/* 常见问题标签内容 */
+.faq-accordion .accordion-item {
+  margin-bottom: 15px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e9ecef;
+}
+
+.faq-accordion .accordion-button {
+  padding: 15px 20px;
+  font-weight: 500;
+  background-color: #f8f9fa;
+}
+
+.faq-accordion .accordion-button:not(.collapsed) {
+  background-color: var(--theme-color-light);
+  color: var(--theme-color);
+}
+
+.faq-accordion .accordion-body {
+  padding: 20px;
+  background-color: #fff;
+}
+
+/* 右侧边栏 */
+.tour-sidebar {
+  position: sticky;
+  top: 20px;
+}
+
+.booking-card,
+.help-card {
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.booking-card .card-body,
+.help-card .card-body {
+  padding: 20px;
+}
+
+.price-section h5,
+.tour-details-section h5 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.tour-info-item {
+  margin-bottom: 15px;
+}
+
+.tour-info-item i,
+.tour-info-item svg {
+  font-size: 16px;
+  min-width: 20px;
+}
+
+.tour-info-item span {
+  font-size: 15px;
+  color: #555;
+}
+
+.booking-card .btn-primary {
+  font-weight: 600;
+  padding: 10px 15px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.booking-card .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(255, 107, 107, 0.2);
+}
+
+.booking-card .btn-outline-secondary {
+  font-weight: 500;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.booking-card .btn-outline-secondary:hover {
+  background-color: #f8f9fa;
+}
+
+/* 日期选择和人数选择 */
+.date-selection, .people-selection {
+  border-top: 1px solid #e9ecef;
+  padding-top: 15px;
+}
+
+.date-picker {
+  border-radius: 6px;
+  border: 1px solid #ced4da;
+  padding: 10px;
+  font-size: 14px;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.date-picker:focus {
+  border-color: var(--theme-color-light);
+  box-shadow: 0 0 0 0.25rem rgba(255, 107, 107, 0.25);
+}
+
+.selected-dates {
+  font-size: 14px;
+  background-color: #f8f9fa;
+  border-left: 3px solid var(--theme-color);
+}
+
+.form-select {
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 14px;
+}
+
+.form-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #495057;
+  margin-bottom: 8px;
+}
+
+.total-price-section {
+  border-top: 1px solid #e9ecef;
+  border-bottom: 1px solid #e9ecef;
+  padding: 15px 0;
+  margin: 15px 0;
+}
+
+.total-price-section .price-value {
+  font-size: 1.5rem;
+}
+
+.tour-meta {
+  margin: 20px 0;
+  font-size: 14px;
+  color: #495057;
+}
+
+.phone-number {
+  font-size: 1.2rem;
+  color: var(--theme-color);
+}
+
+/* 响应式调整 */
+@media (max-width: 992px) {
+  .tour-sidebar {
+    margin-top: 30px;
+    position: static;
+  }
+  
+  .gallery-container {
+    max-width: 800px;
+  }
+  
+  .image-gallery-slide img {
+    height: 400px;
+  }
+  
+  .image-gallery-image-main {
+    max-height: 400px !important;
+  }
+  
+  .image-gallery-image {
+    max-height: 400px;
+  }
+  
+  .image-gallery-thumbnail {
+    width: 80px;
+    height: 45px; /* 保持16:9比例 */
+  }
+}
+
+@media (max-width: 768px) {
+  .tour-title {
+    font-size: 1.8rem;
+  }
+  
+  .gallery-container {
+    max-width: 100%;
+  }
+  
+  .image-gallery-slide img {
+    height: 350px;
+  }
+  
+  .image-gallery-image-main {
+    max-height: 350px !important;
+  }
+  
+  .image-gallery-image {
+    max-height: 350px;
+  }
+  
+  .tour-tabs .nav-link {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+  
+  .image-gallery-thumbnail {
+    width: 70px;
+    height: 39.375px; /* 保持16:9比例 */
+    margin: 0 4px;
+  }
+}
+
+@media (max-width: 576px) {
+  .image-gallery-slide img {
+    height: 280px;
+  }
+  
+  .image-gallery-image-main {
+    max-height: 280px !important;
+  }
+  
+  .image-gallery-image {
+    max-height: 280px;
+  }
+  
+  .image-gallery-thumbnail {
+    width: 60px;
+    height: 33.75px; /* 保持16:9比例 */
+    margin: 0 3px;
+  }
+}
+
+/* 平板设备横屏模式 */
+@media (min-width: 992px) and (max-width: 1199px) {
+  .image-gallery-slide img {
+    height: 480px;
+  }
+  
+  .image-gallery-thumbnail {
+    width: 85px;
+    height: 47.81px; /* 保持16:9比例 */
+  }
+}
+
+/* 添加一日游行程时间线样式 */
+.day-tour-itinerary .timeline {
+  position: relative;
+  padding: 20px 0;
+  list-style: none;
+  margin: 0;
+}
+
+.day-tour-itinerary .timeline:before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 20px;
+  width: 4px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+}
+
+.day-tour-itinerary .timeline-item {
+  position: relative;
+  margin-bottom: 30px;
+}
+
+.day-tour-itinerary .timeline-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  text-align: center;
+  font-size: 1.1em;
+  line-height: 40px;
+  background-color: #ff6b6b;
+  color: #fff;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.day-tour-itinerary .timeline-panel {
+  position: relative;
+  margin-left: 60px;
+  background-color: #fff;
+  border-radius: 6px;
+  padding: 15px 20px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+}
+
+.day-tour-itinerary .timeline-panel:before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  left: -10px;
+  width: 0;
+  height: 0;
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent;
+  border-right: 10px solid #fff;
+}
+
+.day-tour-itinerary .timeline-title {
+  margin-top: 0;
+  color: #333;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.day-tour-itinerary .timeline-title .time {
+  color: #ff6b6b;
+  font-weight: 700;
+}
+
+.day-tour-itinerary .timeline-location {
+  color: #6c757d;
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+.day-tour-itinerary .timeline-body {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.day-tour-itinerary .timeline-body p {
+  margin-bottom: 0;
+  color: #666;
+}
+
+@media (min-width: 992px) {
+  .day-tour-itinerary .timeline:before {
+    left: 50%;
+    margin-left: -2px;
+  }
+  
+  .day-tour-itinerary .timeline-item {
+    margin-bottom: 40px;
+  }
+  
+  .day-tour-itinerary .timeline-badge {
+    left: 50%;
+    margin-left: -20px;
+  }
+  
+  .day-tour-itinerary .timeline-item:nth-child(odd) .timeline-panel {
+    margin-left: 0;
+    margin-right: 60px;
+    float: left;
+    width: calc(50% - 30px);
+    text-align: right;
+  }
+  
+  .day-tour-itinerary .timeline-item:nth-child(even) .timeline-panel {
+    margin-left: 60px;
+    width: calc(50% - 30px);
+    float: right;
+  }
+  
+  .day-tour-itinerary .timeline-item:nth-child(odd) .timeline-panel:before {
+    left: auto;
+    right: -10px;
+    border-right: 0;
+    border-left: 10px solid #fff;
+  }
+  
+  .day-tour-itinerary .timeline-item::after {
+    content: '';
+    display: table;
+    clear: both;
+  }
+}
+
+/* 行程详情样式 */
+.tour-info-list {
+  padding: 10px 15px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  margin-top: 5px;
+}
+
+.tour-info-row {
+  padding: 6px 0;
+  border-bottom: 1px dashed #e5e5e5;
+}
+
+.tour-info-row:last-child {
+  border-bottom: none;
+}
+
+.tour-info-row svg {
+  font-size: 16px;
+  min-width: 20px;
+}
+
+.tour-info-row span {
+  font-size: 14px;
+  color: #555;
+}
+
+/* 上一页下一页导航 */
+.prev-next-navigation {
+  position: fixed;
+  top: 50%;
+  width: 100%;
+  transform: translateY(-50%);
+  z-index: 90;
+  pointer-events: none;
+}
+
+.prev-button,
+.next-button {
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.5);
+  border: none;
+  padding: 10px 15px;
+  border-radius: 0;
+  pointer-events: auto;
+}
+
+.prev-button {
+  left: 0;
+  border-radius: 0 4px 4px 0;
+}
+
+.next-button {
+  right: 0;
+  border-radius: 4px 0 0 4px;
+}
+
+.prev-button:hover,
+.next-button:hover {
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+/* 修改顶部评分样式 */
+.rating-summary {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.rating-summary .stars {
+  color: #ffc107;
+  margin-right: 10px;
+}
+
+/* 轮播图图片容器 */
+.image-gallery-image {
+  background-color: #f4f4f4;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  max-height: 500px;
+}
+
+/* 轮播图自定义样式增强 */
+.image-gallery-image-main {
+  display: block;
+  margin: 0 auto;
+  max-height: 500px !important;
+  max-width: 100%;
+  object-fit: contain;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* 图片加载中的占位符效果 */
+.image-gallery-slide.loading::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  z-index: 0;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* 全屏模式下的图片样式 */
+.fullscreen .image-gallery-slide img {
+  height: auto;
+  max-height: 90vh;
+  object-fit: contain;
+}
+
+/* 图片过渡效果优化 */
+.image-gallery-slide {
+  transition: all 0.5s ease;
+}
+
+.image-gallery-slide.center {
+  z-index: 1;
+}
+
+/* 向左滑动的图片 */
+.image-gallery-slide.left {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+
+/* 向右滑动的图片 */
+.image-gallery-slide.right {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+/* 现代化轮播图样式增强 */
+.image-gallery-content {
+  position: relative;
+}
+
+/* 改进的加载占位符效果 */
+.image-gallery-slide.loading {
+  position: relative;
+  overflow: hidden;
+}
+
+.image-gallery-slide.loading::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    rgba(248, 249, 250, 0.8) 0%, 
+    rgba(255, 255, 255, 0.9) 50%, 
+    rgba(248, 249, 250, 0.8) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  z-index: 1;
+}
+
+/* 更平滑的滑动效果 */
+.image-gallery-content .image-gallery-slide {
+  transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* 轮播图缩放效果 */
+.image-gallery-slide.previous {
+  transform: translateX(-100%) scale(0.95);
+  opacity: 0.6;
+}
+
+.image-gallery-slide.next {
+  transform: translateX(100%) scale(0.95);
+  opacity: 0.6;
+}
+
+.image-gallery-slide.center {
+  z-index: 10;
+  transform: translateX(0) scale(1);
+  opacity: 1;
+}
+
+/* 缩略图悬停效果增强 */
+.image-gallery-thumbnail:hover .image-gallery-thumbnail-image {
+  transform: scale(1.1);
+}
+
+.image-gallery-thumbnail.active .image-gallery-thumbnail-image {
+  transform: scale(1.05);
+}
+
+/* 全景模式样式 */
+.fullscreen .gallery-container {
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.fullscreen .image-gallery-slide {
+  background-color: rgba(0, 0, 0, 0.9);
+}
+
+.fullscreen .image-gallery-slide img {
+  height: 80vh;
+  max-height: 80vh;
+}
+
+.fullscreen .image-gallery-thumbnails-container {
+  background-color: rgba(0, 0, 0, 0.8);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.fullscreen .image-gallery-thumbnail {
+  border-color: transparent;
+}
+
+.fullscreen .image-gallery-thumbnail.active {
+  border-color: var(--theme-color) !important;
+}
+
+.fullscreen .image-gallery-description {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+}
+
+/* 图片索引样式 */
+.image-gallery-index {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  z-index: 10;
+}
+
+/* 轮播图主容器加载效果 */
+.image-gallery.loading {
+  position: relative;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-gallery.loading::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #f8f9fa;
+}
+
+/* 加载中旋转动画 */
+@keyframes rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.image-gallery.loading::after {
+  content: '';
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid #e5e5e5;
+  border-top-color: var(--theme-color);
+  animation: rotate 1s linear infinite;
+  z-index: 2;
+  position: relative;
+}
+
+/* 轮播图全宽容器样式 */
+.tour-image-container {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  background-color: #000;
+}
+
+/* 全宽轮播图样式 */
+.full-width-gallery {
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  background-color: #000;
+  margin-bottom: 30px;
+}
+
+/* 修复在移动设备上可能出现的滚动问题 */
+body {
+  overflow-x: hidden;
+}
+
+/* 在全屏模式下隐藏顶部填充 */
+.full-width-gallery.fullscreen {
+  padding-top: 0;
+}
+
+.full-width-gallery.fullscreen .image-gallery-slide img,
+.full-width-gallery.fullscreen .image-gallery-image-main {
+  height: 100vh;
+  max-height: none;
+}
+
+.full-width-gallery .image-gallery-slide img {
+  height: 550px;
+  width: 100%;
+  object-fit: cover;
+  transition: all 0.5s ease;
+}
+
+.full-width-gallery .image-gallery-image {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  background-color: #000;
+  max-height: 550px;
+  position: relative;
+}
+
+.full-width-gallery .image-gallery-image-main {
+  width: 100%;
+  height: 550px;
+  object-fit: cover;
+}
+
+/* 缩略图导航区域 - 全宽样式 */
+.full-width-gallery .image-gallery-thumbnails-container {
+  padding: 15px 30px;
+  background-color: #fff;
+  border-top: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.full-width-gallery .image-gallery-thumbnails-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.full-width-gallery .image-gallery-thumbnail {
+  width: 120px;
+  height: 80px;
+  overflow: hidden;
+  border: 3px solid transparent;
+  transition: all 0.3s ease !important;
+  margin: 0 5px;
+  border-radius: 0;
+  position: relative;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.full-width-gallery .image-gallery-thumbnail:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.15);
+}
+
+.full-width-gallery .image-gallery-thumbnail.active {
+  border-color: #ff6b6b !important;
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+}
+
+.full-width-gallery .image-gallery-thumbnail-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.full-width-gallery .image-gallery-thumbnail:hover .image-gallery-thumbnail-image,
+.full-width-gallery .image-gallery-thumbnail.active .image-gallery-thumbnail-image {
+  transform: scale(1.1);
+}
+
+/* 导航按钮样式 */
+.full-width-gallery .image-gallery-left-nav,
+.full-width-gallery .image-gallery-right-nav {
+  padding: 0;
+  width: 50px;
+  height: 50px;
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.full-width-gallery .image-gallery-left-nav {
+  left: 20px;
+}
+
+.full-width-gallery .image-gallery-right-nav {
+  right: 20px;
+}
+
+.full-width-gallery .image-gallery-left-nav:hover,
+.full-width-gallery .image-gallery-right-nav:hover {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+/* 图片计数器 */
+.full-width-gallery .image-gallery-index {
+  background-color: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 14px;
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  opacity: 0.8;
+}
+
+/* 响应式布局 */
+@media (max-width: 992px) {
+  .full-width-gallery .image-gallery-slide img,
+  .full-width-gallery .image-gallery-image-main {
+    height: 450px;
+  }
+  
+  .full-width-gallery .image-gallery-image {
+    max-height: 450px;
+  }
+  
+  .full-width-gallery .image-gallery-thumbnail {
+    width: 100px;
+    height: 66px;
+  }
+}
+
+@media (max-width: 768px) {
+  .full-width-gallery .image-gallery-slide img,
+  .full-width-gallery .image-gallery-image-main {
+    height: 350px;
+  }
+  
+  .full-width-gallery .image-gallery-image {
+    max-height: 350px;
+  }
+  
+  .full-width-gallery .image-gallery-thumbnail {
+    width: 80px;
+    height: 53px;
+  }
+}
+
+@media (max-width: 576px) {
+  .full-width-gallery .image-gallery-slide img,
+  .full-width-gallery .image-gallery-image-main {
+    height: 280px;
+  }
+  
+  .full-width-gallery .image-gallery-image {
+    max-height: 280px;
+  }
+  
+  .full-width-gallery .image-gallery-thumbnail {
+    width: 60px;
+    height: 40px;
+    margin: 0 3px;
+  }
+  
+  .full-width-gallery .image-gallery-left-nav,
+  .full-width-gallery .image-gallery-right-nav {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+.full-width-gallery .image-gallery-left-nav .image-gallery-svg,
+.full-width-gallery .image-gallery-right-nav .image-gallery-svg {
+  height: 24px;
+  width: 24px;
+  color: #333;
+}
+
+.full-width-gallery .image-gallery-fullscreen-button {
+  top: 20px;
+  right: 70px;
+  padding: 0;
+  width: 36px;
+  height: 36px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+}
+
+.full-width-gallery .image-gallery-fullscreen-button:hover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+.full-width-gallery .image-gallery-thumbnails-wrapper {
+  margin: 0;
+}
+
+.full-width-gallery .image-gallery-content {
+  border-bottom: 1px solid #eee;
+}
+
+/* 添加图片视差效果 */
+.full-width-gallery .image-gallery-slide.center img {
+  transform: scale(1.02);
+  transition: transform 7s ease-out;
+}
+
+/* 图片容器高度控制 */
+.full-width-gallery .image-gallery-content {
+  position: relative;
+  max-width: 100%;
+}
+
+.full-width-gallery .image-gallery-slide-wrapper {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* 无图片状态样式 */
+.text-center.py-4 {
+  padding: 40px 0;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.text-center.py-4 p {
+  color: #888;
+  font-size: 16px;
+}
+
+/* 图片加载占位符样式 */
+.image-loading-placeholder,
+.thumbnail-loading-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #f0f0f0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1;
+}
+
+.image-loading-placeholder::after,
+.thumbnail-loading-placeholder::after {
+  content: '';
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid #e5e5e5;
+  border-top-color: var(--theme-color);
+  animation: rotate 1s linear infinite;
+}
+
+.thumbnail-loading-placeholder::after {
+  width: 20px;
+  height: 20px;
+  border-width: 2px;
+}
+
+/* 旋转动画 */
+@keyframes rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 图片加载完成或错误处理样式 */
+.image-gallery-image-main.loaded,
+.image-gallery-thumbnail-image.loaded {
+  opacity: 1;
+  z-index: 2;
+  position: relative;
+}
+
+/* 图片渐入效果 */
+.image-gallery-image-main,
+.image-gallery-thumbnail-image {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* 图片覆盖层 */
+.image-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.3) 100%);
+  opacity: 0.3;
+  z-index: 0;
+}
+
+/* 图片错误状态样式 */
+.image-gallery-image.error::before {
+  content: '图片加载失败';
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #f8f9fa;
+  color: #666;
+  font-size: 14px;
+  z-index: 2;
+}
+
+/* 新版轮播图样式 */
+.custom-gallery-wrapper {
+  position: relative;
+  margin-bottom: 30px;
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  transition: all 0.3s ease;
+}
+
+.custom-gallery-wrapper:hover {
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+  transform: translateY(-3px);
+}
+
+/* 覆盖react-image-gallery默认样式 */
+.modern-gallery.image-gallery {
+  width: 100%;
+  overflow: hidden;
+}
+
+/* 主图片容器 */
+.custom-gallery-slide {
+  position: relative;
+  width: 100%;
+  height: 500px;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f0f0f0;
+}
+
+/* 主图片 */
+.custom-gallery-slide .main-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 1s ease;
+}
+
+.custom-gallery-slide:hover .main-image {
+  transform: scale(1.05);
+}
+
+/* 图片渐变覆盖层 */
+.image-gradient-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 70%, rgba(0,0,0,0.3) 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* 位置标签 */
+.slide-location {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background-color: rgba(255, 255, 255, 0.9);
+  color: #333;
+  padding: 6px 15px;
+  border-radius: 30px;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  z-index: 2;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+}
+
+.slide-location .location-icon {
+  color: #ff6b6b;
+  margin-right: 6px;
+}
+
+/* 图片描述 */
+.slide-description {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 8px 20px;
+  border-radius: 30px;
+  max-width: 80%;
+  text-align: center;
+  z-index: 2;
+  font-size: 14px;
+  backdrop-filter: blur(3px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* 自定义导航按钮 */
+.gallery-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 3;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+.gallery-nav:hover {
+  background: white;
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.gallery-nav-left {
+  left: 20px;
+}
+
+.gallery-nav-right {
+  right: 20px;
+}
+
+.nav-icon-container {
+  color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 图片计数器 */
+.image-counter {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 5px 15px;
+  border-radius: 25px;
+  font-size: 14px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  backdrop-filter: blur(3px);
+}
+
+.image-counter .divider {
+  margin: 0 5px;
+  opacity: 0.7;
+}
+
+.image-counter .total {
+  opacity: 0.8;
+}
+
+/* 缩略图样式 */
+.modern-gallery .image-gallery-thumbnails-container {
+  padding: 15px 0;
+  background-color: #fff;
+  border-top: 1px solid #f0f0f0;
+  margin-top: 0;
+}
+
+.modern-gallery .image-gallery-thumbnails-wrapper {
+  padding: 0 20px;
+}
+
+.modern-gallery .image-gallery-thumbnail {
+  margin: 0 8px;
+  border: 2px solid transparent;
+  border-radius: 5px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modern-gallery .image-gallery-thumbnail.active {
+  border-color: #ff6b6b;
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(255, 107, 107, 0.25);
+}
+
+.custom-thumbnail {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.thumbnail-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: all 0.3s ease;
+}
+
+.modern-gallery .image-gallery-thumbnail:hover .thumbnail-image {
+  transform: scale(1.1);
+}
+
+/* 加载占位符样式 */
+.image-loading-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.image-loading-placeholder::after,
+.thumbnail-loading-placeholder::after {
+  content: '';
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid #e5e5e5;
+  border-top-color: #ff6b6b;
+  animation: spin 1s linear infinite;
+}
+
+.thumbnail-loading-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.thumbnail-loading-placeholder::after {
+  width: 20px;
+  height: 20px;
+  border-width: 2px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 图库信息区域 */
+.gallery-info {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  text-align: right;
+  z-index: 3;
+}
+
+.tour-info-tag {
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 8px 15px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+  display: inline-block;
+}
+
+.tour-info-tag span {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.gallery-count-info {
+  display: inline-block;
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* 响应式样式调整 */
+@media (max-width: 992px) {
+  .custom-gallery-slide {
+    height: 400px;
+  }
+  
+  .modern-gallery .image-gallery-thumbnail {
+    margin: 0 5px;
+  }
+  
+  .slide-location {
+    top: 15px;
+    left: 15px;
+    padding: 5px 12px;
+    font-size: 13px;
+  }
+  
+  .slide-description {
+    font-size: 13px;
+    padding: 6px 15px;
+  }
+}
+
+@media (max-width: 768px) {
+  .custom-gallery-slide {
+    height: 350px;
+  }
+  
+  .slide-location {
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+  
+  .gallery-nav {
+    width: 35px;
+    height: 35px;
+  }
+}
+
+@media (max-width: 576px) {
+  .custom-gallery-slide {
+    height: 280px;
+  }
+  
+  .modern-gallery .image-gallery-thumbnail {
+    margin: 0 3px;
+  }
+  
+  .gallery-nav {
+    width: 30px;
+    height: 30px;
+  }
+  
+  .slide-description {
+    max-width: 90%;
+    font-size: 12px;
+    padding: 5px 12px;
+  }
+}
+
+/* 画廊部分样式 */
+.gallery-section {
+  margin-top: 30px;
+  margin-bottom: 50px;
+}
+
+.gallery-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.gallery-header .section-title {
+  font-size: 30px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 15px;
+  position: relative;
+  display: inline-block;
+}
+
+.gallery-header .section-title::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 3px;
+  background-color: #ff6b6b;
+  border-radius: 3px;
+}
+
+.gallery-header .section-subtitle {
+  font-size: 16px;
+  color: #777;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .gallery-header .section-title {
+    font-size: 24px;
+  }
+  
+  .gallery-header .section-subtitle {
+    font-size: 14px;
+  }
+}

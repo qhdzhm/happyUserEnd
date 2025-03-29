@@ -29,6 +29,13 @@
   --sectionPadding: 50px 0;
   --cardRadius: 12px;
   --transitionSpeed: 0.3s;
+
+  /* 自定义Bootstrap主题色 */
+  --bs-primary: #ff6b6b !important;
+  --bs-primary-rgb: 255, 107, 107 !important;
+  --bs-primary-text-emphasis: #e05050 !important;
+  --bs-primary-bg-subtle: #ffe8e8 !important;
+  --bs-primary-border-subtle: #ffb3b3 !important;
 }
 
 
@@ -127,6 +134,15 @@ table {
   padding: 10px 25px;
   font-weight: 600;
   transition: all var(--transitionSpeed) ease;
+
+  --bs-btn-bg: #ff6b6b !important;
+  --bs-btn-border-color: #ff6b6b !important;
+  --bs-btn-hover-bg: #e05050 !important;
+  --bs-btn-hover-border-color: #e05050 !important;
+  --bs-btn-active-bg: #e05050 !important;
+  --bs-btn-active-border-color: #e05050 !important;
+  --bs-btn-disabled-bg: #ffb3b3 !important;
+  --bs-btn-disabled-border-color: #ffb3b3 !important;
 }
 
 .btn-primary:hover {
@@ -147,4 +163,35 @@ table {
 .card:hover {
   transform: translateY(-5px);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.btn-outline-primary {
+  --bs-btn-color: #ff6b6b !important;
+  --bs-btn-border-color: #ff6b6b !important;
+  --bs-btn-hover-bg: #ff6b6b !important;
+  --bs-btn-hover-border-color: #ff6b6b !important;
+  --bs-btn-active-bg: #ff6b6b !important;
+  --bs-btn-active-border-color: #ff6b6b !important;
+  --bs-btn-disabled-color: #ffb3b3 !important;
+  --bs-btn-disabled-border-color: #ffb3b3 !important;
+}
+
+.text-primary {
+  color: #ff6b6b !important;
+}
+
+.bg-primary {
+  background-color: #ff6b6b !important;
+}
+
+.border-primary {
+  border-color: #ff6b6b !important;
+}
+
+.link-primary {
+  color: #ff6b6b !important;
+}
+
+.link-primary:hover, .link-primary:focus {
+  color: #e05050 !important;
 }

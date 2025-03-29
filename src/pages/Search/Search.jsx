@@ -2,10 +2,56 @@ import React, { useState, useEffect } from "react";
 import { Container, Row, Col, Card, Badge, Offcanvas } from "react-bootstrap";
 import { useLocation, Link, NavLink } from "react-router-dom";
 import Breadcrumbs from "../../components/Breadcrumbs/Breadcrumbs";
-import { tasmaniaAttractions } from "../../utils/data";
 import Filters from "./Filters";
 import "./search.css";
 import { FaStar, FaMapMarkerAlt, FaRegClock, FaUsers } from 'react-icons/fa';
+import PriceDisplay from '../../components/PriceDisplay';
+
+// 创建临时的本地数据
+const mockAttractions = [
+  {
+    id: 1,
+    name: "摇篮山国家公园一日游",
+    location: "塔斯马尼亚北部",
+    description: "世界遗产，拥有壮观的山脉和原始森林，是徒步爱好者的天堂。",
+    type: "自然风光",
+    tourType: ["一日游"],
+    rating: 4.9,
+    price: 120,
+    duration: "8小时",
+    category: "自然风光",
+    themes: ["自然风光", "户外活动", "摄影之旅"],
+    suitableFor: ["家庭", "情侣", "朋友", "独自旅行"]
+  },
+  {
+    id: 2,
+    name: "酒杯湾海滩一日游",
+    location: "塔斯马尼亚东部",
+    description: "拥有世界上最美丽的海滩之一，湛蓝的海水和洁白的沙滩形成鲜明对比。",
+    type: "海滩",
+    tourType: ["一日游"],
+    rating: 4.8,
+    price: 100,
+    duration: "6小时",
+    category: "海滩",
+    themes: ["自然风光", "户外活动", "摄影之旅"],
+    suitableFor: ["家庭", "情侣", "朋友"]
+  },
+  {
+    id: 3,
+    name: "霍巴特市区观光一日游",
+    location: "霍巴特",
+    description: "塔斯马尼亚首府，拥有丰富的历史建筑和萨拉曼卡市场。",
+    type: "城市观光",
+    tourType: ["一日游"],
+    rating: 4.6,
+    price: 80,
+    duration: "5小时",
+    category: "城市观光",
+    themes: ["城市观光", "历史文化", "美食体验"],
+    suitableFor: ["家庭", "老年人", "朋友"]
+  }
+];
 
 const Search = () => {
   const location = useLocation();
@@ -24,7 +70,6 @@ const Search = () => {
     // 解析URL查询参数
     const queryParams = new URLSearchParams(location.search);
     const params = {
-      location: queryParams.get("location") ? queryParams.get("location").split(",") : [],
       tourType: queryParams.get("tourType") || "",
       startDate: queryParams.get("startDate") || "",
       endDate: queryParams.get("endDate") || "",
@@ -43,42 +88,33 @@ const Search = () => {
   }, [location.search]);
 
   const filterAttractions = (params) => {
-    setLoading(true);
-    
-    // 过滤景点数据
-    let filteredResults = [...tasmaniaAttractions];
-    
-    // 按位置过滤 - 修改为多选
-    if (params.location && params.location.length > 0) {
-      filteredResults = filteredResults.filter(
-        attraction => params.location.some(loc => attraction.location.includes(loc))
-      );
-    }
-    
+    // 使用 mockAttractions 代替 tasmaniaAttractions
+    let results = [...mockAttractions];
+
     // 按行程类型过滤
     if (params.tourType) {
-      filteredResults = filteredResults.filter(
+      results = results.filter(
         attraction => attraction.tourType.includes(params.tourType)
       );
     }
     
     // 按类别筛选
     if (params.categories && params.categories.length > 0) {
-      filteredResults = filteredResults.filter(attraction => 
+      results = results.filter(attraction => 
         params.categories.includes(attraction.category)
       );
     }
     
     // 按行程类型筛选（从左侧筛选）
     if (params.tourTypes && params.tourTypes.length > 0) {
-      filteredResults = filteredResults.filter(attraction => 
+      results = results.filter(attraction => 
         attraction.tourType.some(type => params.tourTypes.includes(type))
       );
     }
     
     // 按时长筛选
     if (params.duration && params.duration.length > 0) {
-      filteredResults = filteredResults.filter(attraction => {
+      results = results.filter(attraction => {
         const hours = parseInt(attraction.duration);
         
         if (params.duration.includes('4小时以下') && hours < 4) return true;
@@ -93,7 +129,7 @@ const Search = () => {
     
     // 按价格范围筛选
     if (params.priceRange && params.priceRange.length > 0) {
-      filteredResults = filteredResults.filter(attraction => {
+      results = results.filter(attraction => {
         const price = attraction.price;
         
         if (params.priceRange.includes('$0-$50') && price <= 50) return true;
@@ -109,12 +145,12 @@ const Search = () => {
     // 按评分筛选
     if (params.ratings && params.ratings.length > 0) {
       const minRating = Math.min(...params.ratings);
-      filteredResults = filteredResults.filter(attraction => 
+      results = results.filter(attraction => 
         attraction.rating >= minRating
       );
     }
     
-    setSearchResults(filteredResults);
+    setSearchResults(results);
     setLoading(false);
   };
 
@@ -134,8 +170,7 @@ const Search = () => {
       <Breadcrumbs title="搜索结果" pagename="搜索" />
       <section className="py-5 tour_list">
         <Container>
-          {searchParams.location && searchParams.location.length > 0 || 
-           searchParams.tourType || 
+          {searchParams.tourType || 
            searchParams.startDate || 
            searchParams.endDate || 
            searchParams.adults > 0 || 
@@ -145,9 +180,6 @@ const Search = () => {
                 <div className="search-summary">
                   <h2>搜索结果</h2>
                   <p>
-                    {searchParams.location && searchParams.location.length > 0 && (
-                      <span>位置: <strong>{searchParams.location.join(', ')}</strong> | </span>
-                    )}
                     {searchParams.tourType && <span>行程类型: <strong>{searchParams.tourType}</strong> | </span>}
                     {searchParams.startDate && <span>开始日期: <strong>{formatDate(searchParams.startDate)}</strong> | </span>}
                     {searchParams.endDate && <span>结束日期: <strong>{formatDate(searchParams.endDate)}</strong> | </span>}
@@ -218,7 +250,14 @@ const Search = () => {
                         <Card.Footer className="py-3">
                           <div className="d-flex justify-content-between align-items-center">
                             <p className="mb-0">
-                              起价 <b>¥{attraction.price.toFixed(2)}</b>
+                              起价 
+                              <PriceDisplay 
+                                price={Number(attraction.price)}
+                                discountPrice={attraction.discount_price ? Number(attraction.discount_price) : null}
+                                currency="¥"
+                                size="sm"
+                                showBadge={false}
+                              />
                             </p>
                             <p className="mb-0">
                               <FaRegClock className="me-1" /> {attraction.duration}
