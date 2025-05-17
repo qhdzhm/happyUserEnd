@@ -1182,7 +1182,10 @@
   display: block !important;
   box-shadow: none !important;
   background-color: #fff !important;
+  color: var(--text-color) !important;
+  font-size: 1rem !important;
   transition: all 0.3s ease !important;
+  height: auto !important;
 }
 
 .position-relative .form-control:focus {
@@ -1195,6 +1198,14 @@
   .position-relative .form-control {
     font-size: 16px !important; /* 防止iOS缩放 */
   }
+}
+
+/* 修复日期选择器输入框内的文本可见性 */
+.react-datepicker__input-container input {
+  color: var(--text-color) !important;
+  font-size: 1rem !important;
+  font-weight: normal !important;
+  opacity: 1 !important;
 }
 
 /* 日历图标样式 */
