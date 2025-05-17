@@ -120,22 +120,79 @@ export const login = async (credentials, loginPath = '/user/login') => {
       '/api/agent/login' : // 代理商登录使用固定的API路径
       '/api/user/login';   // 普通用户登录使用固定的API路径
     
+    // 判断是否为代理商登录，预先设置用户类型
+    const isAgentLogin = apiPath.includes('agent');
+    if (isAgentLogin) {
+      localStorage.setItem('userType', 'agent');
+      console.log('预先设置用户类型为agent，确保请求头包含令牌');
+    }
+    
+    console.log(`发起登录请求: URL=${apiPath}, 用户名=${credentials.username}, 用户类型=${isAgentLogin ? 'agent' : 'regular'}`);
+    
     // 使用POST方法，参数放在请求体中
     const response = await request.post(apiPath, credentials);
     
+    // 响应详情记录
+    if (response) {
+      console.log('登录响应状态:', response.code);
+      console.log('登录响应消息:', response.msg || '无消息');
+      
+      if (response.data) {
+        console.log('登录响应数据包含以下字段:', Object.keys(response.data).join(', '));
+      } else {
+        console.warn('登录响应中没有data字段');
+      }
+    } else {
+      console.error('登录请求没有返回响应');
+    }
+    
     // 验证是否有有效响应
     if (!response || response.code !== 1) {
-      throw new Error('登录失败，请检查用户名和密码');
+      const errorMsg = response?.msg || '登录失败，请检查用户名和密码';
+      console.error(`登录失败: 错误代码=${response?.code}, 错误消息=${errorMsg}`);
+      
+      // 创建更具体的错误响应
+      let enhancedErrorMsg = errorMsg;
+      
+      // 针对常见错误类型提供更具体的提示
+      if (response && response.code === 0) {
+        if (response.msg.includes('密码错误') || response.msg.includes('账号或密码错误')) {
+          enhancedErrorMsg = isAgentLogin ? 
+            '代理商账号或密码错误，请重新输入' : 
+            '用户名或密码错误，请重新输入';
+        } else if (response.msg.includes('不存在')) {
+          enhancedErrorMsg = isAgentLogin ? 
+            '代理商账号不存在，请检查输入' : 
+            '用户名不存在，请检查输入或注册新账号';
+        }
+      }
+      
+      // 返回适当的响应对象，让前端能够显示错误
+      return {
+        code: 0,
+        msg: enhancedErrorMsg,
+        data: null
+      };
     }
     
     // 如果登录成功，保存token和用户信息
     if (response && response.code === 1 && response.data) {
       if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
+        const token = response.data.token;
+        // 确保两个位置都存储token
+        localStorage.setItem('token', token);
+        localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+        console.log(`登录成功: Token已保存 ${token.substring(0, 15)}...`);
+      } else {
+        console.warn('警告: 登录响应中没有找到token!');
       }
       
-      localStorage.setItem('userType', response.data.userType || 'regular');
+      // 保存用户类型
+      const userType = isAgentLogin ? 'agent' : 'regular';
+      localStorage.setItem('userType', userType);
+      console.log(`用户类型已保存: ${userType}`);
       
+      // 保存用户名
       if (response.data.username) {
         localStorage.setItem('username', response.data.username);
       } else if (credentials.username) {
@@ -143,23 +200,83 @@ export const login = async (credentials, loginPath = '/user/login') => {
       }
       
       // 如果有折扣率，也保存
-      if (response.data.discountRate) {
-        localStorage.setItem('discountRate', response.data.discountRate);
+      if (response.data.discountRate !== undefined) {
+        localStorage.setItem('discountRate', response.data.discountRate.toString());
+        console.log(`折扣率已保存: ${response.data.discountRate}`);
       }
       
-      // 如果有代理商ID，也保存
-      const isAgentLogin = apiPath.includes('agent');
-      if (response.data.id && isAgentLogin) {
-        localStorage.setItem('agentId', response.data.id);
+      // 如果是代理商登录，处理代理商ID
+      if (isAgentLogin) {
+        let agentId = null;
+        
+        // 从响应中获取代理商ID
+        if (response.data.id) {
+          agentId = response.data.id;
+        } else if (response.data.agentId) {
+          agentId = response.data.agentId;
+        }
+        
+        // 如果响应中没有ID，尝试从token解析
+        if (!agentId && response.data.token) {
+          try {
+            const parts = response.data.token.split('.');
+            if (parts.length === 3) {
+              const payload = JSON.parse(atob(parts[1]));
+              if (payload.agentId) {
+                agentId = parseInt(payload.agentId);
+              } else if (payload.id) {
+                agentId = parseInt(payload.id);
+              }
+            }
+          } catch (e) {
+            console.warn('解析token获取agentId失败:', e);
+          }
+        }
+        
+        // 保存代理商ID
+        if (agentId) {
+          localStorage.setItem('agentId', agentId.toString());
+          console.log(`代理商ID已保存: ${agentId}`);
+        } else {
+          console.warn('警告: 无法从响应中获取代理商ID');
+        }
       }
+      
+      // 清除价格缓存，确保使用最新折扣
+      document.dispatchEvent(new CustomEvent('priceCacheCleared'));
     }
     
     return response;
   } catch (error) {
+    // 错误信息详细记录
+    console.error('登录过程中出错:', error);
+    console.error('错误详情:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    
+    // 创建用户友好的错误消息
+    let userFriendlyMessage = error.message || '登录失败';
+    
+    // 密码错误相关的特殊处理
+    if (userFriendlyMessage.includes('密码错误') || userFriendlyMessage.includes('账号或密码错误')) {
+      userFriendlyMessage = '账号或密码错误，请检查后重试';
+    } else if (userFriendlyMessage.includes('用户名或密码错误')) {
+      userFriendlyMessage = '用户名或密码错误，请检查后重试';
+    } else if (userFriendlyMessage.includes('用户不存在') || userFriendlyMessage.includes('账号不存在')) {
+      userFriendlyMessage = '用户账号不存在，请检查输入或注册新账号';
+    }
+    
+    // 网络相关错误特殊处理
+    else if (error.name === 'NetworkError' || error.message.includes('Network') || error.message.includes('网络')) {
+      userFriendlyMessage = '网络连接失败，请检查您的网络连接';
+    }
+    
     // 创建标准错误响应格式
     return {
       code: 0,
-      msg: error.message || '登录失败',
+      msg: userFriendlyMessage,
       data: null
     };
   }
@@ -170,8 +287,40 @@ export const register = (userData) => {
 };
 
 export const logout = () => {
+  // 记录退出前状态
+  console.log('退出登录前状态检查:', {
+    token: localStorage.getItem('token') ? '存在' : '不存在',
+    storageToken: localStorage.getItem(STORAGE_KEYS.TOKEN) ? '存在' : '不存在',
+    userType: localStorage.getItem('userType'),
+    username: localStorage.getItem('username'),
+    agentId: localStorage.getItem('agentId'),
+    discountRate: localStorage.getItem('discountRate')
+  });
+
+  // 清除所有登录相关的本地存储数据
   localStorage.removeItem('token');
+  localStorage.removeItem(STORAGE_KEYS.TOKEN);
   localStorage.removeItem('userType');
+  localStorage.removeItem('username');
+  localStorage.removeItem('user');
+  localStorage.removeItem('userId');
+  localStorage.removeItem('agentId');
+  localStorage.removeItem('discountRate');
+  
+  // 清空价格缓存
+  clearPriceCache();
+  
+  // 验证清理是否成功
+  console.log('退出登录后状态检查:', {
+    token: localStorage.getItem('token') ? '存在' : '不存在',
+    storageToken: localStorage.getItem(STORAGE_KEYS.TOKEN) ? '存在' : '不存在',
+    userType: localStorage.getItem('userType'),
+    username: localStorage.getItem('username'),
+    agentId: localStorage.getItem('agentId'),
+    discountRate: localStorage.getItem('discountRate')
+  });
+  
+  console.log('用户已退出登录，所有本地存储数据已清除');
 };
 
 export const getUserProfile = async () => {
@@ -816,13 +965,18 @@ export const getTourById = async (id, type = 'day') => {
   try {
     console.log(`getTourById调用: ID=${id}, 类型=${type}`);
     
-    // 根据URL参数确定类型
-    const apiPath = type === 'day' 
-      ? `/user/day-tours/${id}`
-      : `/user/group-tours/${id}`;
+    // 规范化类型字符串，确保能正确匹配
+    const normalizedType = (type || '').toLowerCase();
+    const isGroupTour = normalizedType === 'group' || 
+                        normalizedType === 'group_tour' || 
+                        normalizedType.includes('group');
+    
+    // 根据规范化的类型确定API路径
+    const apiPath = isGroupTour 
+      ? `/user/group-tours/${id}`
+      : `/user/day-tours/${id}`;
     
     console.log(`使用API路径: ${apiPath}`);
-    console.log(`当前请求URL完整路径: ${process.env.REACT_APP_API_URL}${apiPath}`);
     
     // 直接使用request调用正确的API路径
     const response = await request.get(apiPath, {
@@ -1032,6 +1186,15 @@ export const getPriceRanges = () => {
  */
 export const getUserInfo = () => {
   try {
+    // 检查本地存储的信息
+    const token = localStorage.getItem(STORAGE_KEYS.TOKEN) || localStorage.getItem('token');
+    const discountRate = localStorage.getItem('discountRate');
+    const storedAgentId = localStorage.getItem('agentId');
+    
+    console.log('getUserInfo检查 - token:', token ? '存在' : '不存在', 
+                ', discountRate:', discountRate, 
+                ', agentId:', storedAgentId);
+    
     // 获取用户基本信息
     const id = parseInt(localStorage.getItem('userId') || localStorage.getItem('agentId') || '0');
     const username = localStorage.getItem('username') || '';
@@ -1040,7 +1203,6 @@ export const getUserInfo = () => {
     
     // 如果agentId不存在，但用户类型为agent，尝试从JWT解析
     if (!agentId && userType === 'agent') {
-      const token = localStorage.getItem(STORAGE_KEYS.TOKEN) || localStorage.getItem('token');
       if (token) {
         try {
           const parts = token.split('.');
@@ -1065,7 +1227,7 @@ export const getUserInfo = () => {
       username,
       userType,
       agentId: userType === 'agent' ? (agentId || id) : 0,
-      isAuthenticated: !!localStorage.getItem(STORAGE_KEYS.TOKEN) || !!localStorage.getItem('token')
+      isAuthenticated: !!token
     };
   } catch (error) {
     return {
@@ -1085,76 +1247,112 @@ export const getUserInfo = () => {
  */
 export const getAgentDiscountRate = async (agentId) => {
   try {
-    // 如果没有传入agentId，尝试从localStorage获取
-    const agentIdToUse = agentId || localStorage.getItem('agentId');
+    // 增强的token获取逻辑
+    let token = localStorage.getItem(STORAGE_KEYS.TOKEN);
+    if (!token) {
+      token = localStorage.getItem('token');
+      if (token) {
+        localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+      }
+    }
+
+    // 检查token是否有效 (简单检查: 长度>20的才视为有效token)
+    const isValidToken = token && token.length > 20;
     
-    if (!agentIdToUse) {
-      console.log('没有代理商ID，返回默认折扣率');
+    if (!isValidToken) {
+      console.warn('HeaderDiscount - 无效的token，无法获取折扣率');
+      return { discountRate: DEFAULT_DISCOUNT_RATE, error: 'no_token' };
+    } 
+    
+    // 构造明确的请求头
+    const headers = {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'X-User-Type': 'agent'
+    };
+    
+    // 规范化agentId处理
+    let effectiveAgentId = agentId;
+    if (!effectiveAgentId) {
+      effectiveAgentId = localStorage.getItem('agentId');
+    }
+    
+    // 检查代理商ID是否有效
+    if (!effectiveAgentId) {
+      console.warn('HeaderDiscount - 无法获取代理商ID，无法获取折扣率');
+      return { discountRate: DEFAULT_DISCOUNT_RATE, error: 'no_agent_id' };
+    }
+    
+    // 构造API路径
+    let url;
+    if (effectiveAgentId) {
+      url = `/agent/${effectiveAgentId}/discount-rate`;
+    } else {
+      url = '/agent/discount-rate';
+    }
+    
+    // 发送请求时明确传递所有必要的参数  
+    const response = await request.get(url, { 
+      requireAuth: true,     // 明确标记需要认证
+      headers: headers,      // 明确传递请求头
+      params: {             // 添加查询参数以提高请求的唯一性
+        agentId: effectiveAgentId,
+        t: Date.now()        // 添加时间戳避免缓存
+      }
+    });
+    
+    if (response && response.data) {
+      // 处理不同格式的响应
+      let discountRate;
+      
+      // 检查response.data是否为对象且包含discountRate属性
+      if (typeof response.data === 'object' && 'discountRate' in response.data) {
+        discountRate = parseFloat(response.data.discountRate);
+      }
+      // 检查是否为discount_rate格式
+      else if (typeof response.data === 'object' && 'discount_rate' in response.data) {
+        discountRate = parseFloat(response.data.discount_rate);
+      } 
+      // 检查是否为直接数值
+      else if (typeof response.data === 'number') {
+        discountRate = response.data;
+      } 
+      // 尝试解析字符串
+      else if (typeof response.data === 'string') {
+        discountRate = parseFloat(response.data);
+      }
+      
+      // 验证折扣率有效性
+      if (isNaN(discountRate) || discountRate <= 0 || discountRate > 1) {
+        discountRate = AGENT_DEFAULT_DISCOUNT_RATE;
+      }
+      
+      // 保存到localStorage
+      localStorage.setItem('discountRate', discountRate.toString());
+      
+      // 计算节省百分比
+      const savedPercent = ((1 - discountRate) * 100).toFixed(1);
+      
       return {
-        discountRate: AGENT_DEFAULT_DISCOUNT_RATE,
-        savedPercent: (1 - AGENT_DEFAULT_DISCOUNT_RATE) * 100,
-        agentId: null
+        discountRate: discountRate,
+        savedPercent: parseFloat(savedPercent),
+        agentId: effectiveAgentId
+      };
+    } else {
+      return { 
+        discountRate: AGENT_DEFAULT_DISCOUNT_RATE, 
+        savedPercent: ((1 - AGENT_DEFAULT_DISCOUNT_RATE) * 100).toFixed(1),
+        agentId: effectiveAgentId,
+        isDefault: true
       };
     }
-    
-    console.log(`正在获取代理商(ID: ${agentIdToUse})的折扣率...`);
-    
-    // 尝试从API获取折扣率
-    try {
-      // 使用新的API路径格式和请求方式
-      const response = await request.get(`/agent/${agentIdToUse}/discount-rate`);
-      console.log('API返回的折扣率数据:', response);
-      
-      if (response && response.data) {
-        const discountRate = response.data.discountRate;
-        const savedPercent = response.data.savedPercent;
-        
-        // 保存到localStorage以便将来使用
-        localStorage.setItem('discountRate', discountRate);
-        
-        return {
-          discountRate: discountRate,
-          savedPercent: savedPercent,
-          agentId: agentIdToUse
-        };
-      }
-    } catch (apiError) {
-      console.error('从API获取折扣率失败:', apiError);
-      // 尝试回退到旧的API路径
-      try {
-        const fallbackResponse = await request.get(`/agent/discount-rate?agentId=${agentIdToUse}`);
-        console.log('回退API返回的折扣率数据:', fallbackResponse);
-        
-        if (fallbackResponse && fallbackResponse.data) {
-          // 保存到localStorage以便将来使用
-          localStorage.setItem('discountRate', fallbackResponse.data);
-          
-          return {
-            discountRate: fallbackResponse.data,
-            savedPercent: (1 - fallbackResponse.data) * 100,
-            agentId: agentIdToUse
-          };
-        }
-      } catch (fallbackError) {
-        console.error('从回退API获取折扣率也失败:', fallbackError);
-      }
-    }
-    
-    // 如果API调用失败，使用localStorage中的缓存数据或默认值
-    const cachedRate = localStorage.getItem('discountRate');
-    const discountRate = cachedRate ? parseFloat(cachedRate) : AGENT_DEFAULT_DISCOUNT_RATE;
-    
-    return {
-      discountRate: discountRate,
-      savedPercent: (1 - discountRate) * 100,
-      agentId: agentIdToUse
-    };
   } catch (error) {
-    console.error('获取代理商折扣率时出错:', error);
-    return {
-      discountRate: AGENT_DEFAULT_DISCOUNT_RATE,
-      savedPercent: (1 - AGENT_DEFAULT_DISCOUNT_RATE) * 100,
-      agentId: null
+    // 返回默认折扣率，确保应用程序不会中断
+    return { 
+      discountRate: AGENT_DEFAULT_DISCOUNT_RATE, 
+      savedPercent: ((1 - AGENT_DEFAULT_DISCOUNT_RATE) * 100).toFixed(1),
+      error: error.message || 'unknown_error',
+      isDefault: true
     };
   }
 };
@@ -1241,8 +1439,6 @@ export const calculateDiscount = async (params) => {
  */
 export const calculateTourDiscount = async (params) => {
   try {
-    console.log('计算旅游折扣价格，参数:', params);
-    
     // 参数验证
     if (!params.tourId || !params.originalPrice) {
       return { 
@@ -1253,10 +1449,18 @@ export const calculateTourDiscount = async (params) => {
       };
     }
     
+    // 获取token
+    const token = localStorage.getItem(STORAGE_KEYS.TOKEN) || localStorage.getItem('token');
+    
     // 检查是否为代理商 - 从参数或localStorage获取agentId
     const agentId = params.agentId || localStorage.getItem('agentId');
-    if (!agentId) {
-      console.log('非代理商或未提供代理商ID，不计算折扣');
+    const userType = localStorage.getItem('userType');
+    
+    // 检查token是否有效 (简单检查: 长度>20的才视为有效token)
+    const isValidToken = token && token.length > 20;
+    
+    // 如果不是代理商或没有有效token，不进行折扣计算，直接返回原价
+    if (!agentId || userType !== 'agent' || !isValidToken) {
       return { 
         originalPrice: params.originalPrice,
         discountedPrice: params.originalPrice,
@@ -1265,20 +1469,18 @@ export const calculateTourDiscount = async (params) => {
       };
     }
     
-    // 构建缓存键
-    const cacheKey = `${params.tourId}_${params.tourType || 'day'}_${params.originalPrice}_${agentId}`;
+    // 创建缓存键
+    const cacheKey = `${params.tourId}_${params.tourType || 'unknown'}_${params.originalPrice}_${agentId}`;
     
-    // 检查缓存
-    const cachedResult = getCachedDiscountPrice(cacheKey);
-    if (cachedResult) {
-      console.log('使用缓存的折扣价格:', cachedResult);
-      return cachedResult;
+    // 尝试从缓存获取折扣价格
+    const cachedDiscount = getCachedDiscountPrice(cacheKey);
+    if (cachedDiscount) {
+      return cachedDiscount;
     }
     
-    // 使用API获取折扣价格
+    // 从API请求折扣价格
     try {
-      console.log(`请求折扣计算API，旅游ID=${params.tourId}, 类型=${params.tourType}, 原价=${params.originalPrice}, 代理商ID=${agentId}`);
-      
+      // 构造请求参数
       const requestParams = {
         tourId: Number(params.tourId),
         tourType: params.tourType || 'day-tour',
@@ -1287,15 +1489,53 @@ export const calculateTourDiscount = async (params) => {
       };
       
       const response = await request.get('/api/agent/calculate-tour-discount', { params: requestParams });
-      console.log('折扣计算API响应:', response);
       
       // 如果API返回了有效的折扣价格
       if (response && response.data) {
+        let discountedPrice, discountRate;
+        
+        // 处理不同格式的响应
+        if (typeof response.data === 'object') {
+          // 尝试获取discountedPrice字段
+          if ('discountedPrice' in response.data) {
+            discountedPrice = Number(response.data.discountedPrice);
+          }
+          // 尝试获取discounted_price字段
+          else if ('discounted_price' in response.data) {
+            discountedPrice = Number(response.data.discounted_price);
+          }
+          
+          // 尝试获取discountRate字段
+          if ('discountRate' in response.data) {
+            discountRate = Number(response.data.discountRate);
+          }
+          // 尝试获取discount_rate字段
+          else if ('discount_rate' in response.data) {
+            discountRate = Number(response.data.discount_rate);
+          }
+        }
+        
+        // 如果没有获取到有效的折扣价格，使用折扣率和原价计算
+        if (!discountedPrice && discountRate) {
+          discountedPrice = Math.round(params.originalPrice * discountRate);
+        }
+        // 如果没有获取到有效的折扣率，但有折扣价格，计算折扣率
+        else if (discountedPrice && !discountRate) {
+          discountRate = discountedPrice / params.originalPrice;
+        }
+        // 如果都没有获取到，使用默认折扣率
+        else if (!discountedPrice && !discountRate) {
+          discountRate = parseFloat(localStorage.getItem('discountRate') || AGENT_DEFAULT_DISCOUNT_RATE);
+          discountedPrice = Math.round(params.originalPrice * discountRate);
+        }
+        
+        const savedAmount = params.originalPrice - discountedPrice;
+        
         const result = {
           originalPrice: Number(params.originalPrice),
-          discountedPrice: Number(response.data.discountedPrice || params.originalPrice),
-          discountRate: Number(response.data.discountRate || 1),
-          savedAmount: Number(response.data.savedAmount || 0)
+          discountedPrice: discountedPrice,
+          discountRate: discountRate,
+          savedAmount: savedAmount
         };
         
         // 缓存结果
@@ -1303,7 +1543,7 @@ export const calculateTourDiscount = async (params) => {
         return result;
       }
     } catch (apiError) {
-      console.error('API调用失败，使用本地计算:', apiError);
+      // API调用失败，使用本地计算
     }
     
     // 如果API调用失败，使用本地计算
@@ -1323,7 +1563,6 @@ export const calculateTourDiscount = async (params) => {
     cacheDiscountPrice(cacheKey, result);
     return result;
   } catch (error) {
-    console.error('折扣计算失败:', error);
     // 出错时返回原价
     return { 
       originalPrice: params.originalPrice, 

@@ -1,100 +1,46 @@
-import React from 'react';
-import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import UserProfile from './UserProfile';
+import { Spinner } from 'react-bootstrap';
 
 const Profile = () => {
-  const { user, isAuthenticated } = useSelector(state => state.auth);
-  
-  if (!isAuthenticated) {
+  const navigate = useNavigate();
+  const { user } = useSelector(state => state.auth);
+  const userType = localStorage.getItem('userType');
+  const isAgent = user?.role === 'agent' || userType === 'agent';
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  // Only run this effect once on mount
+  useEffect(() => {
+    // If user is an agent, redirect to the agent center
+    if (isAgent && !isRedirecting) {
+      console.log('Agent detected in Profile component, redirecting to agent-center');
+      setIsRedirecting(true);
+      
+      // Use a small timeout to ensure the navigation happens after rendering
+      const redirectTimer = setTimeout(() => {
+        navigate('/agent-center', { replace: true });
+      }, 100);
+      
+      return () => clearTimeout(redirectTimer);
+    }
+  }, []);  // Empty dependency array ensures this only runs once on mount
+
+  // For agents who are being redirected, show a loading state
+  if (isAgent) {
     return (
-      <Container className="py-5">
-        <Alert variant="warning">
-          请先登录查看个人资料
-        </Alert>
-      </Container>
+      <div className="container mt-5">
+        <div className="text-center">
+          <Spinner animation="border" variant="primary" />
+          <p className="mt-3">检测到您是代理商账户，正在为您跳转到代理商中心...</p>
+        </div>
+      </div>
     );
   }
-  
-  return (
-    <Container className="py-5">
-      <h2 className="mb-4">个人资料</h2>
-      <Row>
-        <Col md={4}>
-          <Card className="mb-4">
-            <Card.Body>
-              <div className="text-center mb-3">
-                <img 
-                  src="/images/avatar-placeholder.jpg" 
-                  alt="用户头像" 
-                  className="rounded-circle img-thumbnail"
-                  style={{ width: '150px', height: '150px' }}
-                />
-              </div>
-              <h4 className="text-center">{user?.name || '用户'}</h4>
-              <p className="text-center text-muted">{user?.email || ''}</p>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={8}>
-          <Card>
-            <Card.Body>
-              <h4 className="mb-4">个人信息</h4>
-              <Form>
-                <Row>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>姓名</Form.Label>
-                      <Form.Control 
-                        type="text" 
-                        placeholder="请输入姓名"
-                        defaultValue={user?.name || ''}
-                      />
-                    </Form.Group>
-                  </Col>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>电子邮箱</Form.Label>
-                      <Form.Control 
-                        type="email" 
-                        placeholder="请输入电子邮箱"
-                        defaultValue={user?.email || ''}
-                        readOnly
-                      />
-                    </Form.Group>
-                  </Col>
-                </Row>
-                <Row>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>手机号码</Form.Label>
-                      <Form.Control 
-                        type="tel" 
-                        placeholder="请输入手机号码"
-                        defaultValue={user?.phone || ''}
-                      />
-                    </Form.Group>
-                  </Col>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>用户类型</Form.Label>
-                      <Form.Control 
-                        type="text" 
-                        value={user?.role === 'agent' ? '代理商' : '普通用户'}
-                        readOnly
-                      />
-                    </Form.Group>
-                  </Col>
-                </Row>
-                <Button variant="primary" type="submit">
-                  保存修改
-                </Button>
-              </Form>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-    </Container>
-  );
+
+  // For regular users, render the UserProfile component
+  return <UserProfile />;
 };
 
 export default Profile; 

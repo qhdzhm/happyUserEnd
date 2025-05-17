@@ -1,4 +1,4 @@
-import React,{useEffect} from "react";
+import React,{useEffect, useState} from "react";
 import Breadcrumbs from "../../components/Breadcrumbs/Breadcrumbs";
 import {
   Col,
@@ -9,15 +9,23 @@ import {
   Form,
   FloatingLabel,
   Button,
+  Modal,
 } from "react-bootstrap";
 import image from "../../assets/images/new/contact-us.png";
 import './Contact.css';
+
+// 使用临时示例二维码
+const wechatQrCodeUrl = "https://via.placeholder.com/200x200.png?text=WeChat+QR+Code";
 
 // 主题色
 const themeColor = "#ff6b6b";
 const themeColorLight = "#ffe8e8";
 
 const Contact = () => {
+  const [showQrCode, setShowQrCode] = useState(false);
+  
+  const handleQrCodeShow = () => setShowQrCode(true);
+  const handleQrCodeClose = () => setShowQrCode(false);
 
   useEffect(()=>{
     document.title ="联系我们 | 快乐旅行"
@@ -89,37 +97,60 @@ const Contact = () => {
             </Col>
 
             <Col lg="4" md="12" className="mb-4 mb-lg-0">
-              <Card className="border-0 shadow rounded-3 mb-4">
+              <Card className="border-0 shadow rounded-3 mb-4 wechat-card" onClick={handleQrCodeShow}>
                 <Card.Body className="text-center">
                   <div className="d-flex justify-content-center align-item-search my-2">
                     <div style={{ backgroundColor: themeColorLight, color: themeColor }} className="rounded-circle shadow-sm p-3 mb-2">
-                      <i className="bi bi-globe h3"></i>
+                      <i className="bi bi-wechat h3"></i>
                     </div>
                   </div>
-                  <Card.Title className="fw-bold h5">社交媒体</Card.Title>
+                  <Card.Title className="fw-bold h5">微信公众号</Card.Title>
                   <p className="mb-3 body-text">
-                    关注我们的社交媒体账号，获取最新的旅游资讯、优惠活动和精彩内容。
+                    关注我们的微信公众号，获取最新的旅游资讯、优惠活动和精彩内容。
                   </p>
-                  <div className="d-block justify-content-center">
-                    <ListGroup horizontal className="justify-content-center">
-                      <ListGroup.Item className="border-0">
-                        <i className="bi bi-wechat" style={{ color: themeColor }}></i>
-                      </ListGroup.Item>
-                      <ListGroup.Item className="border-0">
-                        <i className="bi bi-instagram" style={{ color: themeColor }}></i>
-                      </ListGroup.Item>
-                      <ListGroup.Item className="border-0">
-                        <i className="bi bi-weibo" style={{ color: themeColor }}></i>
-                      </ListGroup.Item>
-                      <ListGroup.Item className="border-0">
-                        <i className="bi bi-youtube" style={{ color: themeColor }}></i>
-                      </ListGroup.Item>
-                    </ListGroup>
+                  <div className="d-flex justify-content-center align-items-center">
+                    <div className="contact-hint">
+                      <i className="bi bi-qr-code me-2"></i>
+                      <span>点击查看二维码</span>
+                    </div>
                   </div>
                 </Card.Body>
               </Card>
             </Col>
           </Row>
+
+          {/* 微信二维码弹窗 */}
+          <Modal show={showQrCode} onHide={handleQrCodeClose} centered className="theme-modal">
+            <Modal.Header closeButton style={{ borderBottom: 'none', backgroundColor: '#f8f8f8' }}>
+              <Modal.Title style={{ color: themeColor, fontWeight: 'bold' }}>
+                <i className="bi bi-wechat me-2"></i>
+                扫码关注我们的微信公众号
+              </Modal.Title>
+            </Modal.Header>
+            <Modal.Body className="text-center py-4" style={{ backgroundColor: '#f8f8f8' }}>
+              <div className="qr-code-container">
+                <img src={wechatQrCodeUrl} alt="微信二维码" className="img-fluid qr-code-image" />
+                <div className="qr-code-overlay">
+                  <i className="bi bi-wechat" style={{ color: themeColor, opacity: 0.2, fontSize: '40px' }}></i>
+                </div>
+              </div>
+              <div className="qr-code-info mt-4">
+                <h5 className="mb-2" style={{ color: '#333' }}>Happy Tassie Travel</h5>
+                <p className="mb-1">扫描二维码，关注我们的微信公众号</p>
+                <p className="text-muted small">获取最新旅游资讯、专属优惠和精彩活动</p>
+              </div>
+            </Modal.Body>
+            <Modal.Footer style={{ borderTop: 'none', backgroundColor: '#f8f8f8', justifyContent: 'center' }}>
+              <Button 
+                onClick={handleQrCodeClose} 
+                className="px-4 py-2" 
+                style={{ backgroundColor: themeColor, borderColor: themeColor, borderRadius: '30px', fontWeight: 'bold' }}
+              >
+                <i className="bi bi-check-circle me-2"></i>
+                我知道了
+              </Button>
+            </Modal.Footer>
+          </Modal>
 
           <Row className="py-5 align-items-center">
             <Col xl="6" md="6" className="d-none d-md-block">

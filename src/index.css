@@ -68,6 +68,9 @@ footer, header, hgroup, menu, nav, section {
 body {
 	line-height: 1;
   background-color: #fafafa;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
 }
 ol, ul {
 	list-style: none;
@@ -90,7 +93,7 @@ table {
 	margin-right: auto;
 	padding-left: 0.937rem;
 	padding-right: 0.937rem;
-	max-width: 1200px;
+	max-width: 1400px;
 }
 
 .body-text,p{
@@ -194,4 +197,64 @@ table {
 
 .link-primary:hover, .link-primary:focus {
   color: #e05050 !important;
+}
+
+/* 全局容器宽度设置 - 覆盖Bootstrap的容器设置 */
+.container {
+  width: 100%;
+  padding-right: 15px;
+  padding-left: 15px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+@media (min-width: 576px) {
+  .container {
+    max-width: 540px;
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 720px;
+  }
+}
+
+@media (min-width: 992px) {
+  .container {
+    max-width: 960px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .container {
+    max-width: 1200px !important;
+  }
+}
+
+@media (min-width: 1400px) {
+  .container {
+    max-width: 1320px !important;
+  }
+}
+
+@media (min-width: 1600px) {
+  .container {
+    max-width: 1520px !important;
+  }
+}
+
+@media (min-width: 1800px) {
+  .container {
+    max-width: 1680px !important;
+  }
+}
+
+/* 全宽容器设置 */
+.container-fluid {
+  width: 100%;
+  padding-right: 15px;
+  padding-left: 15px;
+  margin-right: auto;
+  margin-left: auto;
 }

@@ -8,6 +8,8 @@ import { BsFilter, BsArrowDownUp, BsCheckCircle } from 'react-icons/bs';
 import { FaSearch, FaMapMarkerAlt, FaCalendarAlt, FaUserFriends, FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
 import './TourList.css';
 import Cards from '../Cards/Cards';
+import RedesignedCard from '../Cards/RedesignedCard';
+import '../../pages/Home/home-tours-redesign.css';
 
 // 创建折扣价格批量获取计时器
 let batchDiscountTimer = null;
@@ -274,7 +276,7 @@ const TourList = ({ category, limit, showViewAll = false }) => {
       <Row>
         {toursWithDiscount.map((tour) => (
           <Col key={tour.id} xs={12} sm={6} md={4} lg={3} className="mb-4">
-            <Cards destination={tour} />
+            <RedesignedCard tour={tour} />
           </Col>
         ))}
       </Row>

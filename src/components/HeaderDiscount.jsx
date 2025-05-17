@@ -38,18 +38,35 @@ const HeaderDiscount = () => {
       // 使用获取的折扣率做一次测试API调用
       console.log('HeaderDiscount - 测试折扣计算...');
       
-      // 使用GET方法调用API
-      try {
-        const testResult = await calculateTourDiscount({
-          tourId: 1,
-          tourType: 'day',
-          originalPrice: 100,
-          agentId: agentId
-        });
-        console.log('HeaderDiscount - 折扣计算测试结果:', testResult);
-      } catch (testError) {
-        console.error('HeaderDiscount - 折扣计算测试API调用失败:', testError);
-      }
+      // 使用更长的延迟来避免与其他API请求竞争
+      setTimeout(async () => {
+        try {
+          // 包装在try-catch中，并使用Promise.resolve确保即使出错也能继续
+          const testResult = await Promise.resolve().then(() => {
+            return calculateTourDiscount({
+              tourId: 1,
+              tourType: 'day',
+              originalPrice: 100,
+              agentId: agentId
+            }).catch(err => {
+              // 在回调内部捕获错误，避免错误传播
+              console.warn('HeaderDiscount - 折扣计算测试API调用失败 (已处理):', err);
+              // 返回默认结果
+              return {
+                originalPrice: 100,
+                discountedPrice: 100 * parseFloat(rateFromApi.discountRate || 0.9),
+                discountRate: parseFloat(rateFromApi.discountRate || 0.9),
+                savedAmount: 100 * (1 - parseFloat(rateFromApi.discountRate || 0.9))
+              };
+            });
+          });
+          
+          console.log('HeaderDiscount - 折扣计算测试结果:', testResult);
+        } catch (testError) {
+          // 这个catch块应该永远不会执行，但为了安全起见
+          console.error('HeaderDiscount - 折扣计算测试异常 (外层错误):', testError);
+        }
+      }, 1000); // 延迟时间增加到1000毫秒
       
       // 清除错误
       setError(null);

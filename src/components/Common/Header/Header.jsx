@@ -80,23 +80,6 @@ const Header = () => {
  
   return (
     <>
-      {/* 顶部信息栏 */}
-      <div className="top-info-bar">
-        <Container>
-          <div className="top-info-content">
-            <div className="contact-info">
-              <a href="tel:+61398765432"><i className="bi bi-telephone-fill"></i> +61 3 9876 5432</a>
-              <a href="mailto:info@happytassieholiday.com"><i className="bi bi-envelope-fill"></i> info@happytassieholiday.com</a>
-            </div>
-            <div className="social-links">
-              <a href="#"><i className="bi bi-facebook"></i></a>
-              <a href="#"><i className="bi bi-instagram"></i></a>
-              <a href="#"><i className="bi bi-twitter"></i></a>
-            </div>
-          </div>
-        </Container>
-      </div>
-      
       {/* 主导航栏 */}
       <header className="header-section">
         <Container>
@@ -168,7 +151,7 @@ const Header = () => {
                   {/* 移动端显示的登录/用户信息 */}
                   {!isAuthenticated ? (
                     <>
-                      <NavLink className="booking-btn d-block d-sm-none mt-3" to="/login" state={{ from: "/booking", message: "请先登录后再进行预订" }} onClick={closeMenu}>
+                      <NavLink className="booking-btn d-block d-sm-none mt-3" to="/login" state={{ from: "/tours", message: "请先登录后再进行预订" }} onClick={closeMenu}>
                         立即预订
                       </NavLink>
                       <NavLink className="login-btn d-block d-sm-none mt-2" to="/login" onClick={closeMenu}>
@@ -177,7 +160,7 @@ const Header = () => {
                     </>
                   ) : (
                     <>
-                      <NavLink className="booking-btn d-block d-sm-none mt-3" to="/booking" onClick={closeMenu}>
+                      <NavLink className="booking-btn d-block d-sm-none mt-3" to="/tours" onClick={closeMenu}>
                         立即预订
                       </NavLink>
                       <div className="user-info d-block d-sm-none mt-2">
@@ -194,10 +177,12 @@ const Header = () => {
                             )}
                           </Dropdown.Toggle>
                           <Dropdown.Menu>
-                            <Dropdown.Item as={Link} to="/profile">个人中心</Dropdown.Item>
+                            {!isAgent && (
+                              <Dropdown.Item as={Link} to="/profile">个人中心</Dropdown.Item>
+                            )}
                             <Dropdown.Item as={Link} to="/orders">我的订单</Dropdown.Item>
                             {isAgent && (
-                              <Dropdown.Item as={Link} to="/agent-dashboard">代理商中心</Dropdown.Item>
+                              <Dropdown.Item as={Link} to="/profile">代理商中心</Dropdown.Item>
                             )}
                             <Dropdown.Divider />
                             <Dropdown.Item onClick={handleLogout}>退出登录</Dropdown.Item>
@@ -214,7 +199,7 @@ const Header = () => {
             <div className="ms-md-4 ms-2 d-flex align-items-center">
               {!isAuthenticated ? (
                 <>
-                  <NavLink to="/login" state={{ from: "/booking", message: "请先登录后再进行预订" }} className="booking-btn d-none d-sm-inline-block me-3">
+                  <NavLink to="/login" state={{ from: "/tours", message: "请先登录后再进行预订" }} className="booking-btn d-none d-sm-inline-block me-3">
                     立即预订
                   </NavLink>
                   <NavLink to="/login" className="login-btn d-none d-sm-inline-block">
@@ -223,7 +208,7 @@ const Header = () => {
                 </>
               ) : (
                 <div className="d-flex align-items-center">
-                  <NavLink to="/booking" className="booking-btn d-none d-sm-inline-block me-3">
+                  <NavLink to="/tours" className="booking-btn d-none d-sm-inline-block me-3">
                     立即预订
                   </NavLink>
                   <Dropdown>
@@ -249,10 +234,12 @@ const Header = () => {
                       )}
                     </Dropdown.Toggle>
                     <Dropdown.Menu>
-                      <Dropdown.Item as={Link} to="/profile">个人中心</Dropdown.Item>
+                      {!isAgent && (
+                        <Dropdown.Item as={Link} to="/profile">个人中心</Dropdown.Item>
+                      )}
                       <Dropdown.Item as={Link} to="/orders">我的订单</Dropdown.Item>
                       {isAgent && (
-                        <Dropdown.Item as={Link} to="/agent-dashboard">代理商中心</Dropdown.Item>
+                        <Dropdown.Item as={Link} to="/profile">代理商中心</Dropdown.Item>
                       )}
                       <Dropdown.Divider />
                       <Dropdown.Item onClick={handleLogout}>退出登录</Dropdown.Item>

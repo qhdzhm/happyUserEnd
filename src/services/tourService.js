@@ -1,4 +1,5 @@
 import { api } from './api';
+import { addAuthHeaders } from '../utils/auth';
 
 /**
  * 处理一日游数据，确保ID字段的一致性

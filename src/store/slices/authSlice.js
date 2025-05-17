@@ -7,9 +7,64 @@ export const loginUser = createAsyncThunk(
   'auth/loginUser',
   async (credentials, { rejectWithValue }) => {
     try {
+      // 检查是否为微信登录
+      const isWechatLogin = credentials.code && !credentials.username;
+      
       // 检查是否为代理商登录
       const isAgentLogin = credentials.userType === 'agent';
       
+      // 微信登录处理
+      if (isWechatLogin) {
+        const { wechatLogin } = require('../../services/wechatService');
+        
+        // 执行微信登录请求
+        const response = await wechatLogin(credentials.code);
+        
+        // 检查是否获得有效响应
+        if (!response || response.code !== 1) {
+          const errorMsg = response?.msg || '微信登录失败，请稍后再试';
+          console.error(`微信登录失败: ${errorMsg}`);
+          throw new Error(errorMsg);
+        }
+        
+        // 检查是否有token
+        if (!response.data || !response.data.token) {
+          console.error('微信登录失败: 未获取到有效登录信息');
+          throw new Error('微信登录失败: 未获取到有效登录信息');
+        }
+        
+        // 成功获取token
+        const token = response.data.token;
+        
+        // 保存token到localStorage
+        localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+        localStorage.setItem('token', token);  // 同时用两个键保存，确保兼容性
+        
+        console.log(`微信登录成功: Token=${token.substring(0, 15)}...`);
+        
+        // 保存用户类型
+        localStorage.setItem('userType', 'regular');
+        if (response.data.username) {
+          localStorage.setItem('username', response.data.username);
+        }
+        
+        // 构建用户数据对象
+        const userData = {
+          token,
+          id: response.data.id,
+          username: response.data.username,
+          name: response.data.name || response.data.wxNickname || '微信用户',
+          userType: 'regular',
+          role: 'user'
+        };
+        
+        return {
+          isAuthenticated: true,
+          ...userData
+        };
+      }
+      
+      // 用户名密码登录处理 (原有代码保持不变)
       // 准备登录数据
       const loginData = {
         username: credentials.username,
@@ -20,11 +75,33 @@ export const loginUser = createAsyncThunk(
       const loginPath = isAgentLogin ? '/api/agent/login' : '/api/user/login';
       
       // 执行登录请求
+      console.log(`发起登录请求: 用户类型=${isAgentLogin ? 'agent' : 'regular'}, 用户名=${credentials.username}`);
       const response = await login(loginData, loginPath);
       
       // 检查是否获得有效响应
       if (!response || response.code !== 1) {
-        throw new Error(response?.msg || '登录失败，请检查用户名和密码');
+        const errorMsg = response?.msg || '登录失败，请检查用户名和密码';
+        console.error(`登录失败: ${errorMsg}`);
+        
+        // 为用户提供更详细的错误信息
+        let userFriendlyMsg = errorMsg;
+        if (errorMsg.includes('账号或密码错误') || errorMsg.includes('密码错误') || errorMsg.includes('登录失败')) {
+          if (isAgentLogin) {
+            userFriendlyMsg = '代理商账号或密码错误，请重新输入';
+          } else {
+            userFriendlyMsg = '用户名或密码错误，请重新输入';
+          }
+        } else if (errorMsg.includes('用户不存在') || errorMsg.includes('账号不存在')) {
+          userFriendlyMsg = isAgentLogin ? 
+            '代理商账号不存在，请检查输入或联系管理员' : 
+            '用户名不存在，请检查输入或注册新账号';
+        } else if (errorMsg.includes('账号已禁用') || errorMsg.includes('已冻结')) {
+          userFriendlyMsg = '您的账号已被禁用，请联系客服处理';
+        } else if (errorMsg.includes('服务器') || errorMsg.includes('超时') || errorMsg.includes('网络')) {
+          userFriendlyMsg = '服务器连接异常，请稍后再试';
+        }
+        
+        throw new Error(userFriendlyMsg);
       }
       
       // 检查是否有token
@@ -58,7 +135,8 @@ export const loginUser = createAsyncThunk(
           };
         }
         
-        throw new Error('登录失败: 无效的凭据');
+        console.error('登录失败: 无效的凭据');
+        throw new Error('登录失败: 服务器未返回有效的登录信息');
       }
       
       // 成功获取token，处理不同格式的响应
@@ -66,6 +144,9 @@ export const loginUser = createAsyncThunk(
       
       // 保存token到localStorage
       localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+      localStorage.setItem('token', token);  // 同时用两个键保存，确保兼容性
+      
+      console.log(`登录成功: 用户类型=${isAgentLogin ? 'agent' : 'regular'}, 用户名=${credentials.username}, Token=${token.substring(0, 15)}...`);
       
       // 保存用户类型
       const userType = isAgentLogin ? 'agent' : 'regular';
@@ -121,6 +202,10 @@ export const loginUser = createAsyncThunk(
         ...userData
       };
     } catch (error) {
+      // 记录完整的错误信息到控制台
+      console.error('登录过程中出错:', error);
+      
+      // 返回更友好的错误信息给用户
       return rejectWithValue(error.message || '登录失败，请检查您的凭据');
     }
   }
@@ -131,14 +216,64 @@ export const registerUser = createAsyncThunk(
   'auth/register',
   async (userData, { rejectWithValue }) => {
     try {
-      const response = await register(userData);
-      localStorage.setItem(STORAGE_KEYS.TOKEN, response.token);
+      // 调用注册API
+      const { register } = require('../../services/userService');
+      
+      // 确保提供必要的默认值
+      const registerData = {
+        ...userData,
+        // 如果注册表单没有提供这些字段，则使用默认值
+        name: userData.name || userData.username, // 默认使用用户名作为姓名
+        email: userData.email || null,
+        phone: userData.phone || null
+      };
+      
+      const response = await register(registerData);
+      
+      // 检查响应
+      if (!response || response.code !== 1) {
+        const errorMsg = response?.msg || '注册失败，请稍后再试';
+        throw new Error(errorMsg);
+      }
+      
+      // 检查token
+      if (!response.data || !response.data.token) {
+        throw new Error('注册成功但未能获取登录凭证，请尝试登录');
+      }
+      
+      // 保存token到localStorage
+      const token = response.data.token;
+      localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+      localStorage.setItem('token', token);  // 同时用两个键保存，确保兼容性
+      
+      // 保存用户类型为普通用户
+      localStorage.setItem('userType', 'regular');
+      
+      // 保存用户名
+      if (response.data.username) {
+        localStorage.setItem('username', response.data.username);
+      }
+      
+      // 构建返回的用户数据
+      const userResponse = {
+        token,
+        id: response.data.id,
+        username: response.data.username,
+        name: response.data.name || response.data.username,
+        userType: 'regular',
+        role: 'customer'
+      };
+      
       return {
-        ...response.user,
-        role: 'regular' // 注册的用户默认为普通用户
+        isAuthenticated: true,
+        ...userResponse
       };
     } catch (error) {
-      return rejectWithValue(error.message || '注册失败');
+      // 记录完整的错误信息到控制台
+      console.error('注册过程中出错:', error);
+      
+      // 返回更友好的错误信息给用户
+      return rejectWithValue(error.message || '注册失败，请检查您的输入');
     }
   }
 );
@@ -174,12 +309,25 @@ export const updateProfile = createAsyncThunk(
 
 // 退出登录
 export const logoutUser = createAction('auth/logout', () => {
-  // 清除localStorage中的信息
+  // 清除localStorage中的所有认证信息
   localStorage.removeItem(STORAGE_KEYS.TOKEN);
+  localStorage.removeItem(STORAGE_KEYS.USER);
   localStorage.removeItem('user');
   localStorage.removeItem('userType');
   localStorage.removeItem('username');
+  localStorage.removeItem('token');
+  localStorage.removeItem('userToken');
+  localStorage.removeItem('authentication');
+  localStorage.removeItem('jwt');
+  localStorage.removeItem('agentId');
+  localStorage.removeItem('discountRate');
   
+  // 清除sessionStorage中可能存在的认证信息
+  sessionStorage.removeItem('authentication');
+  sessionStorage.removeItem('token');
+  sessionStorage.removeItem('userToken');
+  
+  // 为了确保完全退出，重置应用状态
   return {
     payload: null
   };
@@ -275,7 +423,20 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        
+        // 确保错误信息正确显示
+        if (action.payload) {
+          // 如果是通过rejectWithValue传递的错误
+          state.error = action.payload;
+        } else if (action.error && action.error.message) {
+          // 如果是普通错误对象
+          state.error = action.error.message;
+        } else {
+          // 默认错误信息
+          state.error = '登录失败，请稍后再试';
+        }
+        
+        console.error('登录失败:', state.error);
       })
       // 注册
       .addCase(registerUser.pending, (state) => {

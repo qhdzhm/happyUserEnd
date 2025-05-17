@@ -2,6 +2,9 @@
  * API错误处理工具函数
  * 提供统一的API错误处理机制
  */
+import { store } from '../store';
+import { showNotification } from '../store/slices/uiSlice';
+import { clearToken } from './auth';
 
 // 自定义API错误类
 export class ApiError extends Error {
@@ -13,6 +16,9 @@ export class ApiError extends Error {
     this.isApiError = true;
   }
 }
+
+// 创建一个变量跟踪是否正在重定向，避免多次弹窗
+let isRedirecting = false;
 
 /**
  * 处理API响应错误
@@ -35,12 +41,55 @@ export const handleApiError = (error, fallbackMessage = '请求失败') => {
     // 服务器返回的错误信息
     const serverMessage = data?.message || data?.error || fallbackMessage;
     
+    // 特殊处理401未授权错误
+    if (status === 401) {
+      // 检查错误响应中是否包含JWT过期相关信息
+      const errorMsg = data?.msg || data?.message || '';
+      const isJwtExpired = 
+        errorMsg.includes('JWT') || 
+        errorMsg.includes('令牌') || 
+        errorMsg.includes('token') || 
+        errorMsg.includes('过期') || 
+        errorMsg.includes('expired') ||
+        data?.code === 401;
+      
+      if (isJwtExpired && !isRedirecting) {
+        isRedirecting = true;
+        
+        // 清除用户登录信息
+        clearToken();
+        localStorage.removeItem('username');
+        localStorage.removeItem('userType');
+        localStorage.removeItem('agentId');
+        
+        // 使用Redux显示友好通知
+        store.dispatch(
+          showNotification({
+            type: 'warning',
+            message: '您的登录已过期，即将跳转到登录页面',
+            duration: 3000
+          })
+        );
+        
+        // 延迟跳转，给用户时间看到通知
+        setTimeout(() => {
+          // 将用户重定向到登录页面
+          window.location.href = '/login';
+        }, 1500);
+        
+        // 延迟重置重定向状态
+        setTimeout(() => {
+          isRedirecting = false;
+        }, 3000);
+      }
+      
+      return new ApiError('用户未授权，请重新登录', status, data);
+    }
+    
     // 根据状态码返回不同的错误信息
     switch (status) {
       case 400:
         return new ApiError(`请求无效: ${serverMessage}`, status, data);
-      case 401:
-        return new ApiError('用户未授权，请重新登录', status, data);
       case 403:
         return new ApiError('没有权限执行此操作', status, data);
       case 404:

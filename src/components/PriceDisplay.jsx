@@ -1,58 +1,89 @@
-import React from "react";
-import "./PriceDisplay.css";
+import React from 'react';
+import { Badge } from 'react-bootstrap';
+import { FaHotel, FaBed, FaTicketAlt } from 'react-icons/fa';
+import './PriceDisplay.css';
 
 /**
  * 价格显示组件
- * 负责根据原价和折扣价进行展示
- * @param {Object} props - 组件属性
- * @param {number|string} props.originalPrice - 原价
- * @param {number|string} props.discountedPrice - 折扣价（可选）
- * @returns {JSX.Element} - 价格显示组件
+ * @param {Number} originalPrice - 非代理价格/原始价格
+ * @param {Number} discountedPrice - 当前价格或折扣价格
+ * @param {Boolean} showBadge - 是否显示折扣标签 (默认: false)
+ * @param {String} currency - 货币符号 (默认: "$")
+ * @param {String} size - 尺寸 "small", "medium", "large" (默认: "medium")
+ * @param {Number} hotelPriceDifference - 每晚酒店价格差异 (可选)
+ * @param {Number} hotelNights - 酒店晚数 (可选)
+ * @param {String} baseHotelLevel - 基准酒店等级 (可选，默认: "4星")
+ * @param {Number} dailySingleRoomSupplement - 每晚单房差 (可选)
+ * @param {Number} roomCount - 房间数量 (可选)
+ * @param {Number} extraRoomFee - 额外房间费用 (可选)
+ * @param {Boolean} isAgent - 是否为代理商 (默认: false)
+ * @returns {JSX.Element}
  */
-const PriceDisplay = ({
-  originalPrice,
-  discountedPrice
+const PriceDisplay = ({ 
+  originalPrice, 
+  discountedPrice, 
+  showBadge = false, 
+  currency = "$", 
+  size = "medium",
+  hotelPriceDifference,
+  hotelNights,
+  baseHotelLevel = "4星",
+  dailySingleRoomSupplement,
+  roomCount = 1,
+  extraRoomFee = 0,
+  isAgent = false
 }) => {
-  // 安全地获取原价（确保是数字）
-  const safeOriginalPrice = () => {
-    if (originalPrice === null || originalPrice === undefined) return 0;
-    return typeof originalPrice === 'number' ? originalPrice : parseFloat(originalPrice || 0);
-  };
+  // 确保有价格可显示
+  if (!originalPrice && !discountedPrice) return null;
   
-  // 安全地获取折扣价（确保是数字）
-  const safeDiscountedPrice = () => {
-    if (discountedPrice === null || discountedPrice === undefined) return safeOriginalPrice();
-    return typeof discountedPrice === 'number' ? discountedPrice : parseFloat(discountedPrice || 0);
-  };
+  // 确定是否显示折扣价（原价和现价不同时显示）
+  // 对于代理商，我们总是显示两个价格，即使它们相同
+  const shouldShowDiscount = isAgent ? !!originalPrice : (originalPrice && discountedPrice && originalPrice !== discountedPrice);
   
-  // 判断折扣价是否有效
-  const hasValidDiscount = () => {
-    // 如果没有折扣价，则无折扣
-    if (discountedPrice === null || discountedPrice === undefined) {
-      return false;
-    }
-    
-    const original = safeOriginalPrice();
-    const discounted = safeDiscountedPrice();
-    
-    // 只有折扣价小于原价并且两者都大于0时才视为有效折扣
-    return discounted < original && discounted > 0 && original > 0;
-  };
+  // 计算折扣率
+  const discountRate = shouldShowDiscount && originalPrice && discountedPrice ? 
+    Math.round((1 - discountedPrice / originalPrice) * 100) : 0;
   
-  // 显示价格
-  const displayOriginalPrice = safeOriginalPrice().toFixed(2);
-  const displayDiscountedPrice = safeDiscountedPrice().toFixed(2);
+  // 确定尺寸类
+  const sizeClass = size === "small" ? "price-display-sm" : 
+                    size === "large" ? "price-display-lg" : 
+                    "price-display-md";
   
-  // 简化的价格展示
+  // 现价 - 优先显示折扣价，否则显示原价
+  const displayPrice = discountedPrice || originalPrice;
+  
   return (
-    <div className="price-display">
-      {hasValidDiscount() ? (
-        <>
-          <span className="discounted-price">${displayDiscountedPrice}</span>
-          <span className="original-price">${displayOriginalPrice}</span>
-        </>
-      ) : (
-        <span className="regular-price">${displayOriginalPrice}</span>
+    <div className={`price-display ${sizeClass}`}>
+      {/* 显示原价 - 对代理商总是显示，对普通用户仅在有折扣时显示 */}
+      {shouldShowDiscount && (
+        <div className="original-price text-muted">
+          <s>{currency}{originalPrice.toFixed(2)}</s>
+        </div>
+      )}
+      
+      {/* 显示现价 */}
+      <div className="current-price">
+        <span className="price-value">
+          {currency}{displayPrice.toFixed(2)}
+        </span>
+        
+        {/* 显示折扣标签 - 仅在有折扣且价格不同时显示 */}
+        {showBadge && discountRate > 0 && (
+          <Badge bg="danger" className="ms-2 discount-badge">
+            {discountRate}% OFF
+          </Badge>
+        )}
+      </div>
+      
+      
+      
+      
+      {/* 显示额外房间费用 */}
+      {extraRoomFee !== undefined && extraRoomFee > 0 && (
+        <div className="hotel-diff-info mt-1 small text-success">
+          <FaHotel className="me-1" /> 
+          房间差价: {currency}{extraRoomFee.toFixed(2)}
+        </div>
       )}
     </div>
   );

@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import "../Cards/card.css";
-import { NavLink } from "react-router-dom";
-import { FaStar, FaMapMarkerAlt, FaCalendarAlt, FaUserFriends } from 'react-icons/fa';
+import "./cards.css";
+import { NavLink, useNavigate } from "react-router-dom";
+import { FaStar, FaMapMarkerAlt, FaCalendarAlt, FaUserFriends, FaShoppingCart } from 'react-icons/fa';
 import { BsClock, BsTag } from 'react-icons/bs';
 import { calculateTourDiscount } from "../../utils/api";
 import { getImageUrl } from "../../utils/imageUtils";
+import { useSelector } from 'react-redux';
 
 // 组件内折扣价格请求的随机延迟时间范围
 const MIN_REQUEST_DELAY = 300; // 最小延迟时间(毫秒)
@@ -16,6 +17,7 @@ const getRandomDelay = () => {
 };
 
 const Cards = ({destination}) => {
+  const navigate = useNavigate();
   const [discountPrice, setDiscountPrice] = useState(destination.discountPrice);
   const [loading, setLoading] = useState(false);
   const isAgent = localStorage.getItem('userType') === 'agent';
@@ -26,6 +28,7 @@ const Cards = ({destination}) => {
   const [imageError, setImageError] = useState(false);
   // 请求计时器引用
   const timerRef = useRef(null);
+  const { isAuthenticated } = useSelector(state => state.auth);
 
   // 获取折扣价格的函数(使用useCallback以避免不必要的重新创建)
   const fetchDiscountPrice = useCallback(async () => {
@@ -35,7 +38,7 @@ const Cards = ({destination}) => {
     try {
       // 获取旅游信息
       const tourId = destination.id;
-      const tourType = destination.type || 'day-tour';
+      let tourType = destination.type || 'day-tour';
       const originalPrice = destination.price;
 
       // 确保所有必要字段都存在
@@ -166,7 +169,7 @@ const Cards = ({destination}) => {
       }
     }
     // 5. 检查ID范围 - 这个规则要谨慎使用，仅作为最后的判断方式
-    else if (destination.id > 100 || destination.id === 9) { // ID=9是"塔斯马尼亚蜜月浪漫之旅"
+    else if (destination.id > 100) {
       apiTourType = 'group';
     }
     
@@ -236,9 +239,48 @@ const Cards = ({destination}) => {
   // 折扣标签
   const discountPercent = getDiscountPercentage();
 
+  // 处理预订按钮点击
+  const handleBookNow = () => {
+    // 获取当前日期和7天后的日期
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 7);
+    
+    // 确定产品类型
+    let tourType = 'day';
+    
+    // 从链接中判断
+    if (getDetailLink().includes('group-tours')) {
+      tourType = 'group';
+    }
+    
+    // 构造URL参数
+    const params = new URLSearchParams();
+    params.append('tourId', destination.id);
+    params.append('tourName', destination.name || destination.title || '');
+    params.append('type', tourType);
+    params.append('price', hasDiscount() ? discountPrice : destination.price);
+    params.append('arrivalDate', startDate.toISOString().split('T')[0]);
+    params.append('departureDate', endDate.toISOString().split('T')[0]);
+    
+    // 检查用户是否已登录，使用Redux状态
+    if (isAuthenticated) {
+      // 已登录，导航到预订页面
+      navigate(`/booking?${params.toString()}`);
+    } else {
+      // 未登录，导航到登录页面，并传递跳转信息
+      navigate('/login', { 
+        state: { 
+          from: `/booking?${params.toString()}`, 
+          message: "请先登录后再进行预订" 
+        } 
+      });
+    }
+  };
+
   return (
-    <div className="tour-card">
-      <div className="tour-card-image">
+    <div className="product-tour-card">
+      <div className="product-tour-card-image">
         {imageError || !hasImage() ? (
           <div className="image-placeholder"></div>
         ) : (
@@ -256,65 +298,72 @@ const Cards = ({destination}) => {
           </div>
         )}
         
-        <div className="tour-card-duration">
+        <div className="product-tour-card-duration">
           <BsClock /> {getDuration()}
         </div>
       </div>
       
-      <div className="tour-card-title">
-        {destination.name || destination.title}
-      </div>
-      
-      <div className="tour-card-location-rating">
-        <div className="tour-location">
-          <FaMapMarkerAlt className="location-icon" /> {destination.location || destination.region_name || '塔斯马尼亚'}
+      <div className="product-tour-card-content">
+        <div className="product-tour-card-title">
+          {destination.name || destination.title}
         </div>
-        <div className="tour-rating">
-          <FaStar className="star-icon" /> {getRating()}
+        
+        <div className="tour-card-location-rating">
+          <div className="tour-location">
+            <FaMapMarkerAlt className="location-icon" /> {destination.location || destination.region_name || '塔斯马尼亚'}
+          </div>
+          <div className="tour-rating">
+            <FaStar className="star-icon" /> {getRating()}
+          </div>
         </div>
-      </div>
-      
-      <div className="tour-card-info">
-        <div className="tour-info-item">
-          <BsTag className="info-icon" /> {getCategoryName()}
-        </div>
-        {destination.departure_address && (
+        
+        <div className="tour-card-info">
           <div className="tour-info-item">
-            <FaCalendarAlt className="info-icon" /> {destination.departure_info || '天天发团'}
+            <BsTag className="info-icon" /> {getCategoryName()}
           </div>
-        )}
-        {destination.suitable_for && (
-          <div className="tour-info-item">
-            <FaUserFriends className="info-icon" /> 适合: {destination.suitable_for}
-          </div>
-        )}
-      </div>
-      
-      {destination.description && (
-        <div className="tour-card-desc">
-          {destination.description}
+          {destination.departure_address && (
+            <div className="tour-info-item">
+              <FaCalendarAlt className="info-icon" /> {destination.departure_info || '天天发团'}
+            </div>
+          )}
+          {destination.suitable_for && (
+            <div className="tour-info-item">
+              <FaUserFriends className="info-icon" /> 适合: {destination.suitable_for}
+            </div>
+          )}
         </div>
-      )}
-      
-      <div className="tour-card-footer">
-        {loading ? (
-          <div className="tour-card-price loading">
-            价格计算中...
-          </div>
-        ) : hasDiscount() ? (
-          <div className="tour-card-price">
-            <span className="discounted-price">${discountPrice.toFixed(2)}</span>
-            <span className="original-price">${destination.price.toFixed(2)}</span>
-            <span className="price-suffix">/人</span>
-          </div>
-        ) : (
-          <div className="tour-card-price">
-            ${destination.price ? destination.price.toFixed(2) : '0.00'}/人
+        
+        {destination.description && (
+          <div className="product-tour-card-desc">
+            {destination.description}
           </div>
         )}
-        <NavLink to={getDetailLink()} className="tour-card-details-btn">
-          查看详情
-        </NavLink>
+        
+        <div className="product-tour-card-footer">
+          {loading ? (
+            <div className="product-tour-card-price loading">
+              价格计算中...
+            </div>
+          ) : hasDiscount() ? (
+            <div className="product-tour-card-price">
+              <span className="discounted-price">${discountPrice.toFixed(2)}</span>
+              <span className="original-price">${destination.price.toFixed(2)}</span>
+              <span className="price-suffix">/人</span>
+            </div>
+          ) : (
+            <div className="product-tour-card-price">
+              ${destination.price ? destination.price.toFixed(2) : '0.00'}<span className="price-suffix">/人</span>
+            </div>
+          )}
+          <div className="product-tour-card-buttons">
+            <NavLink to={getDetailLink()} className="product-tour-card-details-btn">
+              查看详情
+            </NavLink>
+            <button onClick={handleBookNow} className="product-tour-card-book-btn">
+              <FaShoppingCart className="me-1" /> 立即预订
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

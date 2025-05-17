@@ -87,18 +87,18 @@ const Footer = () => {
 
           <div className="d-flex align-items-top my-2">
           <i className="bi bi-geo-alt me-3"></i>
-          <a target="_blank" href="mailto:info@tasmaniaexplore.com" className="d-block" rel="noreferrer" >info@tasmaniaexplore.com</a>
+          <a target="_blank" href="mailto:qhdzhm110119@gmail.com" className="d-block" rel="noreferrer" >qhdzhm110119@gmail.com</a>
           </div>
           <div className="d-flex align-items-top ">
           <i className="bi bi-telephone me-3"></i>
-          <a target="_blank" href="tel:+61398765432" className="d-block" rel="noreferrer" >+61 3 9876 5432</a>
+          <a target="_blank" href="tel:0478759693" className="d-block" rel="noreferrer" >0478759693</a>
           </div>
          
           </Col>
         </Row>
         <Row className="py-2 bdr mt-3">
         <Col className="col copyright">
-        <p className="text-light">   @ 2024. 塔斯马尼亚探索 版权所有 </p> 
+        <p className="text-light">   @ 2024. Happy Tassie Travel 版权所有 </p> 
         </Col>
         </Row>
 

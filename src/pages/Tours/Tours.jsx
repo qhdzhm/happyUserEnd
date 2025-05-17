@@ -7,9 +7,11 @@ import Breadcrumbs from "../../components/Breadcrumbs/Breadcrumbs";
 import Filters from "./Filters";
 import LoginPrompt from "../../components/Common/LoginPrompt/LoginPrompt";
 import { getAllDayTours, getAllGroupTours } from "../../utils/api";
-import "./tour.css";
 import PriceDisplay from "../../components/PriceDisplay";
 import Cards from "../../components/Cards/Cards";
+import RedesignedCard from "../../components/Cards/RedesignedCard";
+import "../../pages/Home/home-tours-redesign.css"; // 导入RedesignedCard组件的CSS样式
+import "./Tours.css"; // 最后导入Tours自己的样式，保证优先级
 
 const Tours = () => {
   const location = useLocation();
@@ -51,6 +53,7 @@ const Tours = () => {
     const tourType = queryParams.get('tourTypes');
     if (tourType === 'day_tour') return '一日游';
     if (tourType === 'group_tour') return '跟团游';
+    if (tourType === 'all') return '全部';
     
     // 默认选择一日游
     return '一日游'; 
@@ -83,16 +86,25 @@ const Tours = () => {
       tourType = 'day_tour';
     } else if (selectedTourType === '跟团游') {
       tourType = 'group_tour';
+    } else if (selectedTourType === '全部') {
+      tourType = 'all';
     } else if (queryParams.get('tourTypes')) {
       // 从URL参数获取
       const urlTourType = queryParams.get('tourTypes');
-      if (urlTourType === 'day_tour' || urlTourType === 'group_tour') {
+      if (urlTourType === 'day_tour' || urlTourType === 'group_tour' || urlTourType === 'all') {
         tourType = urlTourType;
       }
     }
     
+    // 获取关键字搜索参数
+    const keywordParam = queryParams.get('keyword') || '';
+    if (keywordParam && !searchTerm) {
+      // 如果URL中有关键字参数但状态中没有，则更新搜索状态
+      setSearchTerm(keywordParam);
+    }
+    
     return {
-      keyword: searchTerm,
+      keyword: searchTerm || keywordParam, // 使用状态中的关键字或URL中的关键字
       tourType: tourType,
       location: selectedLocation,
       themes: selectedThemes,
@@ -325,6 +337,72 @@ const Tours = () => {
             setDayTours([]);
           })
         );
+      } else if (params.tourType === 'all') {
+        // 全部请求参数，请求所有类型的旅游数据
+        const dayTourParams = { ...apiParams };
+        const groupTourParams = { ...apiParams };
+        
+        // 删除旅游类型参数
+        delete dayTourParams.tourType;
+        delete groupTourParams.tourType;
+        
+        // 获取一日游数据
+        requests.push(getAllDayTours(dayTourParams)
+          .then(response => {
+            if (response && response.code === 1) {
+              console.log('全部类型的旅游数据中一日游的数据:', response.data);
+              
+              // 确保是数组，并且每个项目都有ID
+              const dayToursData = Array.isArray(response.data) 
+                ? response.data 
+                : (response.data && Array.isArray(response.data.records) 
+                    ? response.data.records 
+                    : []);
+                    
+              setDayTours(dayToursData.map(tour => ({
+                ...tour,
+                id: tour.id || tour.tour_id,
+                type: 'day_tour'
+              })));
+            } else {
+              console.error('获取全部类型的旅游数据中一日游的数据失败:', response);
+              setDayTours([]);
+            }
+          })
+          .catch(err => {
+            console.error('获取全部类型的旅游数据中一日游的数据错误:', err);
+            setDayTours([]);
+          })
+        );
+        
+        // 获取跟团游数据
+        requests.push(getAllGroupTours(groupTourParams)
+          .then(response => {
+            if (response && response.code === 1) {
+              console.log('全部类型的旅游数据中跟团游的数据:', response.data);
+              
+              // 确保是数组，并且每个项目都有ID
+              const groupToursData = Array.isArray(response.data) 
+                ? response.data 
+                : (response.data && Array.isArray(response.data.records) 
+                    ? response.data.records 
+                    : []);
+                    
+              setGroupTours(groupToursData.map(tour => ({
+                ...tour,
+                id: tour.id || tour.tour_id,
+                type: 'group_tour'
+              })));
+            } else {
+              console.error('获取全部类型的旅游数据中跟团游的数据失败:', response);
+              setGroupTours([]);
+            }
+          })
+          .catch(err => {
+            console.error('获取全部类型的旅游数据中跟团游的数据错误:', err);
+            setGroupTours([]);
+          })
+        );
       } else {
         // 如果没有指定有效的类型，则不发送请求
         console.log('未指定有效的旅游类型，不发送请求');
@@ -461,6 +539,24 @@ const Tours = () => {
 
     let filtered = [...dayTours];
 
+    // 如果选择了全部类型，直接返回所有一日游产品
+    if (selectedTourType === '全部') {
+      return sortTours(filtered);
+    }
+    
+    // 根据产品ID筛选 - 如果有选择的产品ID，优先使用产品ID筛选
+    const selectedTourIds = queryParams.get('tourIds');
+    if (selectedTourIds) {
+      const tourIdArray = selectedTourIds.split(',');
+      filtered = filtered.filter(tour => 
+        tourIdArray.includes(String(tour.id)) || 
+        tourIdArray.includes(String(tour.tour_id))
+      );
+      console.log('根据产品ID筛选后的结果:', filtered.length);
+      // 直接返回匹配的产品，不再进行其他筛选
+      return sortTours(filtered);
+    }
+
     // 根据搜索关键词筛选
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
@@ -547,16 +643,34 @@ const Tours = () => {
 
     // 排序
     return sortTours(filtered);
-  }, [dayTours, searchTerm, selectedTourType, selectedDuration, selectedSuitableFor, selectedThemes, selectedRatings, sortTours]);
-
+  }, [dayTours, searchTerm, selectedTourType, selectedDuration, selectedSuitableFor, selectedThemes, selectedRatings, sortTours, queryParams]);
+  
   // 筛选跟团游数据
   const filteredGroupTours = useMemo(() => {
     // 如果选择了一日游，则不显示跟团游数据
     if (selectedTourType === '一日游') {
       return [];
     }
-
+    
     let filtered = [...groupTours];
+    
+    // 如果选择了全部类型，直接返回所有跟团游产品
+    if (selectedTourType === '全部') {
+      return sortTours(filtered);
+    }
+    
+    // 根据产品ID筛选 - 如果有选择的产品ID，优先使用产品ID筛选
+    const selectedTourIds = queryParams.get('tourIds');
+    if (selectedTourIds) {
+      const tourIdArray = selectedTourIds.split(',');
+      filtered = filtered.filter(tour => 
+        tourIdArray.includes(String(tour.id)) || 
+        tourIdArray.includes(String(tour.tour_id))
+      );
+      console.log('根据产品ID筛选跟团游结果:', filtered.length);
+      // 直接返回匹配的产品，不再进行其他筛选
+      return sortTours(filtered);
+    }
 
     // 根据搜索关键词筛选
     if (searchTerm) {
@@ -662,11 +776,23 @@ const Tours = () => {
 
     // 排序
     return sortTours(filtered);
-  }, [groupTours, searchTerm, selectedTourType, selectedDuration, selectedPriceRange, selectedRatings, selectedSuitableFor, selectedThemes, sortTours]);
+  }, [groupTours, searchTerm, selectedTourType, selectedDuration, selectedPriceRange, selectedRatings, selectedSuitableFor, selectedThemes, sortTours, queryParams]);
 
   // 使用防抖处理搜索
   const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
+    const keyword = e.target.value;
+    setSearchTerm(keyword);
+    
+    // 更新URL参数
+    const updatedParams = new URLSearchParams(location.search);
+    if (keyword) {
+      updatedParams.set('keyword', keyword);
+    } else {
+      updatedParams.delete('keyword');
+    }
+    
+    // 使用replace: true避免创建新的历史记录
+    navigate({ search: updatedParams.toString() }, { replace: true });
   };
 
   // 切换筛选面板
@@ -744,8 +870,18 @@ const Tours = () => {
           <Row className="align-items-center">
             <Col md={8}>
               <div className="tour-intro-content">
-                <h2>探索塔斯马尼亚的奇妙之旅</h2>
-                <p>从壮丽的自然风光到丰富的文化体验，塔斯马尼亚为您提供难忘的旅行体验。选择适合您的行程，开启一段难忘的旅程。</p>
+                <h2>
+                  {selectedTourType === '一日游' ? '探索塔斯马尼亚的一日游行程' : 
+                   selectedTourType === '跟团游' ? '探索塔斯马尼亚的跟团游行程' : 
+                   selectedTourType === '全部' ? '探索塔斯马尼亚的所有旅游产品' : 
+                   '探索塔斯马尼亚的奇妙之旅'}
+                </h2>
+                <p>
+                  {selectedTourType === '一日游' ? '选择适合您的行程，开启一段难忘的旅程。' : 
+                   selectedTourType === '跟团游' ? '选择适合您的行程，开启一段难忘的旅程。' : 
+                   selectedTourType === '全部' ? '从一日游到跟团游，找到最适合您的行程。' : 
+                   '从壮丽的自然风光到丰富的文化体验，塔斯马尼亚为您提供难忘的旅行体验。'}
+                </p>
               </div>
             </Col>
             <Col md={4}>
@@ -896,23 +1032,23 @@ const Tours = () => {
                 </Alert>
               ) : (
                 <>
-                  {/* 一日游列表 */}
-                  {filteredDayTours.length > 0 && (
+                  {/* u4e00u65e5u6e38u5217u8868 */}
+                  {filteredDayTours.length > 0 && selectedTourType !== '全部' && (
                     <div className="tour-section mb-5">
                       <h3 className="section-title">一日游</h3>
                       <Row className={viewMode === "list" ? "list-view" : ""}>
                         {filteredDayTours.map((tour) => (
-                          <Col key={tour.id} lg={viewMode === "list" ? 12 : 4} md={viewMode === "list" ? 12 : 6} className="mb-4">
+                          <Col key={`day-${tour.id}`} lg={viewMode === "list" ? 12 : 4} md={viewMode === "list" ? 12 : 6} className="mb-4">
                             {viewMode === "list" ? (
-                              // 列表视图使用自定义布局
+                              // u5217u8868u89c6u56feu4f7fu7528u81eau5b9au4e49u5e03u5c40
                               <div className="list-view-card">
                                 <div className="row g-0">
                                   <div className="col-md-4">
-                                    <div className="tour-card-img-container h-100">
+                                    <div className="list-tour-img-container h-100">
                                       <img 
                                         src={tour.image_url || tour.cover_image || "/images/placeholder.jpg"}
-                                        className="tour-card-img h-100" 
-                                        alt={tour.title || tour.name || "一日游"} 
+                                        className="list-tour-img h-100" 
+                                        alt={tour.title || tour.name || "全部类型的旅游产品"} 
                                       />
                                       <div className="tour-duration-overlay">
                                         <FaCalendarAlt className="me-1" />
@@ -923,7 +1059,7 @@ const Tours = () => {
                                   <div className="col-md-8">
                                     <div className="d-flex flex-column h-100 p-3">
                                       <h5 className="tour-title">
-                                        {tour.title || tour.name || "一日游"}
+                                        {tour.title || tour.name || "全部类型的旅游产品"}
                                       </h5>
                                       <div className="d-flex justify-content-between align-items-center mb-2">
                                         <div className="d-flex align-items-center">
@@ -950,7 +1086,7 @@ const Tours = () => {
                                             <span className="text-muted small">/人</span>
                                           </div>
                                           <Link to={`/day-tours/${tour.id}`} className="btn btn-sm btn-outline-primary view-details-btn">
-                                            查看详情
+                                            u67e5u770bu8be6u60c5
                                           </Link>
                                         </div>
                                       </div>
@@ -959,8 +1095,8 @@ const Tours = () => {
                                 </div>
                               </div>
                             ) : (
-                              // 网格视图使用Cards组件
-                              <Cards destination={{
+                              // u7f51u683cu89c6u56feu4f7fu7528RedesignedCardu7ec4u4ef6
+                              <RedesignedCard tour={{
                                 ...tour,
                                 id: tour.id,
                                 name: tour.title || tour.name,
@@ -983,23 +1119,23 @@ const Tours = () => {
                     </div>
                   )}
                   
-                  {/* 跟团游列表 */}
-                  {filteredGroupTours.length > 0 && (
+                  {/* u8ddfu56e2u6e38u5217u8868 */}
+                  {filteredGroupTours.length > 0 && selectedTourType !== '全部' && (
                     <div className="tour-section">
                       <h3 className="section-title">跟团游</h3>
                       <Row className={viewMode === "list" ? "list-view" : ""}>
                         {filteredGroupTours.map((tour) => (
-                          <Col key={tour.id} lg={viewMode === "list" ? 12 : 4} md={viewMode === "list" ? 12 : 6} className="mb-4">
+                          <Col key={`group-${tour.id}`} lg={viewMode === "list" ? 12 : 4} md={viewMode === "list" ? 12 : 6} className="mb-4">
                             {viewMode === "list" ? (
-                              // 列表视图使用自定义布局
+                              // u5217u8868u89c6u56feu4f7fu7528u81eau5b9au4e49u5e03u5c40
                               <div className="list-view-card">
                                 <div className="row g-0">
                                   <div className="col-md-4">
-                                    <div className="tour-card-img-container h-100">
+                                    <div className="list-tour-img-container h-100">
                                       <img 
                                         src={tour.image_url || tour.cover_image || "/images/placeholder.jpg"}
-                                        className="tour-card-img h-100" 
-                                        alt={tour.title || tour.name || "跟团游"} 
+                                        className="list-tour-img h-100" 
+                                        alt={tour.title || tour.name || "全部类型的旅游产品"} 
                                       />
                                       <div className="tour-duration-overlay">
                                         <FaCalendarAlt className="me-1" />
@@ -1012,7 +1148,7 @@ const Tours = () => {
                                   <div className="col-md-8">
                                     <div className="d-flex flex-column h-100 p-3">
                                       <h5 className="tour-title">
-                                        {tour.title || tour.name || "跟团游"}
+                                        {tour.title || tour.name || "全部类型的旅游产品"}
                                       </h5>
                                       <div className="d-flex justify-content-between align-items-center mb-2">
                                         <div className="d-flex align-items-center">
@@ -1039,7 +1175,7 @@ const Tours = () => {
                                             <span className="text-muted small">/人</span>
                                           </div>
                                           <Link to={`/group-tours/${tour.id}`} className="btn btn-sm btn-outline-primary view-details-btn">
-                                            查看详情
+                                            u67e5u770bu8be6u60c5
                                           </Link>
                                         </div>
                                       </div>
@@ -1048,8 +1184,8 @@ const Tours = () => {
                                 </div>
                               </div>
                             ) : (
-                              // 网格视图使用Cards组件
-                              <Cards destination={{
+                              // u7f51u683cu89c6u56feu4f7fu7528RedesignedCardu7ec4u4ef6
+                              <RedesignedCard tour={{
                                 ...tour,
                                 id: tour.id,
                                 name: tour.title || tour.name,
@@ -1075,18 +1211,178 @@ const Tours = () => {
                       </Row>
                     </div>
                   )}
-                  
-                  {/* 没有结果 */}
-                  {filteredDayTours.length === 0 && filteredGroupTours.length === 0 && (
-                    <div className="no-results text-center py-5">
-                      <h4>没有找到符合条件的旅游产品</h4>
-                      <p>尝试调整您的筛选条件或清除所有筛选</p>
-                      <Button 
-                        variant="outline-primary"
-                        onClick={clearAllFilters}
-                      >
-                        清除所有筛选
-                      </Button>
+
+                  {/* u5168u90e8u4ea7u54c1u5217u8868 - u6df7u5408u663eu793au6240u6709u4ea7u54c1 */}
+                  {selectedTourType === '全部' && (filteredDayTours.length > 0 || filteredGroupTours.length > 0) && (
+                    <div className="tour-section">
+                      <h3 className="section-title">全部产品</h3>
+                      <Row className={viewMode === "list" ? "list-view" : ""}>
+                        {/* u6df7u5408u663eu793au4e00u65e5u6e38u4ea7u54c1 */}
+                        {filteredDayTours.map((tour) => (
+                          <Col key={`day-${tour.id}`} lg={viewMode === "list" ? 12 : 4} md={viewMode === "list" ? 12 : 6} className="mb-4">
+                            {viewMode === "list" ? (
+                              // u5217u8868u89c6u56feu4f7fu7528u81eau5b9au4e49u5e03u5c40
+                              <div className="list-view-card">
+                                <div className="row g-0">
+                                  <div className="col-md-4">
+                                    <div className="list-tour-img-container h-100">
+                                      <img 
+                                        src={tour.image_url || tour.cover_image || "/images/placeholder.jpg"}
+                                        className="list-tour-img h-100" 
+                                        alt={tour.title || tour.name || "u5168u90e8u7c7bu578bu7684u65c5u6e38u4ea7u54c1"} 
+                                      />
+                                      <div className="tour-duration-overlay">
+                                        <FaCalendarAlt className="me-1" />
+                                        {tour.duration_hours ? `${tour.duration_hours}u5c0fu65f6` : tour.duration || "8u5c0fu65f6"}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="col-md-8">
+                                    <div className="d-flex flex-column h-100 p-3">
+                                      <h5 className="tour-title">
+                                        {tour.title || tour.name || "u5168u90e8u7c7bu578bu7684u65c5u6e38u4ea7u54c1"}
+                                      </h5>
+                                      <div className="d-flex justify-content-between align-items-center mb-2">
+                                        <div className="d-flex align-items-center">
+                                          <FaMapMarkerAlt className="text-danger me-1" />
+                                          <span className="text-muted small">{tour.location || "u5854u65afu9a6cu5c3cu4e9a"}</span>
+                                        </div>
+                                        <div className="d-flex align-items-center rating-stars">
+                                          <FaStar className="text-warning me-1" />
+                                          <span className="text-warning">{tour.rating || 4.5}</span>
+                                        </div>
+                                      </div>
+                                      <p className="tour-description mb-3">
+                                        {tour.description || tour.intro || tour.des || ""}
+                                      </p>
+                                      <div className="mt-auto">
+                                        <div className="d-flex justify-content-between align-items-center mt-2">
+                                          <div className="tour-price-container">
+                                            <PriceDisplay 
+                                              price={Number(tour.price)} 
+                                              discountPrice={tour.discount_price ? Number(tour.discount_price) : null} 
+                                              currency="$"
+                                              size="sm"
+                                            />
+                                            <span className="text-muted small">/u4eba</span>
+                                          </div>
+                                          <Link to={`/day-tours/${tour.id}`} className="btn btn-sm btn-outline-primary view-details-btn">
+                                            u67e5u770bu8be6u60c5
+                                          </Link>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              // u7f51u683cu89c6u56feu4f7fu7528RedesignedCardu7ec4u4ef6
+                              <RedesignedCard tour={{
+                                ...tour,
+                                id: tour.id,
+                                name: tour.title || tour.name,
+                                description: tour.description || tour.intro || tour.des,
+                                price: Number(tour.price),
+                                discountPrice: tour.discount_price ? Number(tour.discount_price) : null,
+                                location: tour.location,
+                                rating: tour.rating,
+                                type: 'day-tour',
+                                duration: tour.duration_hours ? `${tour.duration_hours}u5c0fu65f6` : tour.duration,
+                                hours: tour.duration_hours,
+                                image_url: tour.image_url || tour.cover_image,
+                                suitable_for: tour.suitable_for || tour.suitableFor,
+                                category: tour.themes && tour.themes.length > 0 ? tour.themes[0] : null
+                              }} />
+                            )}
+                          </Col>
+                        ))}
+
+                        {/* u6df7u5408u663eu793au8ddfu56e2u6e38u4ea7u54c1 */}
+                        {filteredGroupTours.map((tour) => (
+                          <Col key={`group-${tour.id}`} lg={viewMode === "list" ? 12 : 4} md={viewMode === "list" ? 12 : 6} className="mb-4">
+                            {viewMode === "list" ? (
+                              // u5217u8868u89c6u56feu4f7fu7528u81eau5b9au4e49u5e03u5c40
+                              <div className="list-view-card">
+                                <div className="row g-0">
+                                  <div className="col-md-4">
+                                    <div className="list-tour-img-container h-100">
+                                      <img 
+                                        src={tour.image_url || tour.cover_image || "/images/placeholder.jpg"}
+                                        className="list-tour-img h-100" 
+                                        alt={tour.title || tour.name || "u5168u90e8u7c7bu578bu7684u65c5u6e38u4ea7u54c1"} 
+                                      />
+                                      <div className="tour-duration-overlay">
+                                        <FaCalendarAlt className="me-1" />
+                                        {tour.duration_days && tour.duration_nights 
+                                          ? `${tour.duration_days}天${tour.duration_nights}晚` 
+                                          : tour.duration}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="col-md-8">
+                                    <div className="d-flex flex-column h-100 p-3">
+                                      <h5 className="tour-title">
+                                        {tour.title || tour.name || "u5168u90e8u7c7bu578bu7684u65c5u6e38u4ea7u54c1"}
+                                      </h5>
+                                      <div className="d-flex justify-content-between align-items-center mb-2">
+                                        <div className="d-flex align-items-center">
+                                          <FaMapMarkerAlt className="text-danger me-1" />
+                                          <span className="text-muted small">{tour.departure || tour.location}</span>
+                                        </div>
+                                        <div className="d-flex align-items-center rating-stars">
+                                          <FaStar className="text-warning me-1" />
+                                          <span className="text-warning">{tour.rating || 4.5}</span>
+                                        </div>
+                                      </div>
+                                      <p className="tour-description mb-3">
+                                        {tour.description || tour.intro || tour.des || ""}
+                                      </p>
+                                      <div className="mt-auto">
+                                        <div className="d-flex justify-content-between align-items-center mt-2">
+                                          <div className="tour-price-container">
+                                            <PriceDisplay 
+                                              price={Number(tour.price)} 
+                                              discountPrice={tour.discount_price ? Number(tour.discount_price) : null} 
+                                              currency="$"
+                                              size="sm"
+                                            />
+                                            <span className="text-muted small">/u4eba</span>
+                                          </div>
+                                          <Link to={`/group-tours/${tour.id}`} className="btn btn-sm btn-outline-primary view-details-btn">
+                                            u67e5u770bu8be6u60c5
+                                          </Link>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              // u7f51u683cu89c6u56feu4f7fu7528RedesignedCardu7ec4u4ef6
+                              <RedesignedCard tour={{
+                                ...tour,
+                                id: tour.id,
+                                name: tour.title || tour.name,
+                                description: tour.description || tour.intro || tour.des,
+                                price: Number(tour.price),
+                                discountPrice: tour.discount_price ? Number(tour.discount_price) : null,
+                                location: tour.departure || tour.location,
+                                rating: tour.rating,
+                                type: 'group-tour',
+                                duration: tour.duration_days && tour.duration_nights 
+                                  ? `${tour.duration_days}天${tour.duration_nights}晚` 
+                                  : tour.duration,
+                                days: tour.duration_days,
+                                nights: tour.duration_nights,
+                                image_url: tour.image_url || tour.cover_image,
+                                suitable_for: tour.suitable_for || tour.suitableFor,
+                                departure_info: tour.departure_info,
+                                category: tour.themes && tour.themes.length > 0 ? tour.themes[0] : null
+                              }} />
+                            )}
+                          </Col>
+                        ))}
+                      </Row>
                     </div>
                   )}
                 </>

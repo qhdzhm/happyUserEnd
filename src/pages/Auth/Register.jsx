@@ -6,10 +6,10 @@ import './Auth.css';
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
+    username: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    inviteCode: ''
   });
   const [passwordError, setPasswordError] = useState('');
   
@@ -22,13 +22,44 @@ const Register = () => {
   const from = location.state?.from || '/';
   // 获取重定向消息
   const redirectMessage = location.state?.message || '';
+  // 获取从详情页传递的旅游详情数据
+  const tourDetails = location.state?.tourDetails || null;
+  
+  // 从URL中获取邀请码参数
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const inviteCodeParam = urlParams.get('inviteCode');
+    if (inviteCodeParam) {
+      setFormData(prev => ({
+        ...prev,
+        inviteCode: inviteCodeParam
+      }));
+    }
+  }, []);
   
   // 当认证状态改变时，重定向到之前的页面
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(from, { replace: true });
+      // 判断是否有旅游详情数据需要传递
+      if (tourDetails) {
+        // 将详情页的数据传递给预订页面
+        navigate(from, { 
+          replace: true,
+          state: {
+            ...tourDetails,
+            // 保留其他可能的状态数据
+            ...(location.state && location.state !== tourDetails ? 
+               Object.entries(location.state)
+                .filter(([key]) => key !== 'from' && key !== 'message' && key !== 'tourDetails')
+                .reduce((obj, [key, val]) => ({ ...obj, [key]: val }), {}) 
+               : {})
+          } 
+        });
+      } else {
+        navigate(from, { replace: true });
+      }
     }
-  }, [isAuthenticated, navigate, from]);
+  }, [isAuthenticated, navigate, from, tourDetails, location.state]);
   
   // 组件卸载时清除错误
   useEffect(() => {
@@ -57,6 +88,8 @@ const Register = () => {
     
     // 提交注册信息，不包含确认密码字段
     const { confirmPassword, ...registerData } = formData;
+    
+    // 调用注册action
     dispatch(registerUser(registerData));
   };
   
@@ -70,24 +103,12 @@ const Register = () => {
         
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
-            <label htmlFor="name">姓名</label>
+            <label htmlFor="username">用户名</label>
             <input
               type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="email">邮箱</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
+              id="username"
+              name="username"
+              value={formData.username}
               onChange={handleChange}
               required
             />
@@ -116,6 +137,18 @@ const Register = () => {
               onChange={handleChange}
               required
               minLength="6"
+            />
+          </div>
+          
+          <div className="form-group">
+            <label htmlFor="inviteCode">邀请码 (选填)</label>
+            <input
+              type="text"
+              id="inviteCode"
+              name="inviteCode"
+              value={formData.inviteCode}
+              onChange={handleChange}
+              placeholder="如有邀请码请填写"
             />
           </div>
           

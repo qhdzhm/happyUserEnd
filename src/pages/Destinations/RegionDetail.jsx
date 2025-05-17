@@ -399,56 +399,22 @@ const RegionDetail = () => {
             <p>探索{region.region}的精选旅游路线</p>
           </div>
           
-          <Row>
-            <Col md={4} className="mb-4">
-              <div className="tour-card">
-                <img src={image3} alt="行程1" className="img-fluid" />
-                <div className="tour-content">
-                  <h3>{region.region}一日游</h3>
-                  <p>体验{region.region}的精华景点和活动</p>
-                  <div className="tour-info">
-                    <span><FaMapMarkerAlt /> {region.region}</span>
-                    <span><FaCalendarAlt /> 1天</span>
+          <div className="row">
+            {region.relatedTours.map((item, index) => (
+              <div className="col-md-4 mb-4" key={index}>
+                <div className="region-tour-card">
+                  <img src={image3} alt={item.name} />
+                  <div className="region-tour-content">
+                    <h3>{item.name}</h3>
+                    <p>{item.description}</p>
+                    <div className="mt-3">
+                      <Link to={`/tours/${item.id}`} className="btn btn-outline-primary">了解更多</Link>
+                    </div>
                   </div>
-                  <Link to="/tours">
-                    <Button variant="outline-light">查看详情</Button>
-                  </Link>
                 </div>
               </div>
-            </Col>
-            <Col md={4} className="mb-4">
-              <div className="tour-card">
-                <img src={image4} alt="行程2" className="img-fluid" />
-                <div className="tour-content">
-                  <h3>{region.region}深度体验</h3>
-                  <p>深入探索{region.region}的自然和文化</p>
-                  <div className="tour-info">
-                    <span><FaMapMarkerAlt /> {region.region}</span>
-                    <span><FaCalendarAlt /> 2-3天</span>
-                  </div>
-                  <Link to="/tours">
-                    <Button variant="outline-light">查看详情</Button>
-                  </Link>
-                </div>
-              </div>
-            </Col>
-            <Col md={4} className="mb-4">
-              <div className="tour-card">
-                <img src={image5} alt="行程3" className="img-fluid" />
-                <div className="tour-content">
-                  <h3>塔斯马尼亚东部环线</h3>
-                  <p>包含{region.region}在内的东部精华行程</p>
-                  <div className="tour-info">
-                    <span><FaMapMarkerAlt /> 多地区</span>
-                    <span><FaCalendarAlt /> 5-7天</span>
-                  </div>
-                  <Link to="/tours">
-                    <Button variant="outline-light">查看详情</Button>
-                  </Link>
-                </div>
-              </div>
-            </Col>
-          </Row>
+            ))}
+          </div>
           
           <div className="text-center mt-4">
             <Link to="/tours">

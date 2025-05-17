@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { Spinner } from 'react-bootstrap';
+import { Spinner, Alert } from 'react-bootstrap';
 
 /**
  * 受保护的路由组件
@@ -12,14 +12,17 @@ import { Spinner } from 'react-bootstrap';
  * @param {React.ReactNode} props.children 子组件
  * @param {string[]} [props.requiredRoles] 需要的角色数组 ['admin', 'agent']
  * @param {boolean} [props.checkToken=true] 是否检查token
+ * @param {boolean} [props.agentRedirect=false] 是否将代理商重定向到代理商中心
  */
 const ProtectedRoute = ({ 
   children, 
   requiredRoles = [], 
-  checkToken = true 
+  checkToken = true,
+  agentRedirect = false
 }) => {
   const location = useLocation();
   const { isAuthenticated, loading, user } = useSelector(state => state.auth);
+  const [showRedirectMessage, setShowRedirectMessage] = useState(false);
   
   // 从localStorage获取token
   const token = localStorage.getItem('token');
@@ -32,6 +35,26 @@ const ProtectedRoute = ({
     const userRole = userType === 'agent' ? 'agent' : 'user';
     return requiredRoles.includes(userRole);
   };
+  
+  // 确定是否需要重定向到代理商中心
+  const shouldRedirectToAgentCenter = 
+    agentRedirect && 
+    userType === 'agent' && 
+    location.pathname === '/profile';
+  
+  // 只在初始挂载时检查是否需要显示重定向消息
+  useEffect(() => {
+    if (shouldRedirectToAgentCenter) {
+      setShowRedirectMessage(true);
+      
+      // 短暂延迟后隐藏消息 - 实际重定向会在render中通过Navigate组件处理
+      const timer = setTimeout(() => {
+        setShowRedirectMessage(false);
+      }, 1500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, []);  // 空依赖数组，确保只在组件挂载时执行一次
   
   // 如果加载中，显示加载指示器
   if (loading) {
@@ -63,6 +86,24 @@ const ProtectedRoute = ({
     return <Navigate to="/" state={{ 
       message: '您没有权限访问此页面' 
     }} replace />;
+  }
+  
+  // 如果需要重定向到代理商中心
+  if (shouldRedirectToAgentCenter) {
+    // 如果正在显示重定向消息
+    if (showRedirectMessage) {
+      return (
+        <div className="container mt-4">
+          <Alert variant="info" className="d-flex align-items-center">
+            <span>正在将您重定向到代理商中心</span>
+            <Spinner animation="border" size="sm" className="ms-2" />
+          </Alert>
+        </div>
+      );
+    }
+    
+    // 消息显示完毕后进行实际重定向
+    return <Navigate to="/agent-center" replace />;
   }
   
   // 如果用户已登录且有权限，正常显示子组件

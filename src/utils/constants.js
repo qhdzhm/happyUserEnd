@@ -103,7 +103,9 @@ export const STORAGE_KEYS = {
   CART: 'cart',
   RECENT_SEARCHES: 'recent_searches',
   LANGUAGE: 'language',
-  THEME: 'theme'
+  THEME: 'theme',
+  AUTHENTICATION: 'authentication',
+  USER_TOKEN: 'userToken'
 };
 
 // 不需要token的公共API列表

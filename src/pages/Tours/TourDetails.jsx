@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Container, Row, Col, Tab, Nav, Accordion, Button, Badge, Card, Form, Spinner, Alert } from 'react-bootstrap';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Container, Row, Col, Tab, Nav, Accordion, Button, Badge, Card, Form, Spinner, Alert, Modal } from 'react-bootstrap';
 import { Link, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import ImageGallery from 'react-image-gallery';
@@ -10,19 +10,39 @@ import { formatDate, calculateDiscountPrice } from '../../utils/helpers';
 import PriceDisplay from '../../components/PriceDisplay';
 import './tourDetails.css';
 import 'react-image-gallery/styles/css/image-gallery.css';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { getHotelPrices, calculateTourPrice } from '../../services/bookingService';
 
 // 导入默认图片
 import defaultImage from '../../assets/images/new/1.jpg';
+
+// 日期选择器自定义样式
+const datePickerStyles = {
+  zIndex: 9999,
+  position: 'relative'
+};
 
 // 主题色
 const themeColor = "#ff6b6b";
 
 const TourDetails = () => {
   const [activeTab, setActiveTab] = useState('overview');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(new Date());
+  const [endDate, setEndDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 7); // 默认结束日期为7天后
+    return date;
+  });
   const [adultCount, setAdultCount] = useState(2);
   const [childCount, setChildCount] = useState(0);
+  const [roomCount, setRoomCount] = useState(1);
+  const [selectedAdultCount, setSelectedAdultCount] = useState(2); // 用户选择的成人数量
+  const [selectedChildCount, setSelectedChildCount] = useState(0); // 用户选择的儿童数量
+  const [selectedRoomCount, setSelectedRoomCount] = useState(1); // 用户选择的房间数量
+  const [selectedDate, setSelectedDate] = useState(new Date()); // 用户选择的日期 - 确保初始化为Date对象
+  const [requiresDateSelection, setRequiresDateSelection] = useState(false); // 是否需要选择日期
+  const [calculatedPrice, setCalculatedPrice] = useState(null); // 计算的价格信息
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [tourData, setTourData] = useState(null);
@@ -38,11 +58,21 @@ const TourDetails = () => {
   const [loadingDiscount, setLoadingDiscount] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedHotelLevel, setSelectedHotelLevel] = useState('4星');
+  const [hotelPrices, setHotelPrices] = useState([]);
+  const [hotelPriceDifference, setHotelPriceDifference] = useState(0);
+  const [isPriceLoading, setIsPriceLoading] = useState(false);
+  const [totalPrice, setTotalPrice] = useState(null);
+  const [priceDebounceTimer, setPriceDebounceTimer] = useState(null); // 添加防抖定时器状态
+  const [reviews, setReviews] = useState([]);
+  const [showAllReviews, setShowAllReviews] = useState(false);
+  const [childrenAges, setChildrenAges] = useState([]);
+  const [showChildAgeInputs, setShowChildAgeInputs] = useState(false);
   
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useSelector(state => state.auth);
+  const { isAuthenticated, user, userType } = useSelector(state => state.auth);
   const dispatch = useDispatch();
   
   // 从URL路径和查询参数中确定类型
@@ -68,9 +98,8 @@ const TourDetails = () => {
   // 获取类型参数
   const type = determineType();
   
-  // 检查用户是否是代理商
-  const userRole = user?.role || localStorage.getItem('userType');
-  const isAgent = userRole === 'agent';
+  // 判断是否为代理商
+  const isAgent = userType === 'agent' || localStorage.getItem('userType') === 'agent';
   const agentId = user?.agentId || localStorage.getItem('agentId');
   const discountRate = user?.discountRate || localStorage.getItem('discountRate');
 
@@ -81,6 +110,18 @@ const TourDetails = () => {
   const fetchTimeoutRef = useRef(null); // 用于存储防抖定时器
   const retryCountRef = useRef(0); // 用于追踪重试次数
   const MAX_RETRIES = 2; // 最大重试次数
+
+  // 用于防止重复加载酒店价格的标志
+  const initialLoadRef = useRef(false);
+
+  // 用于跟踪API调用状态的标志
+  const isCallingApiRef = useRef(false);
+
+  // 用于防止酒店价格API重复调用的计数器
+  const hotelPriceApiCallCountRef = useRef(0);
+
+  // 使用ref记录最后一次请求的ID
+  const lastRequestIdRef = useRef(0);
 
   // 格式化日期显示
   const formatDate = (dateString) => {
@@ -109,7 +150,9 @@ const TourDetails = () => {
         
         // 确定获取的旅游类型和ID
         const tourId = id;
+        // 从URL路径和类型参数确定API类型
         const apiTourType = type === 'day' ? 'day' : 'group';
+        
         console.log(`获取旅游信息: ID=${tourId}, 类型=${apiTourType}`);
         
         // 设置页面状态
@@ -301,7 +344,7 @@ const TourDetails = () => {
         // 确定旅游类型
         let effectiveTourType;
         
-        // 优先使用tourData中的类型信息
+        // 按照常规逻辑判断类型
         if (tourData.tour_type) {
           console.log(`使用API返回的tourData.tour_type: ${tourData.tour_type}`);
           if (tourData.tour_type.includes('day')) {
@@ -416,10 +459,189 @@ const TourDetails = () => {
     );
   };
 
-  // 计算总价
-  const calculateTotalPrice = () => {
-    const basePrice = parseFloat(tourData?.price || 0);
-    return (adultCount * basePrice + childCount * basePrice * 0.7).toFixed(2);
+  
+
+  // 处理"立即预订"按钮点击
+  const handleBookNow = () => {
+    if (!tourData || !id) {
+      setError('无效的旅游产品');
+      return;
+    }
+    
+    // 计算总人数
+    const adultCount = selectedAdultCount || 1;
+    const childCount = selectedChildCount || 0;
+    const totalPeople = adultCount + childCount;
+    const roomCount = selectedRoomCount || 1;
+    
+    console.log('预订信息:', {
+      成人数: adultCount,
+      儿童数: childCount,
+      房间数: roomCount,
+      选择的酒店: selectedHotelLevel
+    });
+    
+    // 检查是否选择了日期（对于需要日期的产品）
+    if (requiresDateSelection && !selectedDate) {
+      setError('请选择旅游日期');
+      return;
+    }
+    
+    // 构建URL参数
+    const params = new URLSearchParams();
+    params.append('tourId', id);
+    params.append('tourName', tourData.title || tourData.name || '');
+    params.append('type', type);
+    params.append('adultCount', adultCount);
+    params.append('childCount', childCount);
+    params.append('roomCount', roomCount); // 确保添加roomCount参数
+    
+    // 根据旅游类型添加不同的日期参数
+    if (tourType === 'group_tour' || type === 'group') {
+      // 跟团游：添加arrivalDate和departureDate
+      if (startDate) {
+        params.append('arrivalDate', startDate.toISOString().split('T')[0]);
+      }
+      
+      if (endDate) {
+        params.append('departureDate', endDate.toISOString().split('T')[0]);
+      }
+    } else {
+      // 日游：只添加日期参数
+      if (selectedDate) {
+        params.append('date', selectedDate.toISOString().split('T')[0]);
+      }
+    }
+    
+    if (selectedHotelLevel) {
+      params.append('hotelLevel', selectedHotelLevel);
+    }
+    
+    // 如果有计算的价格，添加到URL
+    if (calculatedPrice && calculatedPrice.totalPrice) {
+      params.append('price', calculatedPrice.totalPrice);
+    } else {
+      // 否则使用产品基础价格
+      params.append('price', tourData.price);
+    }
+    
+    console.log('导航到预订页面，参数:', params.toString());
+    console.log('传递的state数据:', {
+      tourId: id,
+      tourType: type,
+      adultCount: adultCount,
+      childCount: childCount,
+      roomCount: roomCount, // 确保在state中传递roomCount
+      hotelLevel: selectedHotelLevel,
+      tourDate: selectedDate ? selectedDate.toISOString().split('T')[0] : 
+              (startDate ? startDate.toISOString().split('T')[0] : null)
+    });
+    
+    // 导航到预订页面，通过state传递更多详细数据
+    navigate(`/booking?${params.toString()}`, {
+      state: {
+        tourId: id,
+        tourType: type,
+        adultCount: adultCount,
+        childCount: childCount,
+        roomCount: roomCount, // 确保在state中传递roomCount
+        tourDate: selectedDate ? selectedDate.toISOString().split('T')[0] : 
+                (startDate ? startDate.toISOString().split('T')[0] : null),
+        bookingOptions: {
+          hotelLevel: selectedHotelLevel,
+          // 添加其他可能的选项
+          totalPrice: calculatedPrice?.totalPrice || tourData.price,
+          hotelPriceDifference: calculatedPrice?.hotelPriceDifference || 0,
+          dailySingleRoomSupplement: calculatedPrice?.dailySingleRoomSupplement || 0
+        },
+        tourData: {
+          title: tourData.title || tourData.name,
+          imageUrl: tourData.imageUrl || tourData.coverImage,
+          duration: tourData.duration,
+          hotelNights: tourData.hotelNights || (tourData.duration ? tourData.duration - 1 : 0),
+          highlights: tourData.highlights ? tourData.highlights.slice(0, 3) : []
+        }
+      }
+    });
+  };
+
+  // 在产品详情页面添加日期选择器
+  const renderDateSelectors = () => {
+    return (
+      <Card className="mb-4">
+        <Card.Header>
+          <h3 className="h5 mb-0">选择行程日期</h3>
+        </Card.Header>
+        <Card.Body>
+          <Row>
+            {tourType === 'group_tour' || type === 'group' ? (
+              // 团体游显示起始和结束日期
+              <>
+                <Col md={6} className="mb-3">
+                  <Form.Group>
+                    <Form.Label><FaCalendarAlt className="me-2" />到达日期</Form.Label>
+                    <DatePicker
+                      selected={startDate}
+                      onChange={date => setStartDate(date)}
+                      selectsStart
+                      startDate={startDate}
+                      endDate={endDate}
+                      minDate={new Date()}
+                      className="form-control"
+                      dateFormat="yyyy年MM月dd日"
+                      calendarClassName="date-picker-calendar"
+                      wrapperClassName="date-picker-wrapper"
+                      showPopperArrow={false}
+                      portalId="date-picker-portal"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6} className="mb-3">
+                  <Form.Group>
+                    <Form.Label><FaCalendarAlt className="me-2" />离开日期</Form.Label>
+                    <DatePicker
+                      selected={endDate}
+                      onChange={date => setEndDate(date)}
+                      selectsEnd
+                      startDate={startDate}
+                      endDate={endDate}
+                      minDate={startDate}
+                      className="form-control"
+                      dateFormat="yyyy年MM月dd日"
+                      calendarClassName="date-picker-calendar"
+                      wrapperClassName="date-picker-wrapper"
+                      showPopperArrow={false}
+                      portalId="date-picker-portal"
+                    />
+                  </Form.Group>
+                </Col>
+              </>
+            ) : (
+              // 一日游只显示单个日期
+              <Col md={12} className="mb-3">
+                <Form.Group>
+                  <Form.Label><FaCalendarAlt className="me-2" />旅游日期</Form.Label>
+                  <DatePicker
+                    selected={selectedDate}
+                    onChange={handleDateChange}
+                    minDate={new Date()}
+                    className="form-control"
+                    dateFormat="yyyy年MM月dd日"
+                    calendarClassName="date-picker-calendar"
+                    wrapperClassName="date-picker-wrapper"
+                    showPopperArrow={false}
+                    portalId="date-picker-portal"
+                  />
+                  <Form.Text className="text-muted">
+                    请选择您计划的旅游日期
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+            )}
+          </Row>
+        </Card.Body>
+      </Card>
+    );
   };
 
   // 渲染主要内容
@@ -800,63 +1022,356 @@ const TourDetails = () => {
                     <div className="price-section mb-4">
                       <h5 className="mb-2">价格</h5>
                       <div className="text-end">
-                        {loadingDiscount ? (
+                        {loadingDiscount || isPriceLoading ? (
                           <Spinner animation="border" size="sm" />
                         ) : (
-                          <PriceDisplay 
-                            originalPrice={Number(tourData?.price || 0)}
-                            discountedPrice={isAgent ? discountedPrice : null}
-                            currency="¥"
-                            size="large"
-                            showBadge={true}
-                          />
+                          <Card className="tour-price-card mb-4">
+                            <Card.Header className="card-header-lg">
+                              
+                            </Card.Header>
+                            <Card.Body>
+                              <div className="price-display mb-3">
+                                <PriceDisplay
+                                  originalPrice={calculatedPrice?.nonAgentPrice}
+                                  discountedPrice={calculatedPrice?.totalPrice}
+                                  showBadge={true}
+                                  size="large"
+                                  hotelPriceDifference={calculatedPrice?.hotelPriceDifference}
+                                  hotelNights={tourData?.hotelNights || (tourData.duration ? tourData.duration - 1 : 0)}
+                                  baseHotelLevel={calculatedPrice?.baseHotelLevel || "4星"}
+                                  dailySingleRoomSupplement={calculatedPrice?.dailySingleRoomSupplement}
+                                  extraRoomFee={calculatedPrice?.extraRoomFee}
+                                  isAgent={isAgent}
+                                />
+                              </div>
+                              
+                              {/* 显示酒店差价信息 */}
+                              {(type === 'group' || tourType === 'group_tour') && (
+                                <div className="hotel-price-note mt-2 py-1 px-2 rounded bg-light">
+                                  {/* 添加代理商价格说明 */}
+                                  {isAgent && calculatedPrice && calculatedPrice.nonAgentPrice && calculatedPrice.totalPrice && (
+                                    <div className="d-flex align-items-center mb-2">
+                                      <FaPercent className="text-primary me-2" />
+                                      <span>
+                                        代理商价格：<strong>¥{calculatedPrice.totalPrice.toFixed(2)}</strong>
+                                        {calculatedPrice.nonAgentPrice > calculatedPrice.totalPrice && (
+                                          <span className="text-success ms-1 fw-bold">
+                                            (节省 ¥{(calculatedPrice.nonAgentPrice - calculatedPrice.totalPrice).toFixed(2)})
+                                          </span>
+                                        )}
+                                      </span>
+                                    </div>
+                                  )}
+                                  
+                                  <div className="d-flex align-items-center">
+                                    <FaHotel className="text-primary me-2" />
+                                    <span>
+                                      当前选择：<strong>{selectedHotelLevel}</strong> 
+                                      {calculatedPrice && calculatedPrice.hotelPriceDifference > 0 && 
+                                        <span className="text-danger ms-1 fw-bold">
+                                          (+¥{Math.abs(calculatedPrice.hotelPriceDifference).toFixed(2)}/晚)
+                                        </span>
+                                      }
+                                      {calculatedPrice?.hotelPriceDifference < 0 && 
+                                        <span className="text-success ms-1 fw-bold">
+                                          (-¥{Math.abs(calculatedPrice.hotelPriceDifference).toFixed(2)}/晚)
+                                        </span>
+                                      }
+                                      {(calculatedPrice?.hotelPriceDifference === 0 || calculatedPrice?.hotelPriceDifference === undefined) && 
+                                        <span className="text-muted ms-1">
+                                          (基准价)
+                                        </span>
+                                      }
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="d-flex align-items-center mt-2">
+                                    <FaBed className="text-primary me-2" />
+                                    <span>
+                                      房间数：<strong>{calculatedPrice?.roomCount || roomCount}</strong>间
+                                    </span>
+                                  </div>
+                                  
+                                  {calculatedPrice && calculatedPrice.extraRoomFee > 0 && (
+                                    <div className="d-flex align-items-center mt-2">
+                                      <FaHotel className="text-success me-2" />
+                                      <span>
+                                        单房差：<strong>¥{calculatedPrice.extraRoomFee.toFixed(2)}</strong>
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </Card.Body>
+                          </Card>
                         )}
                       </div>
                       
-                      {isAgent && discountRate && (
-                        <div className="agent-info mt-2">
-                          <Badge bg="info" className="d-flex align-items-center">
-                            <FaPercent className="me-1" /> 代理商折扣率: {Math.round(discountRate * 100)}%
-                          </Badge>
+                      
+
+                      {/* 人数选择部分 - 移到前面 */}
+                      <div className="passenger-selection-section mb-4">
+                        <h5 className="mb-3">人数选择</h5>
+                        <Form>
+                          <Row>
+                            <Col md={6} className="mb-3">
+                              <Form.Group>
+                                <Form.Label><FaUsers className="me-2" />成人数量</Form.Label>
+                                <Form.Control
+                                  type="number"
+                                  min="1"
+                                  value={adultCount}
+                                  onChange={handleAdultCountChange}
+                                />
+                              </Form.Group>
+                            </Col>
+                            <Col md={6} className="mb-3">
+                              <Form.Group>
+                                <Form.Label><FaChild className="me-2" />儿童数量</Form.Label>
+                                <Form.Control
+                                  type="number"
+                                  min="0"
+                                  value={childCount}
+                                  onChange={handleChildCountChange}
+                                />
+                              </Form.Group>
+                            </Col>
+                          </Row>
+                          
+                          {/* 儿童年龄输入区域 - 为每个儿童单独显示年龄输入框 */}
+                          {childCount > 0 && (
+                            <div className="children-ages mt-3">
+                              <h6 className="mb-2">儿童年龄 <small className="text-muted">(请填写每位儿童的年龄)</small></h6>
+                              <Row>
+                                {Array.from({ length: childCount }).map((_, index) => (
+                                  <Col md={4} key={index} className="mb-2">
+                                    <Form.Group>
+                                      <Form.Label className="small">儿童 {index + 1}</Form.Label>
+                                      <Form.Control
+                                        type="number"
+                                        min="0"
+                                        max="17"
+                                        value={childrenAges[index] || 0}
+                                        onChange={(e) => handleChildAgeChange(index, e.target.value)}
+                                        placeholder="年龄"
+                                      />
+                                    </Form.Group>
+                                  </Col>
+                                ))}
+                              </Row>
+                              <div className="text-muted small mt-2">
+                                <FaInfoCircle className="me-1" /> 儿童年龄将影响价格计算
+                              </div>
+                            </div>
+                          )}
+                        </Form>
+                      </div>
+                      
+                      {/* 添加房间数量选择 */}
+                      {(type === 'group' || tourType === 'group_tour') && (
+                        <div className="room-selection-section mb-4">
+                          <h5 className="mb-3">房间数量</h5>
+                          <Form>
+                            <Form.Group>
+                              <Form.Label><FaBed className="me-2" />房间数</Form.Label>
+                              <Form.Control
+                                type="number"
+                                min="1"
+                                value={roomCount}
+                                onChange={handleRoomCountChange}
+                              />
+                              <Form.Text className="text-muted">
+                                建议选择{Math.ceil(adultCount/2)}间房间，您可以根据需求自由选择
+                              </Form.Text>
+                            </Form.Group>
+                          </Form>
                         </div>
                       )}
-                    </div>
-                    
-                    <div className="tour-details-section mb-4">
-                      <h5 className="mb-2">行程详情</h5>
-                      <div className="tour-info-list">
-                        <div className="tour-info-row d-flex align-items-center mb-2">
-                          <FaInfoCircle className="text-danger me-2" />
-                          <span>请咨询客服了解详细出发信息</span>
+                      
+                      {/* 酒店选择部分 - 移到后面 */}
+                      {(type === 'group' || tourType === 'group_tour') && (
+                        <div className="hotel-selection-section mb-4">
+                          <h5 className="mb-3">套餐类型</h5>
+                          <div className="hotel-options">
+                            <Form>
+                              <Form.Group className="mb-2">
+                                {/* 使用hotelPrices数据动态生成选项 */}
+                                {hotelPrices && hotelPrices.length > 0 ? (
+                                  hotelPrices.map((hotel) => (
+                                    <Form.Check
+                                      key={hotel.id}
+                                      type="radio"
+                                      id={`hotel-${hotel.hotelLevel}`}
+                                      name="hotelLevel"
+                                      label={
+                                        <>
+                                          {hotel.hotelLevel}酒店 
+                                          <span className="ms-1">
+                                            {hotel.isBaseLevel ? 
+                                              '(基准价)' : 
+                                              hotel.priceDifference > 0 ? 
+                                                `(+¥${hotel.priceDifference}/晚)` : 
+                                                `(-¥${Math.abs(hotel.priceDifference)}/晚)`
+                                            }
+                                          </span>
+                                          <div className="small text-muted">{hotel.description}</div>
+                                        </>
+                                      }
+                                      value={hotel.hotelLevel}
+                                      checked={selectedHotelLevel === hotel.hotelLevel}
+                                      onChange={handleHotelLevelChange}
+                                      className="mb-2"
+                                    />
+                                  ))
+                                ) : (
+                                  <>
+                                    <Form.Check
+                                      type="radio"
+                                      id="hotel-3"
+                                      name="hotelLevel"
+                                      label={<>3星酒店 (-¥60/晚)<div className="small text-muted">标准三星级酒店</div></>}
+                                      value="3星"
+                                      checked={selectedHotelLevel === '3星'}
+                                      onChange={handleHotelLevelChange}
+                                      className="mb-2"
+                                    />
+                                    <Form.Check
+                                      type="radio"
+                                      id="hotel-4"
+                                      name="hotelLevel"
+                                      label={<>4星酒店 (基准价)<div className="small text-muted">舒适四星级酒店</div></>}
+                                      value="4星"
+                                      checked={selectedHotelLevel === '4星'}
+                                      onChange={handleHotelLevelChange}
+                                      className="mb-2"
+                                    />
+                                    <Form.Check
+                                      type="radio"
+                                      id="hotel-4.5"
+                                      name="hotelLevel"
+                                      label={<>4.5星酒店 (+¥140/晚)<div className="small text-muted">高级四星半级酒店</div></>}
+                                      value="4.5星"
+                                      checked={selectedHotelLevel === '4.5星'}
+                                      onChange={handleHotelLevelChange}
+                                      className="mb-2"
+                                    />
+                                    <Form.Check
+                                      type="radio"
+                                      id="hotel-5"
+                                      name="hotelLevel"
+                                      label={<>5星酒店 (+¥240/晚)<div className="small text-muted">豪华五星级酒店</div></>}
+                                      value="5星"
+                                      checked={selectedHotelLevel === '5星'}
+                                      onChange={handleHotelLevelChange}
+                                      className="mb-2"
+                                    />
+                                  </>
+                                )}
+                              </Form.Group>
+                            </Form>
+                          </div>
+                          {isPriceLoading && (
+                            <div className="mt-2 text-center">
+                              <Spinner animation="border" size="sm" className="me-2" />
+                              <span className="text-muted">计算价格中...</span>
+                            </div>
+                          )}
                         </div>
-                        <div className="tour-info-row d-flex align-items-center mb-2">
-                          <FaUsers className="text-danger me-2" />
-                          <span>2-16人</span>
-                        </div>
-                        <div className="tour-info-row d-flex align-items-center mb-0">
-                          <FaLanguage className="text-danger me-2" />
-                          <span>中文导游</span>
-                        </div>
-                      </div>
-                    </div>
+                      )}
+                      
+                      {/* 添加日期选择器 */}
+                      {renderDateSelectors()}
 
-                    {isAuthenticated ? (
-                      <Link to={`/booking/${id}`} className="d-block mb-3">
-                        <Button variant="primary" style={{ backgroundColor: '#FF6B6B', borderColor: '#FF6B6B' }} size="lg" className="w-100 py-2">
+                      {isAuthenticated ? (
+                        <Button 
+                          variant="primary" 
+                          style={{ backgroundColor: '#FF6B6B', borderColor: '#FF6B6B' }} 
+                          size="lg" 
+                          className="w-100 py-2 mb-3"
+                          onClick={handleBookNow}
+                        >
                           立即预订
                         </Button>
-                      </Link>
-                    ) : (
-                      <Link to={`/login`} state={{ from: `/booking/${id}`, message: "请先登录后再进行预订" }} className="d-block mb-3">
-                        <Button variant="primary" style={{ backgroundColor: '#FF6B6B', borderColor: '#FF6B6B' }} size="lg" className="w-100 py-2">
+                      ) : (
+                        <Button 
+                          variant="primary" 
+                          style={{ backgroundColor: '#FF6B6B', borderColor: '#FF6B6B' }} 
+                          size="lg" 
+                          className="w-100 py-2 mb-3"
+                          onClick={() => {
+                            // 构建与handleBookNow相同的URL参数
+                            const params = new URLSearchParams();
+                            params.append('tourId', id);
+                            params.append('tourName', tourData.title || tourData.name || '');
+                            params.append('type', type);
+                            params.append('adultCount', adultCount);
+                            params.append('childCount', childCount);
+                            params.append('roomCount', roomCount);
+                            
+                            if (startDate) {
+                              params.append('arrivalDate', startDate.toISOString().split('T')[0]);
+                            }
+                            
+                            if (endDate) {
+                              params.append('departureDate', endDate.toISOString().split('T')[0]);
+                            }
+                            
+                            if (selectedDate) {
+                              params.append('date', selectedDate.toISOString().split('T')[0]);
+                            }
+                            
+                            if (selectedHotelLevel) {
+                              params.append('hotelLevel', selectedHotelLevel);
+                            }
+                            
+                            // 如果有计算的价格，添加到URL
+                            if (calculatedPrice && calculatedPrice.totalPrice) {
+                              params.append('price', calculatedPrice.totalPrice);
+                            } else {
+                              // 否则使用产品基础价格
+                              params.append('price', tourData.price);
+                            }
+                            
+                            // 准备登录后传递的state数据
+                            const loginState = {
+                              from: `/booking?${params.toString()}`,
+                              message: "请先登录后再进行预订",
+                              tourDetails: {
+                                tourId: id,
+                                tourType: type,
+                                adultCount: adultCount,
+                                childCount: childCount,
+                                roomCount: roomCount,
+                                tourDate: selectedDate ? selectedDate.toISOString().split('T')[0] : 
+                                        (startDate ? startDate.toISOString().split('T')[0] : null),
+                                bookingOptions: {
+                                  hotelLevel: selectedHotelLevel,
+                                  totalPrice: calculatedPrice?.totalPrice || tourData.price,
+                                  hotelPriceDifference: calculatedPrice?.hotelPriceDifference || 0,
+                                  dailySingleRoomSupplement: calculatedPrice?.dailySingleRoomSupplement || 0
+                                },
+                                tourData: {
+                                  title: tourData.title || tourData.name,
+                                  imageUrl: tourData.imageUrl || tourData.coverImage,
+                                  duration: tourData.duration,
+                                  hotelNights: tourData.hotelNights || (tourData.duration ? tourData.duration - 1 : 0),
+                                  highlights: tourData.highlights ? tourData.highlights.slice(0, 3) : []
+                                }
+                              }
+                            };
+                            
+                            // 导航到登录页面
+                            navigate('/login', { state: loginState });
+                          }}
+                        >
                           立即预订
                         </Button>
-                      </Link>
-                    )}
-                    
-                    <Button variant="outline-secondary" className="w-100 py-2">
-                      加入收藏
-                    </Button>
+                      )}
+                      
+                      <Button variant="outline-secondary" className="w-100 py-2">
+                        加入收藏
+                      </Button>
+                    </div>
                   </Card.Body>
                 </Card>
 
@@ -1029,9 +1544,359 @@ const TourDetails = () => {
     );
   };
 
+  // 处理成人数量变更
+  const handleAdultCountChange = (e) => {
+    const newAdultCount = parseInt(e.target.value) || 1;
+    if (newAdultCount < 1) return;
+    
+    // 更新成人数量状态
+    setAdultCount(newAdultCount);
+    setSelectedAdultCount(newAdultCount);
+    
+    // 调用后端API获取价格 - 不自动调整房间数
+    sendParamsToBackend(newAdultCount, childCount, roomCount, selectedHotelLevel);
+  };
+  
+  // 处理儿童数量变更
+  const handleChildCountChange = (e) => {
+    const newChildCount = parseInt(e.target.value) || 0;
+    if (newChildCount < 0) return;
+    
+    // 更新状态
+    setChildCount(newChildCount);
+    setSelectedChildCount(newChildCount);
+    
+    // 更新儿童年龄数组
+    const newChildrenAges = [...childrenAges];
+    if (newChildCount > childrenAges.length) {
+      // 如果增加了儿童，添加新的年龄项，默认为0
+      for (let i = childrenAges.length; i < newChildCount; i++) {
+        newChildrenAges.push(0);
+      }
+    } else if (newChildCount < childrenAges.length) {
+      // 如果减少了儿童，移除多余的年龄项
+      newChildrenAges.splice(newChildCount);
+    }
+    
+    setChildrenAges(newChildrenAges);
+    setShowChildAgeInputs(newChildCount > 0);
+    
+    // 发送参数到后端，包括儿童年龄
+    sendParamsToBackend(adultCount, newChildCount, roomCount, selectedHotelLevel, newChildrenAges);
+  };
+  
+  // 处理房间数量变更
+  const handleRoomCountChange = (e) => {
+    const newRoomCount = parseInt(e.target.value) || 1;
+    if (newRoomCount < 1) return;
+    
+    // 更新状态
+    setRoomCount(newRoomCount);
+    setSelectedRoomCount(newRoomCount);
+    
+    // 调用后端API获取价格
+    sendParamsToBackend(adultCount, childCount, newRoomCount, selectedHotelLevel);
+  };
+  
+  // 处理酒店星级变更
+  const handleHotelLevelChange = (e) => {
+    const newLevel = e.target.value;
+    setSelectedHotelLevel(newLevel);
+    
+    // 调用后端API获取价格
+    sendParamsToBackend(adultCount, childCount, roomCount, newLevel);
+  };
+  
+  // 处理日期选择
+  const handleDateChange = (date) => {
+    console.log('日期选择器变更:', date);
+    
+    // 如果日期为null，设置为当前日期
+    if (date === null) {
+      setSelectedDate(new Date());
+      return;
+    }
+    
+    // 确保date是有效的Date对象
+    if (date && date instanceof Date && !isNaN(date.getTime())) {
+      setSelectedDate(date);
+      
+      // 日期变更后可能需要重新获取价格
+      if (tourData) {
+        sendParamsToBackend(adultCount, childCount, roomCount, selectedHotelLevel);
+      }
+    } else {
+      console.error('无效的日期值:', date);
+      // 如果传入的日期无效，则使用当前日期
+      setSelectedDate(new Date());
+    }
+  };
+  
+  // 处理儿童年龄变化
+  const handleChildAgeChange = (index, age) => {
+    const newChildrenAges = [...childrenAges];
+    newChildrenAges[index] = parseInt(age) || 0;
+    setChildrenAges(newChildrenAges);
+    
+    // 直接发送更新后的参数到后端，不进行前端计算
+    sendParamsToBackend(adultCount, childCount, roomCount, selectedHotelLevel, newChildrenAges);
+  };
+  
+  // 向后端发送参数的简化函数
+  const sendParamsToBackend = (adults, children, rooms, hotelLevel, ages = childrenAges) => {
+    // 如果已经在调用API，避免重复调用
+    if (isCallingApiRef.current) {
+      console.log('API调用进行中，跳过重复请求');
+      return;
+    }
+    
+    // 设置API调用状态
+    isCallingApiRef.current = true;
+    
+    // 设置价格加载状态
+    setIsPriceLoading(true);
+    
+    // 生成唯一请求ID
+    const requestId = Math.random().toString(36).substring(7);
+    
+    const requestTourId = id;
+    const requestTourType = type === 'group' ? 'group_tour' : 'day_tour';
+    const requestAdultCount = parseInt(adults, 10) || 1;
+    const requestChildCount = parseInt(children, 10) || 0;
+    const requestRoomCount = parseInt(rooms, 10) || 1;
+    const requestHotelLevel = hotelLevel || selectedHotelLevel || '4星';
+    
+    console.log(`[${requestId}] 发送参数给后端: id=${requestTourId}, 类型=${requestTourType}, 成人=${requestAdultCount}, 儿童=${requestChildCount}, 酒店=${requestHotelLevel}, 房间数=${requestRoomCount}, 儿童年龄=${ages ? ages.join(',') : ''}`);
+    
+    // 直接使用计算接口
+    const fetchPrice = async () => {
+      try {
+        const priceData = await calculateTourPrice(
+          requestTourId,
+          requestTourType,
+          requestAdultCount,
+          requestChildCount,
+          requestHotelLevel,
+          null, // agentId - 从用户状态获取
+          requestRoomCount,
+          null, // userId - 从用户状态获取
+          ages // 儿童年龄数组
+        );
+        
+        console.log(`[${requestId}] 价格计算结果:`, priceData);
+        
+        // 如果请求成功返回
+        if (priceData && (priceData.code === 1 || priceData.code === 200) && priceData.data) {
+          const totalPrice = priceData.data.totalPrice || 0;
+          const originalPrice = priceData.data.originalPrice || totalPrice;
+          
+          setCalculatedPrice({
+            ...priceData.data,
+            totalPrice: totalPrice,
+            originalPrice: originalPrice
+          });
+          
+          console.log(`[${requestId}] 价格已更新: 总价=${totalPrice}, 原价=${originalPrice}`);
+        } else {
+          console.error(`[${requestId}] 价格计算API调用失败:`, priceData);
+          setCalculatedPrice(null);
+        }
+      } catch (error) {
+        console.error(`[${requestId}] 价格计算出错:`, error);
+        setCalculatedPrice(null);
+      } finally {
+        // 清除加载状态
+        setIsPriceLoading(false);
+        // 重置API调用状态
+        isCallingApiRef.current = false;
+      }
+    };
+    
+    // 执行API调用
+    fetchPrice();
+  };
+
+  // 初始化日期选择状态
+  useEffect(() => {
+    if (tourData) {
+      // 检查是否是需要选择日期的产品类型（如一日游）
+      const isDayTour = tourType === 'day_tour' || type === 'day';
+      setRequiresDateSelection(isDayTour);
+      
+      // 为日期选择类型的产品设置默认日期
+      if (isDayTour && (!selectedDate || !(selectedDate instanceof Date))) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        setSelectedDate(tomorrow);
+      }
+    }
+  }, [tourData, tourType, type, selectedDate]);
+
+  useEffect(() => {
+    // 记录组件挂载和卸载
+    console.log("TourDetails组件已挂载");
+    // 重置API调用计数器
+    hotelPriceApiCallCountRef.current = 0;
+    
+    return () => {
+      console.log("TourDetails组件已卸载");
+      // 组件卸载时重置状态
+      initialLoadRef.current = false;
+      isCallingApiRef.current = false;
+      
+      // 清除可能存在的防抖定时器
+      if (priceDebounceTimer) {
+        clearTimeout(priceDebounceTimer);
+      }
+    };
+  }, [priceDebounceTimer]);
+
+  useEffect(() => {
+    const fetchHotelPrices = async () => {
+      // 如果已经加载过，不再重复加载
+      if (initialLoadRef.current) {
+        console.log("酒店价格已加载，跳过重复请求");
+        return;
+      }
+      
+      // 限制API调用次数，避免无限循环
+      if (hotelPriceApiCallCountRef.current >= 1) {
+        console.log(`已达到酒店价格API调用上限(${hotelPriceApiCallCountRef.current}次)，跳过请求`);
+        return;
+      }
+      
+      // 增加API调用计数
+      hotelPriceApiCallCountRef.current++;
+      console.log(`[初始化] 获取酒店价格列表 - 第${hotelPriceApiCallCountRef.current}次`);
+      
+      // 标记为已加载
+      initialLoadRef.current = true;
+      
+      if (type === 'group' || tourType === 'group_tour') {
+        console.log(`获取酒店价格列表...(第${hotelPriceApiCallCountRef.current}次)`);
+        
+        try {
+          const result = await getHotelPrices().catch(err => {
+            console.error('获取酒店价格列表失败:', err);
+            return { code: 0, data: [] };
+          });
+          
+          // 检查响应是否成功
+          if (result && result.code === 1 && Array.isArray(result.data)) {
+            // 处理酒店价格数据
+            const validData = result.data.map(hotel => ({
+              ...hotel,
+              hotelLevel: hotel.hotelLevel ? String(hotel.hotelLevel) : '4星',
+              priceDifference: typeof hotel.priceDifference === 'number' ? hotel.priceDifference : 0,
+              id: hotel.id || Math.floor(Math.random() * 10000),
+              description: hotel.description || `${hotel.hotelLevel || '4星'}酒店`
+            }));
+            
+            setHotelPrices(validData);
+            
+            // 获取酒店列表后，延迟一点时间发送初始参数获取价格
+            if (tourData) {
+              // 使用setTimeout延迟调用，直接调用函数
+              setTimeout(() => {
+                if (typeof sendParamsToBackend === 'function') {
+                  // 特殊标记这是初始加载的价格请求
+                  console.log('[初始化] 初始化加载后获取价格');
+                  sendParamsToBackend(adultCount, childCount, roomCount, selectedHotelLevel);
+                }
+              }, 500);
+            }
+          } else {
+            setHotelPrices([]);
+            
+            // 即使未能获取到有效数据，也尝试获取价格
+            if (tourData) {
+              setTimeout(() => {
+                if (typeof sendParamsToBackend === 'function') {
+                  sendParamsToBackend(adultCount, childCount, roomCount, selectedHotelLevel);
+                }
+              }, 500);
+            }
+          }
+        } catch (error) {
+          console.error('获取酒店价格列表失败:', error);
+          setHotelPrices([]);
+          
+          // 即使出错，也尝试获取价格
+          if (tourData) {
+            setTimeout(() => {
+              if (typeof sendParamsToBackend === 'function') {
+                sendParamsToBackend(adultCount, childCount, roomCount, selectedHotelLevel);
+              }
+            }, 500);
+          }
+        }
+      } else if (tourData) {
+        // 对于一日游，直接获取初始价格
+        setTimeout(() => {
+          if (typeof sendParamsToBackend === 'function') {
+            sendParamsToBackend(adultCount, childCount, roomCount, selectedHotelLevel);
+          }
+        }, 500);
+      }
+    };
+    
+    // 当旅游数据加载完成时，获取酒店价格和初始价格
+    if (tourData && id) {
+      fetchHotelPrices();
+    }
+  }, [id, tourData, type, tourType]);
+  
+  // 监听日期选择变化，获取价格
+  useEffect(() => {
+    // 只有当旅游数据已加载且为一日游，且日期明确发生变化时才请求价格
+    if (selectedDate && tourData && (tourType === 'day_tour' || type === 'day')) {
+      console.log('日期已变更，需要更新价格');
+      
+      // 确保使用最新的状态值
+      const currentAdultCount = adultCount;
+      const currentChildCount = childCount;
+      const currentRoomCount = roomCount;
+      const currentHotelLevel = selectedHotelLevel;
+      
+      // 限制API调用频率，延迟稍微久一点，确保与其他状态更新不冲突
+      setTimeout(() => {
+        // 进行一次价格请求
+        sendParamsToBackend(currentAdultCount, currentChildCount, currentRoomCount, currentHotelLevel);
+      }, 200);
+    }
+  }, [selectedDate]); // 只监听日期变更
+
+  // 跳转到预订页面
+  const handleBooking = () => {
+    // 如果用户未登录，先跳转到登录页面
+    if (!isAuthenticated) {
+      const redirectPath = `/tours/${id}`;
+      navigate('/auth/login', { state: { from: redirectPath } });
+      return;
+    }
+    
+    const bookingData = {
+      tourId: id,
+      tourName: tourData?.title,
+      tourDate: selectedDate,
+      adultCount: adultCount,
+      childCount: childCount,
+      roomCount: roomCount,
+      childrenAges: childrenAges, // 添加儿童年龄数组
+      bookingOptions: {
+        hotelLevel: selectedHotelLevel,
+        pickupLocation: '',
+      }
+    };
+    
+    // 跳转到预订页面
+    navigate(`/booking?tourId=${id}&type=${type || tourType}`, { state: bookingData });
+  };
+
   return (
     <div className="tour-details-page">
       {renderContent()}
+      <div id="date-picker-portal" />
     </div>
   );
 };

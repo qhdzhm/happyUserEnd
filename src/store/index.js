@@ -29,4 +29,6 @@ const store = configureStore({
     })
 });
 
+// 同时导出默认和命名导出
+export { store };
 export default store; 

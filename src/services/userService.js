@@ -1,4 +1,5 @@
 import request from '../utils/request';
+import { addAuthHeaders, setToken } from '../utils/auth';
 
 /**
  * 用户服务 - 处理与用户相关的API请求
@@ -10,7 +11,21 @@ import request from '../utils/request';
  * @returns {Promise} - 请求Promise
  */
 export const login = (data) => {
-  return request.post('/api/auth/login', data);
+  return request.post('/api/auth/login', data).then(response => {
+    // 如果登录成功，保存token
+    if (response && response.code === 1 && response.data) {
+      const { token, userId, userType } = response.data;
+      
+      // 保存token
+      setToken(token);
+      
+      // 保存其他用户信息
+      if (userId) localStorage.setItem('userId', userId);
+      if (userType) localStorage.setItem('userType', userType);
+    }
+    
+    return response;
+  });
 };
 
 /**
@@ -19,7 +34,22 @@ export const login = (data) => {
  * @returns {Promise} - 请求Promise
  */
 export const register = (data) => {
-  return request.post('/api/auth/register', data);
+  return request.post('/api/user/register', data).then(response => {
+    // 如果注册成功，保存token
+    if (response && response.code === 1 && response.data) {
+      const { token, id, username, userType } = response.data;
+      
+      // 保存token
+      setToken(token);
+      
+      // 保存其他用户信息
+      if (id) localStorage.setItem('userId', id);
+      if (username) localStorage.setItem('username', username);
+      if (userType) localStorage.setItem('userType', userType);
+    }
+    
+    return response;
+  });
 };
 
 /**
@@ -27,10 +57,14 @@ export const register = (data) => {
  * @returns {Promise} - 请求Promise
  */
 export const getUserInfo = () => {
+  // 添加认证头部
+  const headers = addAuthHeaders();
+  
   // 使用缓存，缓存时间为10分钟
   return request.get('/api/users/profile', {}, { 
     useCache: true, 
-    cacheTime: 10 * 60 * 1000 
+    cacheTime: 10 * 60 * 1000,
+    headers
   });
 };
 
@@ -40,8 +74,11 @@ export const getUserInfo = () => {
  * @returns {Promise} - 请求Promise
  */
 export const updateUserInfo = (data) => {
+  // 添加认证头部
+  const headers = addAuthHeaders();
+  
   // 更新用户信息后清除缓存
-  const response = request.put('/api/users/profile', data);
+  const response = request.put('/api/users/profile', data, { headers });
   request.clearCache('/api/users/profile');
   return response;
 };
@@ -52,33 +89,30 @@ export const updateUserInfo = (data) => {
  * @returns {Promise} - 请求Promise
  */
 export const updatePassword = (data) => {
-  return request.put('/api/users/password', data);
-};
-
-/**
- * 获取用户订单列表
- * @param {Object} params - 查询参数
- * @returns {Promise} - 请求Promise
- */
-export const getUserOrders = (params = {}) => {
-  // 使用缓存，缓存时间为5分钟
-  return request.get('/api/users/orders', params, { 
-    useCache: true, 
-    cacheTime: 5 * 60 * 1000 
-  });
-};
-
-/**
- * 获取用户订单详情
- * @param {string} orderId - 订单ID
- * @returns {Promise} - 请求Promise
- */
-export const getUserOrderDetail = (orderId) => {
-  // 使用缓存，缓存时间为5分钟
-  return request.get(`/api/users/orders/${orderId}`, {}, { 
-    useCache: true, 
-    cacheTime: 5 * 60 * 1000 
-  });
+  // 添加认证头部
+  const headers = addAuthHeaders();
+  
+  return request.put('/api/user/password', data, { headers })
+    .then(response => {
+      // 如果密码修改成功，清除token和用户状态
+      if (response && response.code === 1) {
+        // 导入清除token和登出函数
+        const { clearToken } = require('../utils/auth');
+        const { logout } = require('../store/slices/authSlice');
+        const store = require('../store').default;
+        
+        // 清除所有认证信息
+        clearToken();
+        
+        // 派发登出action
+        store.dispatch(logout());
+        
+        // 通知用户需要重新登录
+        console.log('密码已修改，需要重新登录');
+      }
+      
+      return response;
+    });
 };
 
 /**
@@ -86,10 +120,14 @@ export const getUserOrderDetail = (orderId) => {
  * @returns {Promise} - 请求Promise
  */
 export const getUserFavorites = () => {
+  // 添加认证头部
+  const headers = addAuthHeaders();
+  
   // 使用缓存，缓存时间为5分钟
   return request.get('/api/users/favorites', {}, { 
     useCache: true, 
-    cacheTime: 5 * 60 * 1000 
+    cacheTime: 5 * 60 * 1000,
+    headers
   });
 };
 
@@ -99,8 +137,11 @@ export const getUserFavorites = () => {
  * @returns {Promise} - 请求Promise
  */
 export const addFavorite = (tourId) => {
+  // 添加认证头部
+  const headers = addAuthHeaders();
+  
   // 添加收藏后清除缓存
-  const response = request.post('/api/users/favorites', { tourId });
+  const response = request.post('/api/users/favorites', { tourId }, { headers });
   request.clearCache('/api/users/favorites');
   return response;
 };
@@ -111,10 +152,29 @@ export const addFavorite = (tourId) => {
  * @returns {Promise} - 请求Promise
  */
 export const removeFavorite = (tourId) => {
+  // 添加认证头部
+  const headers = addAuthHeaders();
+  
   // 删除收藏后清除缓存
-  const response = request.delete(`/api/users/favorites/${tourId}`);
+  const response = request.delete(`/api/users/favorites/${tourId}`, { headers });
   request.clearCache('/api/users/favorites');
   return response;
+};
+
+/**
+ * 获取用户积分信息
+ * @returns {Promise} - 请求Promise
+ */
+export const getUserCreditInfo = () => {
+  // 添加认证头部
+  const headers = addAuthHeaders();
+  
+  // 使用缓存，缓存时间为5分钟
+  return request.get('/api/user/credit/info', {}, { 
+    useCache: true, 
+    cacheTime: 5 * 60 * 1000,
+    headers
+  });
 };
 
 export default {
@@ -123,9 +183,8 @@ export default {
   getUserInfo,
   updateUserInfo,
   updatePassword,
-  getUserOrders,
-  getUserOrderDetail,
   getUserFavorites,
   addFavorite,
-  removeFavorite
+  removeFavorite,
+  getUserCreditInfo
 }; 

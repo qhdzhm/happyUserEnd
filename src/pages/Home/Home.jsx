@@ -1,24 +1,25 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import Banner from "../../components/Banner/Banner";
-import AdvanceSearch from "../../components/AdvanceSearch/AdvanceSearch";
+// import AdvanceSearch from "../../components/AdvanceSearch/AdvanceSearch";
 import Features from "../../components/Features/Features";
 import { Container, Row, Col, Card, Button, Spinner, Form, InputGroup, Alert, Carousel } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 
-import Slider from "react-slick";
+// import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
 import "./home.css";
+import "./home-tours-redesign.css";
 
 import Gallery from "../../components/Gallery/Gallery";
-import Cards from "../../components/Cards/Cards";
 // import PopularCard from "../../components/Cards/PopularCard";
-import { FaMapMarkerAlt, FaCalendarAlt, FaStar, FaArrowRight, FaChevronLeft, FaChevronRight, FaSearch } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaCalendarAlt, FaStar, FaArrowRight, FaChevronLeft, FaChevronRight, FaSearch, FaQuoteRight } from 'react-icons/fa';
 import { MdLocationOn, MdDateRange, MdPeople } from 'react-icons/md';
 import * as api from '../../utils/api';
 import PriceDisplay from '../../components/PriceDisplay';
 import { useSelector } from 'react-redux';
+import RedesignedCard from "../../components/Cards/RedesignedCard";
 
 // 导入图片
 import themeNature from "../../assets/images/new/1.jpg";
@@ -27,27 +28,45 @@ import themeCulture from "../../assets/images/new/3.jpg";
 import themeFood from "../../assets/images/new/4.jpg";
 
 const Home = () => {
-  // 创建引用来控制轮播
-  const dayToursSliderRef = useRef(null);
-  const groupToursSliderRef = useRef(null);
+  const navigate = useNavigate();
+  const searchInputRef = useRef(null);
   
-  // 状态管理
+  // 各类型旅游产品的状态
   const [dayTours, setDayTours] = useState([]);
   const [groupTours, setGroupTours] = useState([]);
-  const [hotTours, setHotTours] = useState([]);
   const [recommendedTours, setRecommendedTours] = useState([]);
+  const [hotTours, setHotTours] = useState([]);
+  
+  // 加载状态
   const [loading, setLoading] = useState({
     dayTours: true,
     groupTours: true,
-    hotTours: true,
-    recommendedTours: true
+    recommendedTours: false,
+    hotTours: false,
+    themeTours: false
   });
+  
+  // 错误状态
   const [error, setError] = useState({
     dayTours: null,
     groupTours: null,
+    recommendedTours: null,
     hotTours: null,
-    recommendedTours: null
+    themeTours: null
   });
+  
+  // 搜索状态
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchClicked, setSearchClicked] = useState(false);
+  const [showNoResults, setShowNoResults] = useState(false);
+  
+  // 添加安全检查，确保 state.user 存在
+  const userState = useSelector((state) => state.user) || {};
+  const { preferences = { theme: 'light' } } = userState;
+  const { isAuthenticated } = useSelector(state => state.auth);
+  const currentTheme = preferences?.theme || 'light';
 
   // 添加请求状态引用
   const requestsInProgress = useRef({
@@ -59,6 +78,24 @@ const Home = () => {
 
   const [discountPrices, setDiscountPrices] = useState({});
   const [loadingDiscounts, setLoadingDiscounts] = useState(false);
+  
+  // 添加滚动引用
+  const dayToursScrollRef = useRef(null);
+  const groupToursScrollRef = useRef(null);
+  
+  // 滚动控制函数
+  const handleScroll = (direction, ref) => {
+    if (!ref.current) return;
+    
+    const scrollAmount = 370; // 每次滚动的距离，应该等于或略大于卡片宽度
+    const container = ref.current;
+    
+    if (direction === 'left') {
+      container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+    } else {
+      container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
   
   // 修改useEffect
   useEffect(() => {
@@ -269,140 +306,7 @@ const Home = () => {
     fetchGroupTours();
     fetchHotTours();
     fetchRecommendedTours();
-    
-    // 确保轮播容器内的卡片高度一致
-    const equalizeCardHeights = () => {
-      if (dayToursSliderRef.current) {
-        const dayTourCards = document.querySelectorAll('.daytour-card');
-        let maxHeight = 0;
-        dayTourCards.forEach(card => {
-          card.style.height = 'auto';
-          const height = card.offsetHeight;
-          maxHeight = Math.max(maxHeight, height);
-        });
-        dayTourCards.forEach(card => {
-          card.style.height = `${maxHeight}px`;
-        });
-      }
-      
-      if (groupToursSliderRef.current) {
-        const groupTourCards = document.querySelectorAll('.grouptour-card');
-        let maxHeight = 0;
-        groupTourCards.forEach(card => {
-          card.style.height = 'auto';
-          const height = card.offsetHeight;
-          maxHeight = Math.max(maxHeight, height);
-        });
-        groupTourCards.forEach(card => {
-          card.style.height = `${maxHeight}px`;
-        });
-      }
-    };
-    
-    // 在数据加载完成后，延迟执行高度均衡
-    const timer = setTimeout(() => {
-      equalizeCardHeights();
-      window.addEventListener('resize', equalizeCardHeights);
-    }, 500);
-    
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', equalizeCardHeights);
-    };
-    
   }, []);
-
-  // 轮播设置
-  const tourSliderSettings = {
-    dots: true,
-    infinite: true,
-    speed: 500,
-    slidesToShow: 4,
-    slidesToScroll: 4,
-    arrows: false,
-    autoplay: true,
-    autoplaySpeed: 5000,
-    pauseOnHover: true,
-    swipeToSlide: true,
-    cssEase: "cubic-bezier(0.165, 0.84, 0.44, 1)",
-    responsive: [
-      {
-        breakpoint: 1200,
-        settings: {
-          slidesToShow: 3,
-          slidesToScroll: 3,
-          dots: true
-        },
-      },
-      {
-        breakpoint: 992,
-        settings: {
-          slidesToShow: 2,
-          slidesToScroll: 2,
-          dots: true
-        },
-      },
-      {
-        breakpoint: 576,
-        settings: {
-          slidesToShow: 1,
-          slidesToScroll: 1,
-          dots: true,
-          centerMode: true,
-          centerPadding: '20px'
-        },
-      },
-    ],
-  };
-
-  var settings = {
-    dots: false,
-    infinite: true,
-    autoplay: true,
-    slidesToShow: 4,
-    slidesToScroll: 1,
-
-    responsive: [
-      {
-        breakpoint: 1024,
-        settings: {
-          slidesToShow: 4,
-          slidesToScroll: 1,
-          infinite: false,
-          dots: true,
-          autoplay: true,
-        },
-      },
-      {
-        breakpoint: 991,
-        settings: {
-          slidesToShow: 3,
-          slidesToScroll: 1,
-          infinite: false,
-          dots: true,
-        },
-      },
-      {
-        breakpoint: 600,
-        settings: {
-          slidesToShow: 2,
-          slidesToScroll: 2,
-          autoplay: true,
-          prevArrow: false,
-          nextArrow: false,
-        },
-      },
-      {
-        breakpoint: 480,
-        settings: {
-          slidesToShow: 1,
-          slidesToScroll: 1,
-          prevArrow: false,
-          nextArrow: false,
-        },
-      },
-    ],
-  };
 
   // 加载指示器
   const LoadingSpinner = () => (
@@ -514,119 +418,140 @@ const Home = () => {
   return (
     <>
       <Banner />
-      <AdvanceSearch />
       <div className="home-content">
         <Features />
 
-        {/* 一日游部分 */}
-        <section className="day-tours-section py-5">
+        {/* 精彩一日游部分 - 使用新设计 */}
+        <section className="tour-section day-tours-section">
+          <div className="bg-element bg-element-1"></div>
+          <div className="bg-element bg-element-2"></div>
           <Container>
-            <Row className="mb-3">
-              <Col>
-                <div className="section-title-container">
-                  <h2 className="section-title">精彩一日游</h2>
-                  <Link to="/tours?tourTypes=day_tour" className="view-all-link">查看全部</Link>
-                </div>
-              </Col>
-            </Row>
+            <div className="section-header d-flex justify-content-between align-items-center">
+              <div className="section-title-wrapper">
+                <h2 className="section-title">精彩一日游</h2>
+                <p className="section-subtitle">探索塔斯马尼亚的精彩一日游行程</p>
+              </div>
+              <Link to="/tours?tourTypes=day_tour" className="view-all-link">查看全部 <FaArrowRight className="ms-1" /></Link>
+            </div>
 
             {/* 一日游列表 */}
             <div className="day-tours">
-              <div className="tour-slider-container">
-                {error.dayTours ? (
-                  <div className="error-message">{error.dayTours}</div>
-                ) : loading.dayTours ? (
-                  <div className="loading-container">
-                    <div className="loader"></div>
-                    <p>正在加载精彩一日游...</p>
-                  </div>
-                ) : dayTours.length === 0 ? (
-                  <div className="no-data-message">暂无一日游数据</div>
-                ) : (
-                  <Slider ref={dayToursSliderRef} {...tourSliderSettings}>
-                    {preprocessTourData(dayTours.slice(0, 8).map(tour => ({
+              {error.dayTours ? (
+                <div className="error-message">{error.dayTours}</div>
+              ) : loading.dayTours ? (
+                <div className="loading-container">
+                  <div className="loader"></div>
+                  <p>正在加载精彩一日游...</p>
+                </div>
+              ) : dayTours.length === 0 ? (
+                <div className="no-data-message">暂无一日游数据</div>
+              ) : (
+                <div className="scrollable-tour-container">
+                  <button 
+                    className="scroll-control scroll-left" 
+                    onClick={() => handleScroll('left', dayToursScrollRef)}
+                    aria-label="向左滚动"
+                  >
+                    <FaChevronLeft />
+                  </button>
+                  <div className="scrollable-tour-wrapper" ref={dayToursScrollRef}>
+                    {preprocessTourData(dayTours.slice(0, 10).map(tour => ({
                       ...tour,
                       section: 'day_tours' // 标记为一日游部分
                     }))).map((tour) => (
-                      <div key={tour.id} className="tour-slide-item">
-                        <Cards destination={tour} />
+                      <div className="scrollable-tour-card" key={tour.id}>
+                        <RedesignedCard tour={tour} />
                       </div>
                     ))}
-                  </Slider>
-                )}
-                {!loading.dayTours && dayTours.length > 0 && (
-                  <>
-                    <button 
-                      className="slider-arrow slider-arrow-left" 
-                      onClick={() => dayToursSliderRef.current.slickPrev()}
-                    >
-                      <FaChevronLeft />
-                    </button>
-                    <button 
-                      className="slider-arrow slider-arrow-right" 
-                      onClick={() => dayToursSliderRef.current.slickNext()}
-                    >
+                  </div>
+                  <button 
+                    className="scroll-control scroll-right" 
+                    onClick={() => handleScroll('right', dayToursScrollRef)}
+                    aria-label="向右滚动"
+                  >
+                    <FaChevronRight />
+                  </button>
+                  <div className="scroll-indicator">
+                    <div className="scroll-text">向右滑动查看更多</div>
+                    <div className="scroll-arrows">
                       <FaChevronRight />
-                    </button>
-                  </>
-                )}
+                      <FaChevronRight className="second-arrow" />
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="text-center mt-3">
+                <Link to="/tours?tourTypes=day_tour" className="view-more-btn">
+                  查看更多 <FaArrowRight className="ms-2" />
+                </Link>
               </div>
             </div>
           </Container>
         </section>
 
-        {/* 跟团游部分 */}
-        <section className="group-tours-section py-5 bg-light">
+        {/* 热门跟团游部分 - 使用新设计 */}
+        <section className="tour-section group-tours-section">
+          <div className="bg-element bg-element-1"></div>
+          <div className="bg-element bg-element-2"></div>
           <Container>
-            <Row className="mb-3">
-              <Col>
-                <div className="section-title-container">
-                  <h2 className="section-title">热门跟团游</h2>
-                  <Link to="/tours?tourTypes=group_tour" className="view-all-link">查看全部</Link>
-                </div>
-              </Col>
-            </Row>
+            <div className="section-header d-flex justify-content-between align-items-center">
+              <div className="section-title-wrapper">
+                <h2 className="section-title">热门跟团游</h2>
+                <p className="section-subtitle">精选多日特色跟团游行程</p>
+              </div>
+              <Link to="/tours?tourTypes=group_tour" className="view-all-link">查看全部 <FaArrowRight className="ms-1" /></Link>
+            </div>
 
             {/* 跟团游列表 */}
             <div className="group-tours">
-              <div className="tour-slider-container">
-                {error.groupTours ? (
-                  <div className="error-message">{error.groupTours}</div>
-                ) : loading.groupTours ? (
-                  <div className="loading-container">
-                    <div className="loader"></div>
-                    <p>正在加载精彩跟团游...</p>
-                  </div>
-                ) : groupTours.length === 0 ? (
-                  <div className="no-data-message">暂无跟团游数据</div>
-                ) : (
-                  <Slider ref={groupToursSliderRef} {...tourSliderSettings}>
-                    {preprocessTourData(groupTours.slice(0, 8).map(tour => ({
+              {error.groupTours ? (
+                <div className="error-message">{error.groupTours}</div>
+              ) : loading.groupTours ? (
+                <div className="loading-container">
+                  <div className="loader"></div>
+                  <p>正在加载精彩跟团游...</p>
+                </div>
+              ) : groupTours.length === 0 ? (
+                <div className="no-data-message">暂无跟团游数据</div>
+              ) : (
+                <div className="scrollable-tour-container">
+                  <button 
+                    className="scroll-control scroll-left" 
+                    onClick={() => handleScroll('left', groupToursScrollRef)}
+                    aria-label="向左滚动"
+                  >
+                    <FaChevronLeft />
+                  </button>
+                  <div className="scrollable-tour-wrapper" ref={groupToursScrollRef}>
+                    {preprocessTourData(groupTours.slice(0, 10).map(tour => ({
                       ...tour,
                       section: 'group_tours' // 标记为跟团游部分
                     }))).map((tour) => (
-                      <div key={tour.id} className="tour-slide-item">
-                        <Cards destination={tour} />
+                      <div className="scrollable-tour-card" key={tour.id}>
+                        <RedesignedCard tour={tour} />
                       </div>
                     ))}
-                  </Slider>
-                )}
-                {!loading.groupTours && groupTours.length > 0 && (
-                  <>
-                    <button 
-                      className="slider-arrow slider-arrow-left" 
-                      onClick={() => groupToursSliderRef.current.slickPrev()}
-                    >
-                      <FaChevronLeft />
-                    </button>
-                    <button 
-                      className="slider-arrow slider-arrow-right" 
-                      onClick={() => groupToursSliderRef.current.slickNext()}
-                    >
+                  </div>
+                  <button 
+                    className="scroll-control scroll-right" 
+                    onClick={() => handleScroll('right', groupToursScrollRef)}
+                    aria-label="向右滚动"
+                  >
+                    <FaChevronRight />
+                  </button>
+                  <div className="scroll-indicator">
+                    <div className="scroll-text">向右滑动查看更多</div>
+                    <div className="scroll-arrows">
                       <FaChevronRight />
-                    </button>
-                  </>
-                )}
+                      <FaChevronRight className="second-arrow" />
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="text-center mt-3">
+                <Link to="/tours?tourTypes=group_tour" className="view-more-btn">
+                  查看更多 <FaArrowRight className="ms-2" />
+                </Link>
               </div>
             </div>
           </Container>
@@ -656,96 +581,117 @@ const Home = () => {
           <div className="overlay"></div>
         </section>
 
-{/* 旅行主题部分 */}
-
-
         {/* 客户评价部分 */}
-        <section className="testimonials-section py-5 bg-light">
+        <section className="testimonials-redesigned">
+          <div className="testimonial-bg-element bg-element-1"></div>
+          <div className="testimonial-bg-element bg-element-2"></div>
           <Container>
-            <Row className="mb-4">
-              <Col className="text-center">
-                <h2 className="section-title">客户评价</h2>
-                <p className="text-muted">听听我们的客户怎么说</p>
+            <Row>
+              <Col>
+                <div className="section-header">
+                  <h2 className="section-title">客户评价</h2>
+                  <div className="section-subtitle">听听我们的客户怎么说</div>
+                </div>
               </Col>
             </Row>
             <Row>
               <Col md={4} className="mb-4">
-                <Card className="testimonial-card h-100 border-0 shadow-sm">
-                  <Card.Body>
-                    <div className="testimonial-rating mb-3">
-                      <FaStar className="text-warning" />
-                      <FaStar className="text-warning" />
-                      <FaStar className="text-warning" />
-                      <FaStar className="text-warning" />
-                      <FaStar className="text-warning" />
+                <div className="testimonial-card-redesigned">
+                  <div className="card-body">
+                    <div className="testimonial-quote-icon">
+                      <FaQuoteRight />
                     </div>
-                    <Card.Text className="testimonial-text mb-4">
+                    <div className="testimonial-rating-redesigned">
+                      <FaStar className="star" />
+                      <FaStar className="star" />
+                      <FaStar className="star" />
+                      <FaStar className="star" />
+                      <FaStar className="star" />
+                    </div>
+                    <p className="testimonial-text-redesigned">
                       "我和家人参加了酒杯湾一日游，风景太美了！导游非常专业，给我们介绍了很多当地的历史和文化，让这次旅行变得更加难忘。强烈推荐给想要深度体验塔斯马尼亚的游客。"
-                    </Card.Text>
-                    <div className="testimonial-author d-flex align-items-center">
-                      <div className="testimonial-author-info">
-                        <h5 className="mb-0">王先生</h5>
-                        <p className="text-muted mb-0">来自上海</p>
+                    </p>
+                    <div className="testimonial-author-redesigned">
+                      <div className="testimonial-author-avatar">
+                        王
+                      </div>
+                      <div className="testimonial-author-info-redesigned">
+                        <div className="testimonial-author-name">王先生</div>
+                        <div className="testimonial-author-location">来自上海</div>
                       </div>
                     </div>
-                  </Card.Body>
-                </Card>
+                  </div>
+                </div>
               </Col>
               <Col md={4} className="mb-4">
-                <Card className="testimonial-card h-100 border-0 shadow-sm">
-                  <Card.Body>
-                    <div className="testimonial-rating mb-3">
-                      <FaStar className="text-warning" />
-                      <FaStar className="text-warning" />
-                      <FaStar className="text-warning" />
-                      <FaStar className="text-warning" />
-                      <FaStar className="text-warning" />
+                <div className="testimonial-card-redesigned">
+                  <div className="card-body">
+                    <div className="testimonial-quote-icon">
+                      <FaQuoteRight />
                     </div>
-                    <Card.Text className="testimonial-text mb-4">
+                    <div className="testimonial-rating-redesigned">
+                      <FaStar className="star" />
+                      <FaStar className="star" />
+                      <FaStar className="star" />
+                      <FaStar className="star" />
+                      <FaStar className="star" />
+                    </div>
+                    <p className="testimonial-text-redesigned">
                       "塔斯马尼亚五日游超出了我的期望！住宿、餐饮都安排得很好，行程紧凑但不赶，让我们有足够的时间欣赏每个景点。尤其是摇篮山，太美了，以后有机会还想再去！"
-                    </Card.Text>
-                    <div className="testimonial-author d-flex align-items-center">
-                      <div className="testimonial-author-info">
-                        <h5 className="mb-0">李女士</h5>
-                        <p className="text-muted mb-0">来自北京</p>
+                    </p>
+                    <div className="testimonial-author-redesigned">
+                      <div className="testimonial-author-avatar">
+                        李
+                      </div>
+                      <div className="testimonial-author-info-redesigned">
+                        <div className="testimonial-author-name">李女士</div>
+                        <div className="testimonial-author-location">来自北京</div>
                       </div>
                     </div>
-                  </Card.Body>
-                </Card>
+                  </div>
+                </div>
               </Col>
               <Col md={4} className="mb-4">
-                <Card className="testimonial-card h-100 border-0 shadow-sm">
-                  <Card.Body>
-                    <div className="testimonial-rating mb-3">
-                      <FaStar className="text-warning" />
-                      <FaStar className="text-warning" />
-                      <FaStar className="text-warning" />
-                      <FaStar className="text-warning" />
-                      <FaStar className="text-warning" />
+                <div className="testimonial-card-redesigned">
+                  <div className="card-body">
+                    <div className="testimonial-quote-icon">
+                      <FaQuoteRight />
                     </div>
-                    <Card.Text className="testimonial-text mb-4">
+                    <div className="testimonial-rating-redesigned">
+                      <FaStar className="star" />
+                      <FaStar className="star" />
+                      <FaStar className="star" />
+                      <FaStar className="star" />
+                      <FaStar className="star" />
+                    </div>
+                    <p className="testimonial-text-redesigned">
                       "作为一个摄影爱好者，我参加了摇篮山跟团游，导游知道我对摄影感兴趣，特意带我们去了几个绝佳的拍摄点。服务非常贴心，行程安排也很合理，让我拍到了很多满意的照片。"
-                    </Card.Text>
-                    <div className="testimonial-author d-flex align-items-center">
-                      <div className="testimonial-author-info">
-                        <h5 className="mb-0">张先生</h5>
-                        <p className="text-muted mb-0">来自广州</p>
+                    </p>
+                    <div className="testimonial-author-redesigned">
+                      <div className="testimonial-author-avatar">
+                        张
+                      </div>
+                      <div className="testimonial-author-info-redesigned">
+                        <div className="testimonial-author-name">张先生</div>
+                        <div className="testimonial-author-location">来自广州</div>
                       </div>
                     </div>
-                  </Card.Body>
-                </Card>
+                  </div>
+                </div>
               </Col>
             </Row>
           </Container>
         </section>
         {/* 精彩瞬间部分 */}
-        <section className="gallery">
+        <section className="gallery-redesigned">
+          <div className="gallery-bg-element bg-element-1"></div>
+          <div className="gallery-bg-element bg-element-2"></div>
           <Container>
-            <Row className="mb-4">
-              <Col md="12">
-                <div className="section-title text-center">
-                  <h2>精彩瞬间</h2>
-                  <p className="text-muted">记录塔斯马尼亚的美丽风光与难忘时刻</p>
+            <Row>
+              <Col>
+                <div className="section-header">
+                  <h2 className="section-title">精彩瞬间</h2>
+                  <div className="section-subtitle">记录塔斯马尼亚的美丽风光与难忘时刻</div>
                 </div>
               </Col>
             </Row>

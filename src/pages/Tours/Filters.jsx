@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import { Accordion, Form, Button, Spinner } from "react-bootstrap";
 import { useLocation, useNavigate } from "react-router-dom";
-import { getDayTourThemes, getGroupTourThemes, getSuitableForOptions } from "../../utils/api";
+import { getDayTourThemes, getGroupTourThemes, getSuitableForOptions, getAllDayTours } from "../../utils/api";
 
 // 使用forwardRef将组件转换为可引用的组件
 const Filters = forwardRef(({ onApplyFilters, searchLoading }, ref) => {
@@ -10,7 +10,7 @@ const Filters = forwardRef(({ onApplyFilters, searchLoading }, ref) => {
   const queryParams = new URLSearchParams(location.search);
 
   // 筛选选项数据状态
-  const [tourTypes, setTourTypes] = useState(['一日游', '跟团游']); // 固定选项
+  const [tourTypes, setTourTypes] = useState(['一日游', '跟团游', '全部']); // 固定选项
   const [locations, setLocations] = useState([]);
   const [dayTourThemes, setDayTourThemes] = useState([]);
   const [groupTourThemes, setGroupTourThemes] = useState([]);
@@ -19,6 +19,7 @@ const Filters = forwardRef(({ onApplyFilters, searchLoading }, ref) => {
   const [priceRanges, setPriceRanges] = useState([]);
   const [suitableForOptions, setSuitableForOptions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [dayTours, setDayTours] = useState([]); // 添加一日游产品列表状态
 
   // 选中的筛选值
   const [selectedTourType, setSelectedTourType] = useState(() => {
@@ -36,6 +37,7 @@ const Filters = forwardRef(({ onApplyFilters, searchLoading }, ref) => {
     const tourType = queryParams.get('tourTypes');
     if (tourType === 'day_tour') return '一日游';
     if (tourType === 'group_tour') return '跟团游';
+    if (tourType === 'all') return '全部';
     return '一日游'; // 默认为一日游
   });
   const [selectedDuration, setSelectedDuration] = useState(
@@ -97,6 +99,22 @@ const Filters = forwardRef(({ onApplyFilters, searchLoading }, ref) => {
         setDayTourThemes(["自然风光", "城市观光", "历史文化", "美食体验", "摄影之旅", "户外活动"]);
         setGroupTourThemes(["休闲度假", "探险体验", "文化探索", "美食之旅", "亲子游", "蜜月旅行"]);
         setSuitableForOptions(["家庭", "情侣", "朋友", "独自旅行", "老年人", "儿童"]);
+        
+        // 获取一日游产品列表
+        try {
+          const dayToursResponse = await getAllDayTours();
+          if (dayToursResponse && dayToursResponse.code === 1 && Array.isArray(dayToursResponse.data)) {
+            setDayTours(dayToursResponse.data);
+          } else if (dayToursResponse && dayToursResponse.code === 1 && dayToursResponse.data && Array.isArray(dayToursResponse.data.records)) {
+            setDayTours(dayToursResponse.data.records);
+          } else {
+            console.warn("获取一日游产品列表失败，使用空数组", dayToursResponse);
+            setDayTours([]);
+          }
+        } catch (err) {
+          console.warn("获取一日游产品列表出错", err);
+          setDayTours([]);
+        }
         
         // 尝试获取一日游主题
         try {
@@ -275,13 +293,24 @@ const Filters = forwardRef(({ onApplyFilters, searchLoading }, ref) => {
       // 否则选择新的类型
       setSelectedTourType(tourType);
       
-      // 清除之前可能选择的不兼容筛选条件
-      setSelectedThemes([]);
-      setSelectedDuration([]);
-      
-      // 如果从一日游切换到跟团游，清除地点筛选
-      if (tourType === '跟团游') {
+      // 如果选择的是'全部'类型，清除所有筛选条件
+      if (tourType === '全部') {
         setSelectedLocation([]);
+        setSelectedThemes([]);
+        setSelectedDuration([]);
+        setSelectedPriceRange([]);
+        setSelectedRatings([]);
+        setSelectedSuitableFor([]);
+      }
+      // 否则，清除之前可能选择的不兼容筛选条件
+      else {
+        setSelectedThemes([]);
+        setSelectedDuration([]);
+        
+        // 如果从一日游切换到跟团游，清除地点筛选
+        if (tourType === '跟团游') {
+          setSelectedLocation([]);
+        }
       }
       
       // 当选择了新的旅游类型时，自动应用筛选
@@ -304,6 +333,18 @@ const Filters = forwardRef(({ onApplyFilters, searchLoading }, ref) => {
           params.append('tourTypes', 'day_tour');
         } else if (tourType === '跟团游') {
           params.append('tourTypes', 'group_tour');
+        } else if (tourType === '全部') {
+          params.append('tourTypes', 'all');
+          
+          // 确保清除所有筛选参数
+          params.delete('location');
+          params.delete('duration');
+          params.delete('priceRange');
+          params.delete('ratings');
+          params.delete('themes');
+          params.delete('suitableFor');
+          params.delete('tourIds');
+          params.delete('keyword');
         }
         
         // 更新URL
@@ -441,6 +482,8 @@ const Filters = forwardRef(({ onApplyFilters, searchLoading }, ref) => {
         params.append('tourTypes', 'day_tour');
       } else if (selectedTourType === '跟团游') {
         params.append('tourTypes', 'group_tour');
+      } else if (selectedTourType === '全部') {
+        params.append('tourTypes', 'all');
       } else {
         params.append('tourTypes', selectedTourType);
       }
@@ -495,6 +538,8 @@ const Filters = forwardRef(({ onApplyFilters, searchLoading }, ref) => {
       return dayTourThemes || [];
     } else if (selectedTourType === '跟团游') {
       return groupTourThemes || [];
+    } else if (selectedTourType === '全部') {
+      return [...dayTourThemes, ...groupTourThemes];
     }
     return [];
   };
@@ -505,6 +550,8 @@ const Filters = forwardRef(({ onApplyFilters, searchLoading }, ref) => {
       return dayTourDurations || [];
     } else if (selectedTourType === '跟团游') {
       return groupTourDurations || [];
+    } else if (selectedTourType === '全部') {
+      return [...dayTourDurations, ...groupTourDurations];
     }
     return [];
   };
@@ -546,6 +593,8 @@ const Filters = forwardRef(({ onApplyFilters, searchLoading }, ref) => {
         params.append('tourTypes', 'day_tour');
       } else if (tourType === '跟团游') {
         params.append('tourTypes', 'group_tour');
+      } else if (tourType === '全部') {
+        params.append('tourTypes', 'all');
       } else {
         params.append('tourTypes', 'day_tour'); // 如果没有有效类型，默认设置为一日游
       }
@@ -580,13 +629,14 @@ const Filters = forwardRef(({ onApplyFilters, searchLoading }, ref) => {
       {/* 旅游类型选择 - 始终显示在最上方 */}
       <div className="mb-4">
         <h6 className="mb-3">选择行程类型</h6>
-        <div className="tour-type-selection">
-          {tourTypes && tourTypes.map((type, index) => (
+        <div className="tour-type-selection d-flex flex-row">
+          {tourTypes.map((type, index) => (
             <Button
               key={index}
               variant={selectedTourType === type ? "primary" : "outline-primary"}
               onClick={() => handleTourTypeChange(type)}
-              className="mb-2 me-2"
+              className="mb-2 me-2 small"
+              size="sm"
             >
               {type}
             </Button>
@@ -596,135 +646,106 @@ const Filters = forwardRef(({ onApplyFilters, searchLoading }, ref) => {
       
       {/* 只有选择了旅游类型后才显示其他筛选选项 */}
       {selectedTourType && (
-        <Accordion defaultActiveKey={['0', '1', '2', '3', '4', '5']} alwaysOpen>
-          {/* 地点筛选 - 只在一日游时显示 */}
+        <>
+          {/* 一日游 - 仅显示产品名称筛选 */}
           {selectedTourType === '一日游' && (
-          <Accordion.Item eventKey="0">
-              <Accordion.Header>地点</Accordion.Header>
-              <Accordion.Body>
-                <Form>
-                  {locations && locations.map((loc, index) => (
+            <div className="mb-4 text-center">
+              <p className="text-muted">已选择一日游产品</p>
+              <p className="small text-muted">查看所有一日游产品</p>
+            </div>
+          )}
+
+          {/* 跟团游 - 仅显示时长筛选 */}
+          {selectedTourType === '跟团游' && (
+            <Accordion defaultActiveKey={['0']} alwaysOpen>
+              <Accordion.Item eventKey="0">
+                <Accordion.Header>时长</Accordion.Header>
+                <Accordion.Body>
+                  <Form>
+                    {groupTourDurations.map((duration, index) => (
+                      <Form.Check
+                        key={index}
+                        type="checkbox"
+                        id={`duration-${index}`}
+                        label={duration}
+                        value={duration}
+                        checked={selectedDuration.includes(duration)}
+                        onChange={handleDurationChange}
+                        className="mb-2"
+                      />
+                    ))}
+                  </Form>
+                </Accordion.Body>
+              </Accordion.Item>
+            </Accordion>
+          )}
+
+          {/* 全部类型 - 不显示任何筛选条件 */}
+          {selectedTourType === '全部' && (
+            <div className="mb-4 text-center">
+              <p className="text-muted">已选择查看全部产品</p>
+              <p className="small text-muted">显示所有一日游和跟团游产品</p>
+            </div>
+          )}
+
+          {/* 一日游 - 显示产品名称筛选 */}
+          {false && selectedTourType === '一日游' && (  // 设置为false使其不会显示
+            <div className="mb-4">
+              <h6 className="mb-3">产品名称</h6>
+              <Form>
+                {isLoading ? (
+                  <div className="text-center my-3">
+                    <Spinner animation="border" size="sm" />
+                    <span className="ms-2">加载产品列表...</span>
+                  </div>
+                ) : dayTours.length > 0 ? (
+                  dayTours.map((tour, index) => (
                     <Form.Check
                       key={index}
                       type="checkbox"
-                      id={`location-${index}`}
-                      label={loc}
-                      value={loc}
-                      checked={selectedLocation.includes(loc)}
-                      onChange={handleLocationChange}
+                      id={`tour-${tour.id || index}`}
+                      label={tour.title || tour.name || `旅游产品 ${index + 1}`}
+                      value={tour.id}
+                      onChange={(e) => {
+                        const tourId = e.target.value;
+                        const params = new URLSearchParams(location.search);
+                        const currentSelectedIds = params.get('tourIds') ? params.get('tourIds').split(',') : [];
+                        
+                        if (e.target.checked) {
+                          if (!currentSelectedIds.includes(tourId)) {
+                            currentSelectedIds.push(tourId);
+                          }
+                        } else {
+                          const index = currentSelectedIds.indexOf(tourId);
+                          if (index > -1) {
+                            currentSelectedIds.splice(index, 1);
+                          }
+                        }
+                        
+                        if (currentSelectedIds.length > 0) {
+                          params.set('tourIds', currentSelectedIds.join(','));
+                        } else {
+                          params.delete('tourIds');
+                        }
+                        
+                        navigate({ search: params.toString() });
+                        if (onApplyFilters) {
+                          onApplyFilters();
+                        }
+                      }}
+                      checked={queryParams.get('tourIds') ? 
+                        queryParams.get('tourIds').split(',').includes(String(tour.id)) : 
+                        false}
                       className="mb-2"
                     />
-                  ))}
-                </Form>
-              </Accordion.Body>
-            </Accordion.Item>
+                  ))
+                ) : (
+                  <p className="text-muted">暂无可用产品</p>
+                )}
+              </Form>
+            </div>
           )}
-          
-          {/* 时长筛选 */}
-          <Accordion.Item eventKey="1">
-            <Accordion.Header>时长</Accordion.Header>
-            <Accordion.Body>
-              <Form>
-                {getDurationOptions().map((duration, index) => (
-                  <Form.Check
-                    key={index}
-                    type="checkbox"
-                    id={`duration-${index}`}
-                    label={duration}
-                    value={duration}
-                    checked={selectedDuration.includes(duration)}
-                    onChange={handleDurationChange}
-                    className="mb-2"
-                  />
-                ))}
-              </Form>
-            </Accordion.Body>
-          </Accordion.Item>
-          
-          {/* 价格筛选 */}
-          <Accordion.Item eventKey="2">
-            <Accordion.Header>价格区间</Accordion.Header>
-            <Accordion.Body>
-              <Form>
-                {priceRanges && priceRanges.map((range, index) => (
-                  <Form.Check
-                    key={index}
-                    type="checkbox"
-                    id={`price-${index}`}
-                    label={`¥${range}`}
-                    value={range}
-                    checked={selectedPriceRange.includes(range)}
-                    onChange={handlePriceRangeChange}
-                    className="mb-2"
-                  />
-                ))}
-              </Form>
-            </Accordion.Body>
-          </Accordion.Item>
-          
-          {/* 评分筛选 */}
-          <Accordion.Item eventKey="3">
-            <Accordion.Header>评分</Accordion.Header>
-            <Accordion.Body>
-              <Form>
-                {[3, 3.5, 4, 4.5, 5].map((rating, index) => (
-                  <Form.Check
-                    key={index}
-                    type="checkbox"
-                    id={`rating-${index}`}
-                    label={`${rating}分以上`}
-                    value={rating}
-                    checked={selectedRatings.includes(rating)}
-                    onChange={handleRatingChange}
-                    className="mb-2"
-                  />
-                ))}
-              </Form>
-            </Accordion.Body>
-          </Accordion.Item>
-          
-          {/* 主题筛选 */}
-          <Accordion.Item eventKey="4">
-            <Accordion.Header>主题</Accordion.Header>
-            <Accordion.Body>
-              <Form>
-                {getThemeOptions().map((theme, index) => (
-                  <Form.Check
-                    key={index}
-                    type="checkbox"
-                    id={`theme-${index}`}
-                    label={theme}
-                    value={theme}
-                    checked={selectedThemes.includes(theme)}
-                    onChange={handleThemeChange}
-                    className="mb-2"
-                  />
-                ))}
-              </Form>
-            </Accordion.Body>
-          </Accordion.Item>
-          
-          {/* 适合人群筛选 */}
-          <Accordion.Item eventKey="5">
-            <Accordion.Header>适合人群</Accordion.Header>
-            <Accordion.Body>
-              <Form>
-                {suitableForOptions && suitableForOptions.map((suitable, index) => (
-                  <Form.Check
-                    key={index}
-                    type="checkbox"
-                    id={`suitable-${index}`}
-                    label={suitable}
-                    value={suitable}
-                    checked={selectedSuitableFor.includes(suitable)}
-                    onChange={handleSuitableForChange}
-                    className="mb-2"
-                  />
-                ))}
-              </Form>
-            </Accordion.Body>
-          </Accordion.Item>
-        </Accordion>
+        </>
       )}
       
       {/* 按钮操作区 - 只有选择了旅游类型才显示 */}

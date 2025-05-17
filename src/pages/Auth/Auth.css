@@ -196,4 +196,29 @@
   .auth-message {
     font-size: 0.8rem;
   }
+}
+
+/* 微信登录相关样式 */
+.wechat-login-container {
+  width: 100%;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 15px 0;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #ddd;
+}
+
+.divider span {
+  padding: 0 10px;
+  color: #777;
+  font-size: 0.9em;
 } 

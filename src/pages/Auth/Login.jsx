@@ -3,6 +3,8 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { loginUser, clearError } from '../../store/slices/authSlice';
 import { Alert, Spinner, Button, Form, Tabs, Tab } from 'react-bootstrap';
+import WechatLogin from '../../components/WechatLogin';
+import { toast } from 'react-toastify';
 import './Auth.css';
 
 const Login = () => {
@@ -22,13 +24,32 @@ const Login = () => {
   const from = location.state?.from || '/';
   // 获取重定向消息
   const redirectMessage = location.state?.message || '';
+  // 获取从详情页传递的旅游详情数据
+  const tourDetails = location.state?.tourDetails || null;
   
   // 当认证状态改变时，重定向到之前的页面
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(from, { replace: true });
+      // 判断是否有旅游详情数据需要传递
+      if (tourDetails) {
+        // 将详情页的数据传递给预订页面
+        navigate(from, { 
+          replace: true,
+          state: {
+            ...tourDetails,
+            // 保留其他可能的状态数据
+            ...(location.state && location.state !== tourDetails ? 
+               Object.entries(location.state)
+                .filter(([key]) => key !== 'from' && key !== 'message' && key !== 'tourDetails')
+                .reduce((obj, [key, val]) => ({ ...obj, [key]: val }), {}) 
+               : {})
+          } 
+        });
+      } else {
+        navigate(from, { replace: true });
+      }
     }
-  }, [isAuthenticated, navigate, from]);
+  }, [isAuthenticated, navigate, from, tourDetails, location.state]);
   
   // 组件卸载时清除错误
   useEffect(() => {
@@ -65,6 +86,7 @@ const Login = () => {
         type: 'auth/loginUser/rejected', 
         payload: `请输入${fieldName}` 
       });
+      toast.error(`请输入${fieldName}`);
       return;
     }
     
@@ -73,18 +95,42 @@ const Login = () => {
         type: 'auth/loginUser/rejected', 
         payload: '请输入密码' 
       });
+      toast.error('请输入密码');
       return;
     }
     
-    // 确保用户类型正确
-    const loginData = {
-      username: formData.username,
-      password: formData.password,
-      userType // 使用当前选择的用户类型
-    };
-    
-    // 分发登录action
-    dispatch(loginUser(loginData));
+    try {
+      // 确保用户类型正确
+      const loginData = {
+        username: formData.username,
+        password: formData.password,
+        userType // 使用当前选择的用户类型
+      };
+      
+      // 分发登录action
+      await dispatch(loginUser(loginData)).unwrap();
+    } catch (error) {
+      // 错误会被authSlice中的rejected处理器捕获并显示
+      console.error('登录错误:', error);
+      
+      // 根据错误类型显示更友好的提示
+      if (error.includes('密码错误') || error.includes('账号或密码错误') || error.includes('用户名或密码错误')) {
+        toast.error('账号或密码错误，请重新输入', { 
+          position: "top-center",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true
+        });
+      } else if (error.includes('不存在')) {
+        toast.error('用户账号不存在，请检查输入或注册新账号');
+      } else if (error.includes('服务器')) {
+        toast.error('服务器连接异常，请稍后再试');
+      } else {
+        toast.error('登录失败，请检查您的输入或联系客服');
+      }
+    }
   };
   
   // 自动填充测试账号
@@ -104,14 +150,62 @@ const Login = () => {
     }
   };
   
+  // 处理登录成功后的回调
+  const handleLoginSuccess = () => {
+    // 登录成功后的处理逻辑已经在useEffect中实现
+  };
+  
   return (
     <div className="auth-container">
       <div className="auth-form-container">
         <h2>登录</h2>
         
+        {/* 显示明显的密码错误提示 */}
+        {error && (
+          <div className="login-error" style={{
+            padding: '10px',
+            backgroundColor: '#ffebee',
+            color: '#d32f2f',
+            border: '1px solid #f44336',
+            borderRadius: '4px',
+            marginBottom: '15px',
+            fontSize: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <strong>登录失败：</strong> {error}
+          </div>
+        )}
+        
         {error && (
           <Alert variant="danger">
-            {error}
+            <strong>登录失败：</strong> {error}
+            {error.includes('密码错误') && (
+              <div className="mt-2 small">
+                <strong>提示：</strong> 如果您最近修改过密码，请使用新密码登录。如果您忘记了密码，请联系客服重置。
+              </div>
+            )}
+            {error.includes('账号或密码错误') && (
+              <div className="mt-2 small">
+                <strong>提示：</strong> 请检查您的输入是否正确。如果您忘记了密码，可以点击下方的"忘记密码"链接。
+              </div>
+            )}
+            {error.includes('用户名或密码错误') && (
+              <div className="mt-2 small">
+                <strong>提示：</strong> 请检查您的用户名和密码是否正确。如果您正在使用已修改的密码，请确保使用最新密码。
+              </div>
+            )}
+            {error.includes('登录失败') && !error.includes('密码错误') && !error.includes('账号或密码错误') && !error.includes('用户名或密码错误') && (
+              <div className="mt-2 small">
+                <strong>提示：</strong> 登录失败可能是由于用户名或密码错误，或者账号状态异常。如需帮助，请联系客服。
+              </div>
+            )}
+            {error.includes('服务器') && (
+              <div className="mt-2 small">
+                <strong>提示：</strong> 服务器连接异常，请稍后再试或联系客服。
+              </div>
+            )}
           </Alert>
         )}
         
@@ -202,6 +296,15 @@ const Login = () => {
               </>
             ) : userType === 'agent' ? '代理商登录' : '用户登录'}
           </Button>
+          
+          {userType === 'regular' && (
+            <div className="wechat-login-container mt-3">
+              <div className="divider">
+                <span>或</span>
+              </div>
+              <WechatLogin onLoginSuccess={handleLoginSuccess} />
+            </div>
+          )}
         </Form>
         
         <div className="auth-links mt-3">
