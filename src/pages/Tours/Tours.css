@@ -1,0 +1,227 @@
+/* Tours.css - 旅游页面样式 */
+
+/* 页面整体样式 */
+.tours-page {
+  margin-bottom: 60px;
+}
+
+/* 介绍区域样式 */
+.tour-intro-section {
+  background-color: #f8f9fc;
+  padding: 40px 0;
+  margin-bottom: 30px;
+}
+
+.tour-intro-content h2 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.tour-intro-content p {
+  font-size: 16px;
+  color: #666;
+}
+
+/* 搜索框样式 */
+.search-box-container {
+  max-width: 100%;
+}
+
+.tour-search-box {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.tour-search-box .input-group-text {
+  background-color: #fff;
+  border-right: none;
+  color: var(--primaryClr, #e74c3c);
+}
+
+.tour-search-box .form-control {
+  border-left: none;
+  padding: 12px 15px;
+  font-size: 15px;
+}
+
+.tour-search-box .form-control:focus {
+  box-shadow: none;
+}
+
+/* 结果区域样式 */
+.tour-header {
+  margin-bottom: 20px;
+}
+
+.results-count {
+  font-weight: 500;
+  color: #666;
+}
+
+.clear-all {
+  color: var(--primaryClr, #e74c3c);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+/* 筛选控制区样式 */
+.tour-controls {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sort-dropdown .dropdown-toggle {
+  border-radius: 30px;
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  font-weight: 500;
+}
+
+.view-switcher .btn {
+  border-radius: 4px;
+  padding: 8px 12px;
+}
+
+/* 筛选侧边栏样式 */
+.filters-sidebar {
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.04);
+  margin-bottom: 30px;
+}
+
+.sidebar-header h3 {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* 列表视图样式 */
+.list-view-card {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.04);
+  background-color: #fff;
+  transition: all 0.3s ease;
+  height: 100%;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.list-view-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.08);
+}
+
+.list-tour-img-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.list-tour-img {
+  width: 100%;
+  object-fit: cover;
+  transition: transform 0.7s ease;
+}
+
+.list-view-card:hover .list-tour-img {
+  transform: scale(1.08);
+}
+
+.tour-duration-overlay {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tour-duration-overlay svg {
+  color: var(--primaryClr, #e74c3c);
+  margin-right: 5px;
+  font-size: 12px;
+}
+
+.tour-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.rating-stars {
+  color: #ffb400;
+}
+
+.tour-description {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.5;
+}
+
+.tour-price-container {
+  font-weight: 600;
+}
+
+.view-details-btn:hover {
+  transform: translateY(-2px);
+}
+
+/* 响应式调整 */
+@media (max-width: 991px) {
+  .tour-intro-content h2 {
+    font-size: 24px;
+  }
+  
+  .tour-intro-content p {
+    font-size: 15px;
+  }
+  
+  .filters-sidebar.show {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1050;
+    padding: 20px;
+    overflow-y: auto;
+    margin-bottom: 0;
+    border-radius: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .tour-intro-section {
+    padding: 30px 0;
+  }
+  
+  .tour-intro-content h2 {
+    font-size: 22px;
+  }
+  
+  .tour-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 575px) {
+  .tour-intro-content h2 {
+    font-size: 20px;
+  }
+  
+  .tour-title {
+    font-size: 16px;
+  }
+} 

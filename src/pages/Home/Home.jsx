@@ -1,20 +1,16 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Banner from "../../components/Banner/Banner";
-// import AdvanceSearch from "../../components/AdvanceSearch/AdvanceSearch";
-import Features from "../../components/Features/Features";
-import { Container, Row, Col, Card, Button, Spinner, Form, InputGroup, Alert, Carousel } from "react-bootstrap";
+import { Container, Row, Col, Card, Button, Spinner } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
-
-// import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
 import "./home.css";
 import "./home-tours-redesign.css";
+import "./scroll-animations.css";
 
 import Gallery from "../../components/Gallery/Gallery";
-// import PopularCard from "../../components/Cards/PopularCard";
-import { FaMapMarkerAlt, FaCalendarAlt, FaStar, FaArrowRight, FaChevronLeft, FaChevronRight, FaSearch, FaQuoteRight } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaCalendarAlt, FaStar, FaArrowRight, FaChevronLeft, FaChevronRight, FaSearch, FaQuoteRight, FaShoppingCart, FaEye, FaTimes, FaArrowUp } from 'react-icons/fa';
 import { MdLocationOn, MdDateRange, MdPeople } from 'react-icons/md';
 import * as api from '../../utils/api';
 import PriceDisplay from '../../components/PriceDisplay';
@@ -79,21 +75,74 @@ const Home = () => {
   const [discountPrices, setDiscountPrices] = useState({});
   const [loadingDiscounts, setLoadingDiscounts] = useState(false);
   
-  // 添加滚动引用
-  const dayToursScrollRef = useRef(null);
-  const groupToursScrollRef = useRef(null);
+  // 新增：当前显示的目的地索引
+  const [activeDayTourIndex, setActiveDayTourIndex] = useState(0);
+  const [activeGroupTourIndex, setActiveGroupTourIndex] = useState(0);
   
-  // 滚动控制函数
-  const handleScroll = (direction, ref) => {
-    if (!ref.current) return;
+  // 添加滚动监听相关状态 - 默认设置为true以确保内容显示
+  const [sectionAnimations, setSectionAnimations] = useState({
+    banner: false,
+    dayTours: false,
+    groupTours: false,
+    callUs: false,
+    testimonials: false,
+    gallery: false
+  });
+  
+  const dayToursRef = useRef(null);
+  const groupToursRef = useRef(null);
+  
+  // 添加滚动位置状态
+  const [scrollPosition, setScrollPosition] = useState(0);
+  // 添加当前位置部分状态
+  const [currentSection, setCurrentSection] = useState('顶部');
+  // 添加滚动百分比状态
+  const [scrollPercentage, setScrollPercentage] = useState(0);
+  // 添加显示/隐藏滚动监视器状态
+  const [showScrollMonitor, setShowScrollMonitor] = useState(false);
+  // 添加显示/隐藏回到顶部按钮状态
+  const [showBackToTop, setShowBackToTop] = useState(false);
+  
+  // 添加各部分的refs
+  const bannerRef = useRef(null);
+  const callUsRef = useRef(null);
+  const testimonialsRef = useRef(null);
+  const galleryRef = useRef(null);
+  
+  // 添加新的状态来跟踪哪些卡片应该可见
+  const [visibleCards, setVisibleCards] = useState({
+    dayTours: [],
+    groupTours: []
+  });
+  
+  // 跳转到预订页面
+  const handleBookNow = (tour, type) => {
+    if (!isAuthenticated) {
+      navigate('/login', { 
+        state: { 
+          from: `/tours/${tour.id}`, 
+          message: "请先登录再进行预订"
+        }
+      });
+      return;
+    }
     
-    const scrollAmount = 370; // 每次滚动的距离，应该等于或略大于卡片宽度
-    const container = ref.current;
+    // 准备预订参数
+    const params = new URLSearchParams();
+    params.append('tourId', tour.id);
+    params.append('tourName', tour.name || tour.title || '');
+    params.append('type', type);
+    params.append('price', tour.price);
     
-    if (direction === 'left') {
-      container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+    navigate(`/booking?${params.toString()}`);
+  };
+  
+  // 跳转到详情页面
+  const handleViewDetails = (tour, type) => {
+    if (type === 'day') {
+      navigate(`/day-tours/${tour.id}`);
     } else {
-      container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      navigate(`/group-tours/${tour.id}`);
     }
   };
   
@@ -308,6 +357,157 @@ const Home = () => {
     fetchRecommendedTours();
   }, []);
 
+  // 滚动监听函数，用于触发动画和检测当前部分
+  useEffect(() => {
+    // 确保组件始终能显示，不依赖于滚动
+    console.log("首页内容区域已加载");
+    
+    // 添加滚动监听
+    const handleScroll = () => {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const windowHeight = window.innerHeight;
+      const documentHeight = Math.max(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight,
+        document.body.offsetHeight,
+        document.documentElement.offsetHeight,
+        document.body.clientHeight,
+        document.documentElement.clientHeight
+      );
+      
+      // 更新滚动位置
+      setScrollPosition(scrollTop);
+      
+      // 计算滚动百分比
+      const scrollPercent = (scrollTop / (documentHeight - windowHeight)) * 100;
+      setScrollPercentage(Math.min(scrollPercent, 100));
+      
+      // 设置是否显示回到顶部按钮
+      setShowBackToTop(scrollTop > 400);
+      
+      // 检查各部分是否进入视图，并设置对应的动画状态
+      const checkElementInView = (element, offset = 150) => {
+        if (!element) return false;
+        const rect = element.getBoundingClientRect();
+        return rect.top <= windowHeight - offset;
+      };
+      
+      // 更新各部分的显示状态
+      setSectionAnimations({
+        banner: checkElementInView(bannerRef.current, 0),
+        dayTours: checkElementInView(dayToursRef.current),
+        groupTours: checkElementInView(groupToursRef.current),
+        callUs: checkElementInView(callUsRef.current),
+        testimonials: checkElementInView(testimonialsRef.current),
+        gallery: checkElementInView(galleryRef.current)
+      });
+      
+      // 检测每个卡片是否应该可见
+      if (dayToursRef.current) {
+        const cards = dayToursRef.current.querySelectorAll('.destination-card');
+        const newVisibleDayTours = [];
+        
+        cards.forEach((card, index) => {
+          const rect = card.getBoundingClientRect();
+          if (rect.top <= windowHeight - 100) {
+            newVisibleDayTours.push(index);
+          }
+        });
+        
+        setVisibleCards(prev => ({
+          ...prev,
+          dayTours: newVisibleDayTours
+        }));
+      }
+      
+      if (groupToursRef.current) {
+        const cards = groupToursRef.current.querySelectorAll('.destination-card');
+        const newVisibleGroupTours = [];
+        
+        cards.forEach((card, index) => {
+          const rect = card.getBoundingClientRect();
+          if (rect.top <= windowHeight - 100) {
+            newVisibleGroupTours.push(index);
+          }
+        });
+        
+        setVisibleCards(prev => ({
+          ...prev,
+          groupTours: newVisibleGroupTours
+        }));
+      }
+      
+      // 更新当前部分
+      if (checkElementInView(bannerRef.current, 0) && scrollTop < 200) {
+        setCurrentSection('顶部');
+      } else if (checkElementInView(dayToursRef.current) && !checkElementInView(groupToursRef.current)) {
+        setCurrentSection('一日游');
+      } else if (checkElementInView(groupToursRef.current) && !checkElementInView(callUsRef.current)) {
+        setCurrentSection('多日游');
+      } else if (checkElementInView(callUsRef.current) && !checkElementInView(testimonialsRef.current)) {
+        setCurrentSection('联系我们');
+      } else if (checkElementInView(testimonialsRef.current) && !checkElementInView(galleryRef.current)) {
+        setCurrentSection('用户评价');
+      } else if (checkElementInView(galleryRef.current)) {
+        setCurrentSection('画廊');
+      }
+    };
+    
+    // 处理窗口大小变化
+    const handleResize = () => {
+      // 窗口大小变化时重新计算滚动位置
+      handleScroll();
+    };
+    
+    // 使用多种方法添加滚动事件监听器以确保兼容性
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    document.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleResize, { passive: true });
+    
+    // 初始调用一次来设置初始值
+    handleScroll();
+    
+    // 添加一个短暂延迟后再次检查，以确保在所有元素加载完毕后获取正确的位置
+    const initialCheckTimeout = setTimeout(() => {
+      handleScroll();
+      console.log("初始化延迟检查滚动位置");
+    }, 1000);
+    
+    // 添加定时器定期检查滚动位置，以防事件监听器失效
+    const scrollCheckInterval = setInterval(handleScroll, 500);
+    
+    return () => {
+      // 清理代码...
+      window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(initialCheckTimeout);
+      clearInterval(scrollCheckInterval);
+    };
+  }, []);
+
+  // 滚动到顶部函数
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
+  
+  // 强制更新滚动位置函数
+  const forceUpdateScrollPosition = () => {
+    const position = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    setScrollPosition(position);
+    
+    const windowHeight = window.innerHeight;
+    const documentHeight = document.documentElement.scrollHeight;
+    const maxScroll = documentHeight - windowHeight;
+    const percentage = maxScroll > 0 ? Math.round((position / maxScroll) * 100) : 0;
+    setScrollPercentage(percentage);
+    
+    console.log("手动检测 - 当前滚动位置:", position, "滚动百分比:", percentage + "%");
+  };
+
   // 加载指示器
   const LoadingSpinner = () => (
     <div className="text-center my-5">
@@ -323,251 +523,275 @@ const Home = () => {
     </div>
   );
 
-  // 在Cards渲染前，批量预处理旅游产品数据
-  const preprocessTourData = (tours) => {
-    if (!tours || !Array.isArray(tours) || tours.length === 0) {
-      return [];
+  // 根据滚动百分比计算颜色
+  const getProgressColor = () => {
+    // 从绿色过渡到红色
+    const green = Math.round(255 * (100 - scrollPercentage) / 100);
+    const red = Math.round(255 * scrollPercentage / 100);
+    return `rgb(${red}, ${green}, 0)`;
+  };
+
+  // 定义动画样式
+  const getAnimationStyle = (sectionKey) => {
+    // 如果该部分动画已激活，返回激活的样式
+    if (sectionAnimations[sectionKey]) {
+      return {
+        opacity: 1,
+        transform: 'translateY(0)',
+        transition: 'opacity 0.8s ease-out, transform 0.8s ease-out'
+      };
+    }
+    // 否则返回初始样式（隐藏并向下偏移）
+    return {
+      opacity: 0,
+      transform: 'translateY(50px)',
+      transition: 'opacity 0.8s ease-out, transform 0.8s ease-out'
+    };
+  };
+  
+  // 定义不同的动画样式
+  const getSpecialAnimationStyle = (sectionKey, index = 0, type = 'fade') => {
+    // 如果该部分动画未激活，返回初始隐藏状态
+    if (!sectionAnimations[sectionKey]) {
+      // 根据类型返回不同的初始样式
+      switch (type) {
+        case 'fade': 
+          return { 
+            opacity: 0,
+            transform: 'translateY(50px)',
+            transition: 'opacity 0.8s ease-out, transform 0.8s ease-out'
+          };
+        case 'slide-left':
+          return {
+            opacity: 0,
+            transform: 'translateX(-100px)',
+            transition: 'opacity 0.8s ease-out, transform 0.8s ease-out'
+          };
+        case 'slide-right':
+          return {
+            opacity: 0,
+            transform: 'translateX(100px)',
+            transition: 'opacity 0.8s ease-out, transform 0.8s ease-out'
+          };
+        case 'scale':
+          return {
+            opacity: 0,
+            transform: 'scale(0.8)',
+            transition: 'opacity 0.8s ease-out, transform 0.8s ease-out'
+          };
+        case 'rotate':
+          return {
+            opacity: 0,
+            transform: 'rotate(-10deg) scale(0.9)',
+            transition: 'opacity 0.8s ease-out, transform 0.8s ease-out'
+          };
+        default:
+          return {
+            opacity: 0,
+            transform: 'translateY(50px)',
+            transition: 'opacity 0.8s ease-out, transform 0.8s ease-out'
+          };
+      }
     }
     
-    // 批量获取，避免每个卡片单独请求
-    console.log(`Home页面预处理${tours.length}个旅游产品数据`);
+    // 激活状态的样式（所有类型的最终状态都是一样的，只是初始状态不同）
+    return {
+      opacity: 1,
+      transform: 'translateY(0) translateX(0) rotate(0) scale(1)',
+      transition: 'opacity 0.8s ease-out, transform 0.8s ease-out',
+      transitionDelay: `${index * 0.1}s`
+    };
+  };
+
+  // 修改卡片渲染时添加visible类
+  const renderDestinationCard = (tour, index, type) => {
+    // 检查该卡片是否应该可见
+    const isVisible = type === 'day' 
+      ? visibleCards.dayTours.includes(index)
+      : visibleCards.groupTours.includes(index);
     
-    return tours.map(tour => {
-      // 检查数据来源，确定旅游类型
-      let tourType = null;
-      let apiTourType = null;
+    // 根据category确定对应的CSS类名
+    const getCategoryClass = (category) => {
+      if(!category) return 'cultural';
       
-      // 识别旅游类型的逻辑
-      const isMostLikelyDayTour = tour.day_tour_id || tour.tourCode?.includes('DT');
-      const isMostLikelyGroupTour = tour.group_tour_id || tour.tourCode?.includes('GT');
-      
-      // 优先根据名称判断
-      const nameIndicatesDayTour = (tour.name || tour.title || '')
-        .toLowerCase()
-        .includes('一日游');
-        
-      const nameIndicatesGroupTour = (tour.name || tour.title || '')
-        .toLowerCase()
-        .match(/跟团|团队|多日|日游(?!一日)/); // 匹配跟团，团队，多日，或者几日游(但不是一日游)
-      
-      // 打印识别结果
-      console.log(`旅游ID=${tour.id}识别结果:`, {
-        name: tour.name || tour.title,
-        isMostLikelyDayTour,
-        isMostLikelyGroupTour,
-        nameIndicatesDayTour,
-        nameIndicatesGroupTour
-      });
-      
-      // 判断逻辑
-      if (isMostLikelyDayTour || nameIndicatesDayTour) {
-        tourType = 'day_tour';
-        apiTourType = 'day';
-      } 
-      else if (isMostLikelyGroupTour || nameIndicatesGroupTour) {
-        tourType = 'group_tour';
-        apiTourType = 'group';
-      }
-      // 根据当前分组判断
-      else if (window.location.pathname.includes('day-tours') || 
-               window.location.href.includes('day-tours')) {
-        tourType = 'day_tour';
-        apiTourType = 'day';
-      }
-      else if (window.location.pathname.includes('group-tours') || 
-               window.location.href.includes('group-tours')) {
-        tourType = 'group_tour';
-        apiTourType = 'group';
-      }
-      // 如果是在跟团游区域渲染的产品，默认为跟团游
-      else if (tour.section === 'group_tours') {
-        tourType = 'group_tour';
-        apiTourType = 'group';
-      }
-      // 如果是在一日游区域渲染的产品，默认为一日游
-      else if (tour.section === 'day_tours') {
-        tourType = 'day_tour';
-        apiTourType = 'day';
-      }
-      // 根据ID范围判断（通常ID 1-100为一日游，101-200为跟团游）
-      else if (tour.id && tour.id <= 100) {
-        tourType = 'day_tour';
-        apiTourType = 'day';
-      } else {
-        tourType = 'group_tour';
-        apiTourType = 'group';
-      }
-      
-      console.log(`旅游ID=${tour.id}最终确定类型: ${tourType}, API类型: ${apiTourType}`);
-      
-      return {
-        ...tour,
-        name: tour.title || tour.name,
-        image: tour.coverImage || tour.image || tour.image_url || '/images/placeholder.jpg',
-        tours: tourType === 'day_tour' ? "一日游" : "跟团游",
-        shortDes: tour.description,
-        type: tourType,         // 设置前端类型
-        tour_type: tourType,    // 设置tour_type字段
-        api_tour_type: apiTourType, // 设置后端API需要的类型值
-        price: Number(tour.price || 0),
-        rating: tour.rating || "4.5"
+      const categoryMap = {
+        '自然风光': 'nature',
+        '文化体验': 'cultural',
+        '历史遗迹': 'history',
+        '美食体验': 'food',
+        '城市观光': 'city',
+        '探险活动': 'adventure'
       };
-    });
+      
+      return categoryMap[category] || 'cultural';
+    };
+    
+    // 额外的标签，根据产品特点添加
+    const getExtraTags = (tour) => {
+      const tags = [];
+      
+      // 根据价格或其他属性添加额外标签
+      if (tour.price > 1000) {
+        tags.push('RELAX');
+      }
+      
+      return tags;
+    };
+    
+    const extraTags = getExtraTags(tour);
+    
+    return (
+      <Col xs={12} md={6} lg={4} key={tour.id || index} className="mb-4">
+        <div className={`destination-card ${isVisible ? 'visible' : ''}`}>
+          <div className="destination-image">
+            <img src={tour.coverImage || themeNature} alt={tour.name || tour.title || "目的地"} />
+          </div>
+          <div className="destination-content">
+            <h3 className="destination-title">{tour.name || tour.title || "旅游目的地"}</h3>
+            <div className="destination-location">
+              <MdLocationOn /> {tour.location || tour.destination || "塔斯马尼亚"}
+            </div>
+            <div className="destination-divider"></div>
+            <div className="destination-tags">
+              <span className="tag">
+                {tour.category ? tour.category.toUpperCase() : "CULTURAL"}
+              </span>
+              {extraTags.map((tag, i) => (
+                <div key={i}>
+                  <span className="tag">{tag}</span>
+                  {tag === 'RELAX' && <span className="tag plus">+1</span>}
+                </div>
+              ))}
+            </div>
+            <div className="destination-price">
+              <div className="price-value">
+                ${tour.price || 1100}
+              </div>
+            </div>
+            <p className="destination-description">
+              {tour.description || tour.overview || "探索塔斯马尼亚西海岸的自然奇观和历史遗迹。这里有壮丽的山脉、清澈的湖泊和丰富的野生动物，适合热爱自然和文化的旅行者。"}
+            </p>
+            <button 
+              className="details-btn" 
+              onClick={() => handleViewDetails(tour, type)}
+            >
+              详情
+            </button>
+          </div>
+        </div>
+      </Col>
+    );
   };
 
   return (
     <>
-      <Banner />
+      {/* Banner部分 */}
+      <div className="banner-section" ref={bannerRef}>
+        <Banner />
+        {/* 回到顶部按钮 */}
+        {showBackToTop && (
+          <button 
+            onClick={scrollToTop}
+            style={{
+              position: 'fixed',
+              bottom: '20px',
+              right: '20px',
+              zIndex: 1000,
+              background: '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '50%',
+              width: '50px',
+              height: '50px',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              cursor: 'pointer',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
+              fontSize: '20px'
+            }}
+          >
+            <FaArrowUp />
+          </button>
+        )}
+      </div>
+      
       <div className="home-content">
-        <Features />
-
-        {/* 精彩一日游部分 - 使用新设计 */}
-        <section className="tour-section day-tours-section">
-          <div className="bg-element bg-element-1"></div>
-          <div className="bg-element bg-element-2"></div>
+        {/* 精彩一日游部分 */}
+        <section className="day-tours-section section-padding" ref={dayToursRef}>
           <Container>
-            <div className="section-header d-flex justify-content-between align-items-center">
-              <div className="section-title-wrapper">
-                <h2 className="section-title">精彩一日游</h2>
-                <p className="section-subtitle">探索塔斯马尼亚的精彩一日游行程</p>
-              </div>
-              <Link to="/tours?tourTypes=day_tour" className="view-all-link">查看全部 <FaArrowRight className="ms-1" /></Link>
-            </div>
-
-            {/* 一日游列表 */}
-            <div className="day-tours">
+            <Row>
+              <Col>
+                <div 
+                  className="section-header mb-4" 
+                  style={getSpecialAnimationStyle('dayTours', 0, 'slide-right')}
+                >
+                  <h2 className="section-title">塔斯马尼亚精彩一日游</h2>
+                  <div className="section-subtitle">探索塔斯马尼亚最受欢迎的一日游线路</div>
+                </div>
+              </Col>
+            </Row>
+            <Row>
               {error.dayTours ? (
-                <div className="error-message">{error.dayTours}</div>
+                <Col><ErrorMessage message={error.dayTours} /></Col>
               ) : loading.dayTours ? (
-                <div className="loading-container">
-                  <div className="loader"></div>
-                  <p>正在加载精彩一日游...</p>
-                </div>
+                <Col><LoadingSpinner /></Col>
               ) : dayTours.length === 0 ? (
-                <div className="no-data-message">暂无一日游数据</div>
+                <Col><div className="no-data-message">暂无一日游数据</div></Col>
               ) : (
-                <div className="scrollable-tour-container">
-                  <button 
-                    className="scroll-control scroll-left" 
-                    onClick={() => handleScroll('left', dayToursScrollRef)}
-                    aria-label="向左滚动"
-                  >
-                    <FaChevronLeft />
-                  </button>
-                  <div className="scrollable-tour-wrapper" ref={dayToursScrollRef}>
-                    {preprocessTourData(dayTours.slice(0, 10).map(tour => ({
-                      ...tour,
-                      section: 'day_tours' // 标记为一日游部分
-                    }))).map((tour) => (
-                      <div className="scrollable-tour-card" key={tour.id}>
-                        <RedesignedCard tour={tour} />
-                      </div>
-                    ))}
-                  </div>
-                  <button 
-                    className="scroll-control scroll-right" 
-                    onClick={() => handleScroll('right', dayToursScrollRef)}
-                    aria-label="向右滚动"
-                  >
-                    <FaChevronRight />
-                  </button>
-                  <div className="scroll-indicator">
-                    <div className="scroll-text">向右滑动查看更多</div>
-                    <div className="scroll-arrows">
-                      <FaChevronRight />
-                      <FaChevronRight className="second-arrow" />
-                    </div>
-                  </div>
-                </div>
+                dayTours.map((tour, index) => renderDestinationCard(tour, index, 'day'))
               )}
-              <div className="text-center mt-3">
-                <Link to="/tours?tourTypes=day_tour" className="view-more-btn">
-                  查看更多 <FaArrowRight className="ms-2" />
-                </Link>
-              </div>
-            </div>
+            </Row>
           </Container>
         </section>
 
-        {/* 热门跟团游部分 - 使用新设计 */}
-        <section className="tour-section group-tours-section">
-          <div className="bg-element bg-element-1"></div>
-          <div className="bg-element bg-element-2"></div>
+        {/* 热门跟团游部分 */}
+        <section className="group-tours-section section-padding bg-light" ref={groupToursRef}>
           <Container>
-            <div className="section-header d-flex justify-content-between align-items-center">
-              <div className="section-title-wrapper">
-                <h2 className="section-title">热门跟团游</h2>
-                <p className="section-subtitle">精选多日特色跟团游行程</p>
-              </div>
-              <Link to="/tours?tourTypes=group_tour" className="view-all-link">查看全部 <FaArrowRight className="ms-1" /></Link>
-            </div>
-
-            {/* 跟团游列表 */}
-            <div className="group-tours">
+            <Row>
+              <Col>
+                <div 
+                  className="section-header mb-4" 
+                  style={getSpecialAnimationStyle('groupTours', 0, 'slide-left')}
+                >
+                  <h2 className="section-title">塔斯马尼亚精选多日游</h2>
+                  <div className="section-subtitle">深度体验塔斯马尼亚多日游行程</div>
+                </div>
+              </Col>
+            </Row>
+            <Row>
               {error.groupTours ? (
-                <div className="error-message">{error.groupTours}</div>
+                <Col><ErrorMessage message={error.groupTours} /></Col>
               ) : loading.groupTours ? (
-                <div className="loading-container">
-                  <div className="loader"></div>
-                  <p>正在加载精彩跟团游...</p>
-                </div>
+                <Col><LoadingSpinner /></Col>
               ) : groupTours.length === 0 ? (
-                <div className="no-data-message">暂无跟团游数据</div>
+                <Col><div className="no-data-message">暂无跟团游数据</div></Col>
               ) : (
-                <div className="scrollable-tour-container">
-                  <button 
-                    className="scroll-control scroll-left" 
-                    onClick={() => handleScroll('left', groupToursScrollRef)}
-                    aria-label="向左滚动"
-                  >
-                    <FaChevronLeft />
-                  </button>
-                  <div className="scrollable-tour-wrapper" ref={groupToursScrollRef}>
-                    {preprocessTourData(groupTours.slice(0, 10).map(tour => ({
-                      ...tour,
-                      section: 'group_tours' // 标记为跟团游部分
-                    }))).map((tour) => (
-                      <div className="scrollable-tour-card" key={tour.id}>
-                        <RedesignedCard tour={tour} />
-                      </div>
-                    ))}
-                  </div>
-                  <button 
-                    className="scroll-control scroll-right" 
-                    onClick={() => handleScroll('right', groupToursScrollRef)}
-                    aria-label="向右滚动"
-                  >
-                    <FaChevronRight />
-                  </button>
-                  <div className="scroll-indicator">
-                    <div className="scroll-text">向右滑动查看更多</div>
-                    <div className="scroll-arrows">
-                      <FaChevronRight />
-                      <FaChevronRight className="second-arrow" />
-                    </div>
-                  </div>
-                </div>
+                groupTours.map((tour, index) => renderDestinationCard(tour, index, 'group'))
               )}
-              <div className="text-center mt-3">
-                <Link to="/tours?tourTypes=group_tour" className="view-more-btn">
-                  查看更多 <FaArrowRight className="ms-2" />
-                </Link>
-              </div>
-            </div>
+            </Row>
           </Container>
         </section>
 
-        <section className="call_us">
+        {/* 联系我们部分 */}
+        <section className="call_us" ref={callUsRef}>
           <Container>
             <Row className="align-items-center">
-              <Col md="8">
+              <Col 
+                md="8"
+                style={getSpecialAnimationStyle('callUs', 0, 'slide-right')}
+              >
                 <div className="section-title">
                   <h5 className="title">开启旅程</h5>
                   <h2 className="heading">准备好一场难忘的旅行了吗？</h2>
                   <p className="text">塔斯马尼亚拥有澳大利亚最美丽的自然风光，让我们带您领略这片净土的魅力，创造终生难忘的回忆。</p>
                 </div>
               </Col>
-              <Col md="4" className="text-center mt-3 mt-md-0">
+              <Col 
+                md="4" 
+                className="text-center mt-3 mt-md-0"
+                style={getSpecialAnimationStyle('callUs', 1, 'scale')}
+              >
                 <a
                   href="tel:6398312365"
                   className="secondary_btn bounce"
@@ -580,23 +804,30 @@ const Home = () => {
           </Container>
           <div className="overlay"></div>
         </section>
-
+        
         {/* 客户评价部分 */}
-        <section className="testimonials-redesigned">
+        <section className="testimonials-redesigned" ref={testimonialsRef}>
           <div className="testimonial-bg-element bg-element-1"></div>
           <div className="testimonial-bg-element bg-element-2"></div>
           <Container>
             <Row>
               <Col>
-                <div className="section-header">
+                <div 
+                  className="section-header"
+                  style={getSpecialAnimationStyle('testimonials', 0, 'scale')}
+                >
                   <h2 className="section-title">客户评价</h2>
                   <div className="section-subtitle">听听我们的客户怎么说</div>
                 </div>
               </Col>
             </Row>
             <Row>
-              <Col md={4} className="mb-4">
-                <div className="testimonial-card-redesigned">
+              <Col 
+                md={4} 
+                className="mb-4"
+                style={getSpecialAnimationStyle('testimonials', 1, 'rotate')}
+              >
+                <div className="testimonial-card-redesigned animate-testimonial">
                   <div className="card-body">
                     <div className="testimonial-quote-icon">
                       <FaQuoteRight />
@@ -623,8 +854,12 @@ const Home = () => {
                   </div>
                 </div>
               </Col>
-              <Col md={4} className="mb-4">
-                <div className="testimonial-card-redesigned">
+              <Col 
+                md={4} 
+                className="mb-4"
+                style={getSpecialAnimationStyle('testimonials', 2, 'scale')}
+              >
+                <div className="testimonial-card-redesigned animate-testimonial">
                   <div className="card-body">
                     <div className="testimonial-quote-icon">
                       <FaQuoteRight />
@@ -651,8 +886,12 @@ const Home = () => {
                   </div>
                 </div>
               </Col>
-              <Col md={4} className="mb-4">
-                <div className="testimonial-card-redesigned">
+              <Col 
+                md={4} 
+                className="mb-4"
+                style={getSpecialAnimationStyle('testimonials', 3, 'rotate')}
+              >
+                <div className="testimonial-card-redesigned animate-testimonial">
                   <div className="card-body">
                     <div className="testimonial-quote-icon">
                       <FaQuoteRight />
@@ -682,21 +921,28 @@ const Home = () => {
             </Row>
           </Container>
         </section>
+        
         {/* 精彩瞬间部分 */}
-        <section className="gallery-redesigned">
+        <section className="gallery-redesigned" ref={galleryRef}>
           <div className="gallery-bg-element bg-element-1"></div>
           <div className="gallery-bg-element bg-element-2"></div>
           <Container>
             <Row>
               <Col>
-                <div className="section-header">
+                <div 
+                  className="section-header"
+                  style={getSpecialAnimationStyle('gallery', 0, 'slide-left')}
+                >
                   <h2 className="section-title">精彩瞬间</h2>
                   <div className="section-subtitle">记录塔斯马尼亚的美丽风光与难忘时刻</div>
                 </div>
               </Col>
             </Row>
             <Row>
-              <Col md="12">
+              <Col 
+                md="12"
+                style={getSpecialAnimationStyle('gallery', 1, 'fade')}
+              >
                 <Gallery />
               </Col>
             </Row>

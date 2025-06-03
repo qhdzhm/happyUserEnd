@@ -3,6 +3,18 @@
  */
 
 /**
+ * 检查是否为常见的英文词汇（非姓名）
+ */
+const isCommonEnglishWord = (word) => {
+  const commonWords = ['Order', 'Booking', 'Hotel', 'Flight', 'Date', 'Time', 'Service', 
+                      'Tour', 'Travel', 'Guest', 'Customer', 'Phone', 'Contact', 'Email',
+                      'Check', 'Room', 'Night', 'Day', 'Adult', 'Child', 'Person', 'Group',
+                      'Info', 'Information', 'Number', 'Code'];
+  
+  return commonWords.some(common => word.toLowerCase() === common.toLowerCase());
+};
+
+/**
  * 从文本中提取预订信息
  * @param {string} text - 中介提供的预订文本
  * @returns {Object} - 提取的预订信息对象
@@ -30,6 +42,11 @@ export const extractBookingInfo = (text) => {
     roomType: '',            // 房型
     hotelLevel: '',          // 酒店级别
     specialRequests: '',     // 特殊要求
+    hotelCheckInDate: '',    // 酒店入住日期
+    hotelCheckOutDate: '',   // 酒店退房日期
+    pickupDate: '',          // 接送日期
+    dropoffDate: '',         // 接送日期
+    hotelRoomCount: 0,        // 酒店房间数量
   };
 
   // 提取服务类型/团名
@@ -68,6 +85,12 @@ export const extractBookingInfo = (text) => {
           const endDate = new Date(result.tourStartDate);
           endDate.setDate(endDate.getDate() + duration - 1);
           result.tourEndDate = endDate.toISOString().split('T')[0];
+          
+          // 设置默认的接车、酒店入住、退房和送回日期
+          result.pickupDate = result.tourStartDate;
+          result.dropoffDate = result.tourEndDate;
+          result.hotelCheckInDate = result.tourStartDate;
+          result.hotelCheckOutDate = result.tourEndDate;
         }
       }
     } else if (dateStr.match(/\d{1,2}\/\d{1,2}\/\d{2,4}/)) {
@@ -79,10 +102,40 @@ export const extractBookingInfo = (text) => {
         const month = parts[1].padStart(2, '0');
         const day = parts[0].padStart(2, '0');
         result.tourStartDate = `${year}-${month}-${day}`;
+        
+        // 尝试根据团名估算行程天数并计算结束日期
+        const durationMatch = result.tourName.match(/(\d+)日/) || result.tourName.match(/(\d+)天/);
+        if (durationMatch) {
+          const duration = parseInt(durationMatch[1], 10);
+          const endDate = new Date(result.tourStartDate);
+          endDate.setDate(endDate.getDate() + duration - 1);
+          result.tourEndDate = endDate.toISOString().split('T')[0];
+          
+          // 设置默认的接车、酒店入住、退房和送回日期
+          result.pickupDate = result.tourStartDate;
+          result.dropoffDate = result.tourEndDate;
+          result.hotelCheckInDate = result.tourStartDate;
+          result.hotelCheckOutDate = result.tourEndDate;
+        }
       }
     } else if (dateStr.match(/\d{4}-\d{1,2}-\d{1,2}/)) {
       // 已经是标准格式
       result.tourStartDate = dateStr;
+      
+      // 尝试根据团名估算行程天数并计算结束日期
+      const durationMatch = result.tourName.match(/(\d+)日/) || result.tourName.match(/(\d+)天/);
+      if (durationMatch) {
+        const duration = parseInt(durationMatch[1], 10);
+        const endDate = new Date(result.tourStartDate);
+        endDate.setDate(endDate.getDate() + duration - 1);
+        result.tourEndDate = endDate.toISOString().split('T')[0];
+        
+        // 设置默认的接车、酒店入住、退房和送回日期
+        result.pickupDate = result.tourStartDate;
+        result.dropoffDate = result.tourEndDate;
+        result.hotelCheckInDate = result.tourStartDate;
+        result.hotelCheckOutDate = result.tourEndDate;
+      }
     }
   }
 
@@ -150,6 +203,20 @@ export const extractBookingInfo = (text) => {
     } else {
       result.roomType = roomTypeText;
     }
+  } else {
+    // 默认双床房
+    result.roomType = '双人间';
+  }
+  
+  // 房间数量 - 默认为1间
+  result.hotelRoomCount = 1;
+
+  // 检查文本中是否特别提到需要2间房
+  const roomCountMatch = text.match(/(?:房间|房)(?:数量|数)?[：:]\s*(\d+)(?:\D|$)/) || 
+                        text.match(/(\d+)(?:间|个)(?:房|房间)/) ||
+                        text.match(/需要(\d+)(?:间|个)(?:房|房间)/);
+  if (roomCountMatch) {
+    result.hotelRoomCount = parseInt(roomCountMatch[1], 10);
   }
 
   // 提取酒店级别
@@ -167,7 +234,7 @@ export const extractBookingInfo = (text) => {
 
   // 提取乘客信息
   // 这部分比较复杂，我们尝试识别常见的模式
-  const passengerSection = text.match(/乘客信息[：:]([\s\S]*?)(?:房型|酒店级别|行程安排|备注|$)/i);
+  const passengerSection = text.match(/(?:乘客信息|游客信息)[：:]([\s\S]*?)(?:房型|酒店级别|行程安排|备注|$)/i);
   
   if (passengerSection) {
     const passengerText = passengerSection[1].trim();
@@ -181,45 +248,88 @@ export const extractBookingInfo = (text) => {
       const passenger = {
         fullName: '',
         phone: '',
+        wechat: '',
         passportNumber: '',
         isChild: false,
         childAge: null
       };
       
-      // 名字通常在行的开始
-      const nameMatch = line.match(/^([^0-9(（]+)/);
-      if (nameMatch) {
-        passenger.fullName = nameMatch[1].trim();
-        
-        // 检查是否为儿童
-        if (passenger.fullName.includes('儿童') || passenger.fullName.toLowerCase().includes('child')) {
-          passenger.isChild = true;
-          
-          // 尝试提取儿童年龄
-          const ageMatch = passenger.fullName.match(/\d+/);
-          if (ageMatch) {
-            passenger.childAge = ageMatch[0];
-            // 清理名字中的年龄标记
-            passenger.fullName = passenger.fullName.replace(/\d+岁?/, '').trim();
+      // 改进的姓名提取逻辑，支持中文和英文拼音姓名
+      let nameMatch = null;
+      
+      // 先尝试提取英文全名（Firstname Lastname）
+      const englishNameMatch = line.match(/\b[A-Z][a-z]+\s+[A-Z][a-z]+\b/);
+      if (englishNameMatch) {
+        nameMatch = englishNameMatch;
+        passenger.fullName = nameMatch[0].trim();
+      } else {
+        // 再尝试提取中文姓名（排除数字、电话号码和护照号）
+        const chineseNameMatch = line.match(/^([^\d\s()（）]+?)(?:\s|[EG]\d|[A-Z]{2}\d|\d{3,}|$)/);
+        if (chineseNameMatch) {
+          let possibleName = chineseNameMatch[1].trim();
+          // 过滤掉明显不是姓名的内容
+          if (!possibleName.match(/[：:]/)) {
+            nameMatch = chineseNameMatch;
+            passenger.fullName = possibleName;
           }
         }
       }
       
-      // 提取电话号码
+      // 如果仍然没有找到姓名，尝试单个英文单词（可能是单名）
+      if (!passenger.fullName) {
+        const singleEnglishMatch = line.match(/\b[A-Z][a-z]{2,15}\b/);
+        if (singleEnglishMatch && !isCommonEnglishWord(singleEnglishMatch[0])) {
+          passenger.fullName = singleEnglishMatch[0];
+        }
+      }
+      
+      // 检查是否为儿童
+      if (passenger.fullName && (passenger.fullName.includes('儿童') || passenger.fullName.toLowerCase().includes('child'))) {
+        passenger.isChild = true;
+        
+        // 尝试提取儿童年龄
+        const ageMatch = line.match(/(\d+)(?:岁|age|years?|Age)/i);
+        if (ageMatch) {
+          passenger.childAge = ageMatch[1];
+          // 清理名字中的年龄标记
+          passenger.fullName = passenger.fullName.replace(/\d+岁?/, '').replace(/\d+\s*(?:age|years?)/i, '').trim();
+        }
+      }
+      
+      // 提取电话号码（支持多种格式）
       const phoneMatch = line.match(/(?:\+?86)?(?:1[3-9]\d{9}|\d{3,4}[-\s]?\d{3,4}[-\s]?\d{3,4})/);
       if (phoneMatch) {
         passenger.phone = phoneMatch[0].replace(/[-\s]/g, '');
       }
       
-      // 提取护照号码 (通常为字母+数字组合)
-      const passportMatch = line.match(/[A-Z]{1,2}\d{6,9}|[0-9]{6,12}/);
+      // 提取护照号（支持中国护照和其他格式）
+      const passportMatch = line.match(/[A-Z]\d{8}|[A-Z]{2}\d{7}/);
       if (passportMatch) {
         passenger.passportNumber = passportMatch[0];
       }
       
-      if (passenger.fullName || passenger.phone || passenger.passportNumber) {
+      if (passenger.fullName) {
         result.passengers.push(passenger);
       }
+    }
+  }
+  
+  // 尝试单独提取电话和微信
+  const chinaPhoneMatch = text.match(/国内电话[：:]\s*([0-9\s\-+]+)/);
+  const ausPhoneMatch = text.match(/澳洲电话[：:]\s*([0-9\s\-+]+)/);
+  const wechatMatch = text.match(/微信[：:]\s*([^\n]+)/);
+  
+  // 如果找到了电话号码，将其应用到第一个乘客
+  if (result.passengers.length > 0) {
+    // 优先使用澳洲电话，其次是中国电话
+    if (ausPhoneMatch && ausPhoneMatch[1]) {
+      result.passengers[0].phone = ausPhoneMatch[1].trim();
+    } else if (chinaPhoneMatch && chinaPhoneMatch[1]) {
+      result.passengers[0].phone = chinaPhoneMatch[1].trim();
+    }
+    
+    if (wechatMatch && wechatMatch[1]) {
+      result.passengers[0].wechat = wechatMatch[1].trim();
     }
   }
   
@@ -229,69 +339,126 @@ export const extractBookingInfo = (text) => {
       result.passengers.push({
         fullName: `乘客${i+1}`,
         phone: '',
-        passportNumber: '',
+        wechat: '',
         isChild: false,
         childAge: null
       });
     }
   }
-
-  // 提取特殊要求/备注
-  const specialRequestsMatch = text.match(/备注[：:]([\s\S]*?)(?:$)/);
-  if (specialRequestsMatch) {
-    result.specialRequests = specialRequestsMatch[1].trim();
-  }
-
-  // 如果备注没有提取到但文本中包含特殊要求，尝试提取整个特殊要求部分
-  if (!result.specialRequests && text.includes('特殊要求')) {
-    const specialReqSection = text.match(/特殊要求[：:]([\s\S]*?)(?:$)/);
-    if (specialReqSection) {
-      result.specialRequests = specialReqSection[1].trim();
+  
+  // 尝试匹配姓名
+  const nameMatches = text.matchAll(/姓名[：:]\s*([^\n]+)/g);
+  const names = Array.from(nameMatches).map(match => match[1]?.trim()).filter(Boolean);
+  
+  // 如果找到的姓名多于已有乘客，创建新乘客
+  if (names.length > result.passengers.length) {
+    for (let i = result.passengers.length; i < names.length; i++) {
+      result.passengers.push({
+        fullName: names[i],
+        phone: '',
+        wechat: '',
+        isChild: false,
+        childAge: null
+      });
     }
-  }
-
-  // 尝试匹配其他常见的备注表达方式
-  if (!result.specialRequests) {
-    const otherMatches = text.match(/(?:其他要求|注意事项|特别说明|备注事项|注意|其他信息|需求|要求)[：:]([\s\S]*?)(?:$)/);
-    if (otherMatches) {
-      result.specialRequests = otherMatches[1].trim();
-    }
-  }
-
-  // 如果文本末尾有未被识别的内容，也将其添加到特殊要求中
-  const textSections = text.split(/\r?\n\r?\n/);
-  if (textSections.length > 0) {
-    const lastSection = textSections[textSections.length - 1].trim();
-    if (lastSection && 
-        !lastSection.match(/^服务类型/) && 
-        !lastSection.match(/^参团日期/) &&
-        !lastSection.match(/^乘客信息/) &&
-        !lastSection.match(/^房型/) &&
-        !lastSection.match(/^酒店级别/) &&
-        (!result.specialRequests || !result.specialRequests.includes(lastSection))) {
-      result.specialRequests = result.specialRequests 
-        ? result.specialRequests + '\n' + lastSection 
-        : lastSection;
-    }
-  }
-
-  // 最后一道防线：如果文本中包含明显的备注性质的内容，尝试提取
-  if (!result.specialRequests) {
-    // 查找任何以"备注"或"要求"开头的行
-    const noteLines = text.split(/\r?\n/).filter(line => 
-      line.trim().match(/^(备注|要求|特殊|注意|说明|其他).{0,5}[:：]/)
-    );
-    
-    if (noteLines.length > 0) {
-      // 提取备注内容（去除"备注："等前缀）
-      const cleanedNotes = noteLines.map(line => {
-        const content = line.replace(/^(备注|要求|特殊|注意|说明|其他).{0,5}[:：]/, '').trim();
-        return content;
-      }).filter(content => content.length > 0);
-      
-      if (cleanedNotes.length > 0) {
-        result.specialRequests = cleanedNotes.join('\n');
+  } else if (names.length > 0 && names.length <= result.passengers.length) {
+    // 更新已有乘客的姓名
+    names.forEach((name, idx) => {
+      if (idx < result.passengers.length) {
+        result.passengers[idx].fullName = name;
       }
+    });
+  }
+
+  // ===== 增强版备注提取逻辑 =====
+  
+  // 更可靠的备注提取方法：查找"备注"关键词并提取剩余全部内容
+  let hasFoundRemark = false;
+  
+  // 第一种情况：查找"备注："或"备注:"格式的行
+  const lines = text.split(/\r?\n/);
+  let remarkContent = [];
+  let isInRemarkSection = false;
+  
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    
+    // 检查是否找到备注标记
+    if (!isInRemarkSection && (trimmedLine.match(/^备\s*注\s*[:：]/) || trimmedLine.match(/^备\s*注\s*$/))) {
+      isInRemarkSection = true;
+      // 如果"备注:"后面在同一行有内容，提取它
+      const afterColon = trimmedLine.replace(/^备\s*注\s*[:：]/, '').trim();
+      if (afterColon) {
+        remarkContent.push(afterColon);
+      }
+      continue;
+    }
+    
+    // 已经进入备注区域，继续收集所有后续行
+    if (isInRemarkSection) {
+      remarkContent.push(trimmedLine);
+    }
+  }
+  
+  // 如果找到了备注内容
+  if (remarkContent.length > 0) {
+    result.specialRequests = remarkContent.join('\n');
+    hasFoundRemark = true;
+  }
+  
+  // 第二种情况：如果上面的方法没找到，尝试使用正则表达式匹配从"备注"开始到文本结束的所有内容
+  if (!hasFoundRemark) {
+    const remarkRegex = /(备\s*注\s*[:：]?)([\s\S]*)/i;
+    const match = text.match(remarkRegex);
+    if (match && match[2]) {
+      result.specialRequests = match[2].trim();
+      hasFoundRemark = true;
+    }
+  }
+  
+  // 第三种情况：查找其他可能的备注关键词
+  if (!hasFoundRemark) {
+    const otherRemarkKeywords = ['特殊要求', '注意事项', '特别说明', '备注事项', '注意', '其他信息', '需求', '要求'];
+    for (const keyword of otherRemarkKeywords) {
+      const keywordRegex = new RegExp(`(${keyword}\\s*[:：]?)([\\\s\\\S]*)`, 'i');
+      const match = text.match(keywordRegex);
+      if (match && match[2]) {
+        result.specialRequests = match[2].trim();
+        hasFoundRemark = true;
+        break;
+      }
+    }
+  }
+  
+  // 如果仍然没有找到备注信息，尝试提取文本末尾的内容作为备注
+  if (!hasFoundRemark) {
+    // 将文本按空行分段
+    const textSections = text.split(/\r?\n\r?\n/);
+    if (textSections.length > 0) {
+      const lastSection = textSections[textSections.length - 1].trim();
+      if (lastSection && 
+          !lastSection.match(/^服务类型/) && 
+          !lastSection.match(/^参团日期/) &&
+          !lastSection.match(/^乘客信息/) &&
+          !lastSection.match(/^房型/) &&
+          !lastSection.match(/^酒店级别/)) {
+        result.specialRequests = lastSection;
+      }
+    }
+  }
+  
+  // 确保特殊要求不为空
+  if (!result.specialRequests) {
+    // 尝试查找任何孤立的、看起来像备注的行
+    const possibleRemarks = lines.filter(line => {
+      const trimmed = line.trim();
+      return trimmed && 
+             !trimmed.match(/^服务类型|^参团日期|^乘客信息|^房型|^酒店级别|^\d{4}[-\/]|^[A-Z]{2}\d+/) &&
+             trimmed.length > 5;
+    });
+    
+    if (possibleRemarks.length > 0) {
+      result.specialRequests = possibleRemarks.join('\n');
     }
   }
 
@@ -330,10 +497,46 @@ export const extractBookingInfo = (text) => {
     
     if (durationMatch) {
       const duration = parseInt(durationMatch[1], 10);
+      
       const endDate = new Date(result.tourStartDate);
       endDate.setDate(endDate.getDate() + duration - 1);
       result.tourEndDate = endDate.toISOString().split('T')[0];
+      
+      // 设置默认的接车、酒店入住、退房和送回日期
+      result.pickupDate = result.tourStartDate;
+      result.dropoffDate = result.tourEndDate;
+      result.hotelCheckInDate = result.tourStartDate;
+      result.hotelCheckOutDate = result.tourEndDate;
     }
+  }
+  
+  // 4. 护照信息处理不再需要 - 根据用户要求
+  
+  // 5. 确保房间类型和数量有默认值
+  if (!result.roomType) {
+    result.roomType = '双人间';
+  }
+  
+  // 根据文本中提取的房间数量，如果没有则默认为1间
+  if (!result.hotelRoomCount || result.hotelRoomCount <= 0) {
+    result.hotelRoomCount = 1;
+  }
+  
+  // 6. 确保所有关键日期都有默认值
+  if (result.tourStartDate && !result.pickupDate) {
+    result.pickupDate = result.tourStartDate;
+  }
+  
+  if (result.tourEndDate && !result.dropoffDate) {
+    result.dropoffDate = result.tourEndDate;
+  }
+  
+  if (result.tourStartDate && !result.hotelCheckInDate) {
+    result.hotelCheckInDate = result.tourStartDate;
+  }
+  
+  if (result.tourEndDate && !result.hotelCheckOutDate) {
+    result.hotelCheckOutDate = result.tourEndDate;
   }
 
   return result;

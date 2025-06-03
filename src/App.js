@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { setAuth } from './store/slices/authSlice';
+import { setAuth, validateToken } from './store/slices/authSlice';
 import { getAgentDiscountRate, clearPriceCache } from './utils/api';
 import MainLayout from './layouts/MainLayout';
 import AppRoutes from './routes';
@@ -11,48 +11,36 @@ import "./App.css";
 import ErrorHandler from './components/Error/ErrorHandler';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import GlobalChatBot from './components/ChatBot/GlobalChatBot';
 
 // 缓存自动清理的时间间隔 (30分钟)
 const CACHE_AUTO_CLEAR_INTERVAL = 30 * 60 * 1000;
 
 function App() {
   const dispatch = useDispatch();
-  const { loading } = useSelector(state => state.auth);
+  const { loading, tokenValidated } = useSelector(state => state.auth);
   
-  // 当组件挂载时，从localStorage恢复用户会话状态
+  // 当组件挂载时，验证token有效性
   useEffect(() => {
-    // 检查本地存储的会话状态
-    const sessionState = {
-      token: localStorage.getItem('token'),
-      userType: localStorage.getItem('userType') || 'regular',
-      username: localStorage.getItem('username')
-    };
-    console.log('检查本地存储的会话状态:', sessionState);
-
-    // 如果有token，设置认证状态
-    if (sessionState.token) {
-      dispatch(setAuth({
-        isAuthenticated: true,
-        user: {
-          id: localStorage.getItem('userId'),
-          username: sessionState.username,
-          userType: sessionState.userType
-        }
-      }));
-    }
+    console.log('应用启动，开始验证token有效性...');
+    dispatch(validateToken());
   }, [dispatch]);
-  
+
   /**
    * 检查会话状态并获取代理商折扣率（如果需要）
    */
   useEffect(() => {
+    // 只有在token验证完成后才执行
+    if (!tokenValidated) return;
+
     const checkSession = async () => {
       try {
         // 从localStorage获取会话状态
         const sessionState = {
-          token: localStorage.getItem(STORAGE_KEYS.TOKEN),
+          token: localStorage.getItem(STORAGE_KEYS.TOKEN) || localStorage.getItem('token'),
           userType: localStorage.getItem('userType'),
-          username: localStorage.getItem('username')
+          username: localStorage.getItem('username'),
+          agentId: localStorage.getItem('agentId')
         };
 
         console.log('检查本地存储的会话状态:', sessionState);
@@ -61,26 +49,19 @@ function App() {
         if (sessionState.token) {
           // 根据用户类型和是否已经有折扣率决定是否需要获取折扣率
           const isAuthenticated = !!sessionState.token;
-          const isAgent = sessionState.userType === 'agent';
+          const isAgent = sessionState.userType === 'agent' || sessionState.userType === 'agent_operator';
           
           // 如果是代理商，则获取最新的折扣率
-          if (isAuthenticated && isAgent) {
-            console.log('开始获取代理商折扣率...');
+          if (isAuthenticated && isAgent && sessionState.agentId) {
+            console.log('检测到代理商登录，开始获取代理商折扣率...');
             try {
               // 调用后端API获取折扣率
-              await getAgentDiscountRate();
+              await getAgentDiscountRate(sessionState.agentId);
               console.log('成功获取代理商折扣率');
             } catch (error) {
               console.error('获取代理商折扣率失败:', error);
             }
           }
-          
-          // 更新认证状态
-          dispatch(setAuth({
-            isAuthenticated: true,
-            userType: sessionState.userType,
-            username: sessionState.username
-          }));
         }
       } catch (error) {
         console.error('检查会话状态失败:', error);
@@ -88,7 +69,7 @@ function App() {
     };
 
     checkSession();
-  }, [dispatch]);
+  }, [dispatch, tokenValidated]); // 依赖tokenValidated
   
   // 添加缓存清理和监听localStorage变化的事件
   useEffect(() => {
@@ -106,6 +87,8 @@ function App() {
       if (e.key === 'token' || e.key === 'userType' || e.key === 'agentId') {
         console.log('用户登录状态变化，清理价格缓存');
         clearPriceCache();
+        // 重新验证token
+        dispatch(validateToken());
       }
     };
 
@@ -116,14 +99,15 @@ function App() {
       clearInterval(autoCleanInterval);
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, []);
+  }, [dispatch]);
   
   return (
     <ErrorHandler>
       <ToastContainer position="top-right" autoClose={3000} />
       <Router>
         <MainLayout>
-          {loading ? <Loading /> : <AppRoutes />}
+          {(loading || !tokenValidated) ? <Loading /> : <AppRoutes />}
+          <GlobalChatBot />
         </MainLayout>
       </Router>
     </ErrorHandler>

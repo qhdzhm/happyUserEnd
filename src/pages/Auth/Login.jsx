@@ -147,6 +147,12 @@ const Login = () => {
         password: '123456',
         userType: 'agent'
       });
+    } else if (type === 'operator') {
+      setFormData({
+        username: 'operator1',
+        password: '123456',
+        userType: 'agent'  // 操作员使用agent登录接口
+      });
     }
   };
   
@@ -237,15 +243,26 @@ const Login = () => {
           </Tab>
           <Tab eventKey="agent" title="旅行社代理">
             <div className="auth-message mb-3">
-              <strong>测试账号：</strong> agent1<br />
-              <strong>测试密码：</strong> 123456
+              <strong>代理商主账号：</strong> agent1 / 123456<br />
+              <strong>操作员账号：</strong> operator1 / 123456<br />
+              <small className="text-muted">
+                操作员登录后看到原价，但享受代理商折扣
+              </small>
               <Button 
                 variant="outline-primary"
                 size="sm"
                 className="ms-2" 
                 onClick={() => fillTestAccount('agent')}
               >
-                自动填充
+                自动填充代理商
+              </Button>
+              <Button 
+                variant="outline-secondary"
+                size="sm"
+                className="ms-2" 
+                onClick={() => fillTestAccount('operator')}
+              >
+                自动填充操作员
               </Button>
             </div>
           </Tab>
@@ -253,15 +270,15 @@ const Login = () => {
         
         <Form onSubmit={handleSubmit} className="auth-form">
           <Form.Group className="mb-3">
-            <Form.Label>{userType === 'agent' ? '代理账号' : '用户名'}</Form.Label>
+            <Form.Label>{userType === 'agent' ? '代理账号' : userType === 'operator' ? '操作员账号' : '用户名'}</Form.Label>
             <Form.Control
               type="text"
               name="username"
               value={formData.username}
               onChange={handleChange}
               required
-              placeholder={userType === 'agent' ? "输入代理账号" : "输入用户名"}
-              className={userType === 'agent' ? 'agent-input' : ''}
+              placeholder={userType === 'agent' ? "输入代理账号" : userType === 'operator' ? "输入操作员账号" : "输入用户名"}
+              className={userType === 'agent' ? 'agent-input' : userType === 'operator' ? 'operator-input' : ''}
             />
           </Form.Group>
           
@@ -279,7 +296,7 @@ const Login = () => {
           
           <Button 
             type="submit" 
-            variant={userType === 'agent' ? 'success' : 'primary'} 
+            variant={userType === 'agent' ? 'success' : userType === 'operator' ? 'secondary' : 'primary'} 
             className="w-100" 
             disabled={loading}
           >
@@ -294,7 +311,7 @@ const Login = () => {
                 />{' '}
                 登录中...
               </>
-            ) : userType === 'agent' ? '代理商登录' : '用户登录'}
+            ) : userType === 'agent' ? '代理商登录' : userType === 'operator' ? '操作员登录' : '用户登录'}
           </Button>
           
           {userType === 'regular' && (

@@ -8,6 +8,7 @@ import Contact from '../pages/Contact/Contact';
 import Tours from '../pages/Tours/Tours';
 import TourDetails from '../pages/Tours/TourDetails';
 import Booking from '../pages/Booking/Booking';
+import EditBooking from '../pages/Booking/EditBooking';
 import TravelRegions from '../pages/TravelRegions/TravelRegions';
 import RegionDetail from '../pages/Destinations/RegionDetail';
 import PhotoGallery from '../pages/PhotoGallery/PhotoGallery';
@@ -17,6 +18,7 @@ import OrderSuccess from '../pages/OrderSuccess/OrderSuccess';
 import OrderDetail from '../pages/OrderDetail/OrderDetail';
 import Cart from '../pages/Cart/Cart';
 import Checkout from '../pages/Checkout/Checkout';
+
 import Payment from '../pages/Payment/Payment';
 
 // 认证页面
@@ -29,6 +31,9 @@ import Profile from '../pages/User/Profile';
 import Orders from '../pages/User/Orders';
 import AgentCenter from '../pages/User/AgentCenter';
 import CreditTransactions from '../pages/User/CreditTransactions';
+
+// 测试页面
+import TestOperator from '../pages/TestOperator/TestOperator';
 
 // 受保护的路由组件
 import ProtectedRoute from '../components/Common/ProtectedRoute/ProtectedRoute';
@@ -74,6 +79,8 @@ const AppRoutes = () => {
         {/* 购物车和结账 */}
         <Route path="/cart" element={<Cart />} />
         
+
+        
         {/* 受保护的路由 */}
         <Route path="/checkout" element={
           <ProtectedRoute requiredRoles={['user', 'agent']}>
@@ -83,6 +90,11 @@ const AppRoutes = () => {
         <Route path="/booking" element={
           <ProtectedRoute requiredRoles={['user', 'agent']}>
             <Booking />
+          </ProtectedRoute>
+        } />
+        <Route path="/booking/edit/:bookingId" element={
+          <ProtectedRoute requiredRoles={['user', 'agent']}>
+            <EditBooking />
           </ProtectedRoute>
         } />
         <Route path="/profile" element={
@@ -153,6 +165,13 @@ const AppRoutes = () => {
         <Route path="/order-success/:orderId" element={
           <ProtectedRoute requiredRoles={['user', 'agent']}>
             <OrderSuccess />
+          </ProtectedRoute>
+        } />
+        
+        {/* 测试页面 */}
+        <Route path="/test-operator" element={
+          <ProtectedRoute requiredRoles={['user', 'agent']}>
+            <TestOperator />
           </ProtectedRoute>
         } />
         

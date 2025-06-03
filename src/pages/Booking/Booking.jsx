@@ -12,6 +12,7 @@ import { toast } from 'react-hot-toast';
 import { createTourBooking, calculateTourPrice, getHotelPrices } from "../../services/bookingService";
 import { Link } from 'react-router-dom';
 import { extractBookingInfo } from '../../utils/textParser';
+import { isOperator } from '../../utils/auth';
 
 // 默认表单数据
 const DEFAULT_FORM_DATA = {
@@ -57,11 +58,272 @@ const DEFAULT_FORM_DATA = {
   total_price: '0.00'
 };
 
+// AI辅助函数：智能解析AI传递的日期信息（增强版）
+const parseDateFromAI = (dateStr) => {
+  if (!dateStr) return null;
+  
+  try {
+    console.log(`🗓️ 开始解析AI日期: "${dateStr}"`);
+    
+    // 处理中文格式：5月29日、6月19日等
+    const monthDayMatch = dateStr.match(/(\d{1,2})月(\d{1,2})日/);
+    if (monthDayMatch) {
+      const month = parseInt(monthDayMatch[1]);
+      const day = parseInt(monthDayMatch[2]);
+      const currentYear = new Date().getFullYear();
+      
+      // 创建日期，月份需要减1（JavaScript Date月份从0开始）
+      const date = new Date(currentYear, month - 1, day);
+      
+      // 如果日期已经过了，设置为明年
+      if (date < new Date()) {
+        date.setFullYear(currentYear + 1);
+      }
+      
+      console.log(`✅ 中文日期解析成功: "${dateStr}" → ${date.toISOString().split('T')[0]}`);
+      return date;
+    }
+    
+    // 处理英文格式：May 29、June 19等
+    const englishDateMatch = dateStr.match(/([A-Za-z]+)\s+(\d{1,2})/);
+    if (englishDateMatch) {
+      const monthName = englishDateMatch[1];
+      const day = parseInt(englishDateMatch[2]);
+      const currentYear = new Date().getFullYear();
+      
+      // 月份名称映射
+      const monthMap = {
+        'january': 0, 'jan': 0, '一月': 0,
+        'february': 1, 'feb': 1, '二月': 1,
+        'march': 2, 'mar': 2, '三月': 2,
+        'april': 3, 'apr': 3, '四月': 3,
+        'may': 4, '五月': 4,
+        'june': 5, 'jun': 5, '六月': 5,
+        'july': 6, 'jul': 6, '七月': 6,
+        'august': 7, 'aug': 7, '八月': 7,
+        'september': 8, 'sep': 8, '九月': 8,
+        'october': 9, 'oct': 9, '十月': 9,
+        'november': 10, 'nov': 10, '十一月': 10,
+        'december': 11, 'dec': 11, '十二月': 11
+      };
+      
+      const monthIndex = monthMap[monthName.toLowerCase()];
+      if (monthIndex !== undefined) {
+        const date = new Date(currentYear, monthIndex, day);
+        
+        // 如果日期已经过了，设置为明年
+        if (date < new Date()) {
+          date.setFullYear(currentYear + 1);
+        }
+        
+        console.log(`✅ 英文日期解析成功: "${dateStr}" → ${date.toISOString().split('T')[0]}`);
+        return date;
+      }
+    }
+    
+    // 处理数字格式：2024-05-29、29/05/2024、05/29/2024等
+    const isoDateMatch = dateStr.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (isoDateMatch) {
+      const year = parseInt(isoDateMatch[1]);
+      const month = parseInt(isoDateMatch[2]) - 1; // 月份减1
+      const day = parseInt(isoDateMatch[3]);
+      const date = new Date(year, month, day);
+      console.log(`✅ ISO日期解析成功: "${dateStr}" → ${date.toISOString().split('T')[0]}`);
+      return date;
+    }
+    
+    // 处理斜杠格式：29/05/2024、05/29/2024
+    const slashDateMatch = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (slashDateMatch) {
+      // 假设是日/月/年格式（DD/MM/YYYY）
+      const day = parseInt(slashDateMatch[1]);
+      const month = parseInt(slashDateMatch[2]) - 1;
+      const year = parseInt(slashDateMatch[3]);
+      
+      // 如果日期大于12，则认为是DD/MM/YYYY格式
+      if (day <= 12 && month > 12) {
+        // 实际是MM/DD/YYYY格式
+        const date = new Date(year, day - 1, month + 1);
+        console.log(`✅ MM/DD/YYYY格式解析成功: "${dateStr}" → ${date.toISOString().split('T')[0]}`);
+        return date;
+      } else {
+        // DD/MM/YYYY格式
+        const date = new Date(year, month, day);
+        console.log(`✅ DD/MM/YYYY格式解析成功: "${dateStr}" → ${date.toISOString().split('T')[0]}`);
+        return date;
+      }
+    }
+    
+    // 处理相对日期：明天、后天、下周一等
+    const now = new Date();
+    if (dateStr.includes('明天') || dateStr.toLowerCase().includes('tomorrow')) {
+      const tomorrow = new Date(now);
+      tomorrow.setDate(now.getDate() + 1);
+      console.log(`✅ 相对日期解析成功: "${dateStr}" → ${tomorrow.toISOString().split('T')[0]}`);
+      return tomorrow;
+    }
+    
+    if (dateStr.includes('后天')) {
+      const dayAfterTomorrow = new Date(now);
+      dayAfterTomorrow.setDate(now.getDate() + 2);
+      console.log(`✅ 相对日期解析成功: "${dateStr}" → ${dayAfterTomorrow.toISOString().split('T')[0]}`);
+      return dayAfterTomorrow;
+    }
+    
+    if (dateStr.includes('下周')) {
+      const nextWeek = new Date(now);
+      nextWeek.setDate(now.getDate() + 7);
+      console.log(`✅ 相对日期解析成功: "${dateStr}" → ${nextWeek.toISOString().split('T')[0]}`);
+      return nextWeek;
+    }
+    
+    // 最后尝试使用JavaScript的原生Date解析
+    const fallbackDate = new Date(dateStr);
+    if (!isNaN(fallbackDate.getTime())) {
+      console.log(`✅ 原生解析成功: "${dateStr}" → ${fallbackDate.toISOString().split('T')[0]}`);
+      return fallbackDate;
+    }
+    
+    console.warn(`⚠️ 无法解析AI日期格式: "${dateStr}"`);
+    return null;
+  } catch (error) {
+    console.error(`❌ AI日期解析错误: "${dateStr}"`, error);
+    return null;
+  }
+};
+
+// AI辅助函数：智能转换房型描述（增强版）
+const convertAIRoomType = (aiRoomType) => {
+  if (!aiRoomType) return '双人间';
+  
+  console.log(`🏨 开始转换房型: "${aiRoomType}"`);
+  
+  const roomTypeStr = aiRoomType.toLowerCase().trim();
+  
+  // 中文房型识别
+  if (roomTypeStr.includes('单') || roomTypeStr.includes('single')) {
+    console.log(`✅ 房型转换: "${aiRoomType}" → 单人间`);
+    return '单人间';
+  } else if (roomTypeStr.includes('三') || roomTypeStr.includes('triple')) {
+    console.log(`✅ 房型转换: "${aiRoomType}" → 三人间`);
+    return '三人间';
+  } else if (roomTypeStr.includes('双') || roomTypeStr.includes('double') || roomTypeStr.includes('twin')) {
+    console.log(`✅ 房型转换: "${aiRoomType}" → 双人间`);
+    return '双人间';
+  } else if (roomTypeStr.includes('标准') || roomTypeStr.includes('standard')) {
+    console.log(`✅ 房型转换: "${aiRoomType}" → 双人间（标准）`);
+    return '双人间';
+  } else if (roomTypeStr.includes('家庭') || roomTypeStr.includes('family')) {
+    console.log(`✅ 房型转换: "${aiRoomType}" → 三人间（家庭房）`);
+    return '三人间';
+  } else if (roomTypeStr.includes('套房') || roomTypeStr.includes('suite')) {
+    console.log(`✅ 房型转换: "${aiRoomType}" → 双人间（套房）`);
+    return '双人间';
+  } else {
+    // 默认返回双人间
+    console.log(`⚠️ 未识别房型，使用默认: "${aiRoomType}" → 双人间`);
+    return '双人间';
+  }
+};
+
+// AI辅助函数：智能解析时间字符串并转换为Date对象（增强版）
+const parseTimeToDate = (timeStr, baseDate) => {
+  if (!timeStr || !baseDate) return null;
+  
+  try {
+    console.log(`⏰ 开始解析AI时间: "${timeStr}" 基准日期: ${baseDate.toISOString().split('T')[0]}`);
+    
+    // 处理标准时间格式：09:15、9:15 AM、21:30等
+    const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+    if (timeMatch) {
+      let hours = parseInt(timeMatch[1]);
+      const minutes = parseInt(timeMatch[2]);
+      const ampm = timeMatch[3];
+      
+      // 处理AM/PM格式
+      if (ampm) {
+        const period = ampm.toUpperCase();
+        if (period === 'PM' && hours !== 12) {
+          hours += 12;
+        } else if (period === 'AM' && hours === 12) {
+          hours = 0;
+        }
+      }
+      
+      // 验证时间有效性
+      if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+        // 创建新的Date对象，使用baseDate的日期部分和解析的时间部分
+        const resultDate = new Date(baseDate);
+        resultDate.setHours(hours, minutes, 0, 0);
+        
+        console.log(`✅ 时间解析成功: "${timeStr}" → ${resultDate.toLocaleString()}`);
+        return resultDate;
+      } else {
+        console.warn(`⚠️ 时间值无效: 小时=${hours}, 分钟=${minutes}`);
+      }
+    }
+    
+    // 处理中文时间格式：上午9点15分、下午2点30分等
+    const chineseTimeMatch = timeStr.match(/(上午|下午|凌晨|中午)(\d{1,2})点?(\d{0,2})分?/);
+    if (chineseTimeMatch) {
+      const period = chineseTimeMatch[1];
+      let hours = parseInt(chineseTimeMatch[2]);
+      const minutes = chineseTimeMatch[3] ? parseInt(chineseTimeMatch[3]) : 0;
+      
+      // 根据中文时段调整小时
+      if (period === '下午' && hours !== 12) {
+        hours += 12;
+      } else if (period === '上午' && hours === 12) {
+        hours = 0;
+      } else if (period === '凌晨' && hours === 12) {
+        hours = 0;
+      }
+      
+      if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+        const resultDate = new Date(baseDate);
+        resultDate.setHours(hours, minutes, 0, 0);
+        
+        console.log(`✅ 中文时间解析成功: "${timeStr}" → ${resultDate.toLocaleString()}`);
+        return resultDate;
+      }
+    }
+    
+    // 处理24小时制格式：14:30、1430等
+    const hour24Match = timeStr.match(/(\d{1,2})(\d{2})/);
+    if (hour24Match && timeStr.length === 4) {
+      const hours = parseInt(hour24Match[1]);
+      const minutes = parseInt(hour24Match[2]);
+      
+      if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+        const resultDate = new Date(baseDate);
+        resultDate.setHours(hours, minutes, 0, 0);
+        
+        console.log(`✅ 24小时制解析成功: "${timeStr}" → ${resultDate.toLocaleString()}`);
+        return resultDate;
+      }
+    }
+    
+    console.warn(`⚠️ 无法解析AI时间格式: "${timeStr}"`);
+    return null;
+  } catch (error) {
+    console.error(`❌ AI时间解析错误: "${timeStr}"`, error);
+    return null;
+  }
+};
+
 const Booking = () => {
   const { isAuthenticated, user, userType } = useSelector(state => state.auth);
   
   // 判断是否为代理商
   const isAgent = userType === 'agent' || localStorage.getItem('userType') === 'agent';
+  
+  // 粘性滚动状态管理
+  const [scrollTop, setScrollTop] = useState(0);
+  const [isSticky, setIsSticky] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(0);
+  const [sidebarOffset, setSidebarOffset] = useState(0);
+  const [headerHeight, setHeaderHeight] = useState(80);
+
   
   // 获取代理商相关信息
   const agentId = user?.agentId || localStorage.getItem('agentId');
@@ -70,14 +332,40 @@ const Booking = () => {
   const queryParams = new URLSearchParams(location.search);
   const [searchParams] = useSearchParams();
   
-  const tourId = searchParams.get("tourId");
+  // 兼容处理tourId和productId参数（AI聊天机器人使用productId）
+  const productId = searchParams.get("productId");
+  const tourIdParam = searchParams.get("tourId");
+  const tourId = productId || tourIdParam; // productId优先，后备使用tourId
+  
   const tourName = searchParams.get("tourName");
-  const tourType = searchParams.get("type") || "day";
+  const productType = searchParams.get("productType") || "day";
+  const tourTypeParam = searchParams.get("type");
+  const tourType = (productType === "group" ? "group" : tourTypeParam) || "day";
+  
+  // 只在tourId变化时输出调试信息，避免频繁输出
+  useEffect(() => {
+    console.log("🔍 订单页面URL参数解析:", {
+      productId,
+      tourIdParam,
+      finalTourId: tourId,
+      productType,
+      tourTypeParam,
+      finalTourType: tourType,
+      allParams: Object.fromEntries(searchParams.entries())
+    });
+    
+    // 处理AI聊天机器人传递的参数
+    if (!aiParamsProcessed.current && searchParams.size > 0) {
+      processAIParameters();
+      aiParamsProcessed.current = true;
+    }
+  }, [tourId, tourType]); // 只在tourId或tourType变化时输出
   
   // 使用ref跟踪组件状态，避免循环渲染
   const tourDataFetched = useRef(false);
   const priceLoaded = useRef(false);
   const formInitialized = useRef(false);
+  const aiParamsProcessed = useRef(false); // 新增：跟踪AI参数是否已处理
   
   const [loading, setLoading] = useState(false);
   const [tourDetails, setTourDetails] = useState({
@@ -186,6 +474,116 @@ const Booking = () => {
   
   const [hotelPrices, setHotelPrices] = useState([]);
   
+  // 注意：Footer检测现在直接在滚动事件中处理，不再需要单独的Intersection Observer
+
+  // 粘性滚动效果
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      setScrollTop(currentScrollTop);
+      
+      // 检查屏幕宽度，只在大屏幕上启用粘性效果
+      const isLargeScreen = window.innerWidth >= 992; // lg断点
+      
+      if (!isLargeScreen) {
+        setIsSticky(false);
+        return;
+      }
+      
+      // 动态获取header高度
+      const header = document.querySelector('.header-section') || 
+                    document.querySelector('header') || 
+                    document.querySelector('.navbar');
+      
+      let headerHeight = 80; // 默认值
+      if (header) {
+        // 检查header是否是sticky的
+        const headerStyle = window.getComputedStyle(header);
+        const isHeaderSticky = headerStyle.position === 'fixed' || 
+                              headerStyle.position === 'sticky' ||
+                              header.classList.contains('is-sticky');
+        
+        headerHeight = isHeaderSticky ? header.offsetHeight : 0;
+      }
+      
+      // 更新header高度状态
+      setHeaderHeight(headerHeight);
+      
+      // 获取右侧栏的原始位置和宽度
+      const sidebar = document.getElementById('booking-order-summary');
+      if (sidebar) {
+        const parentRect = sidebar.parentElement.getBoundingClientRect();
+        const sidebarRect = sidebar.getBoundingClientRect();
+        
+        // 检查footer位置，确保粘性元素不会被footer挡住
+        const footer = document.querySelector('footer');
+        const footerTop = footer ? footer.getBoundingClientRect().top : window.innerHeight;
+        
+        // 计算粘性元素的高度
+        const sidebarHeight = sidebar.offsetHeight;
+        
+        // 计算触发粘性的位置：当右侧栏顶部接近header底部时
+        const triggerPoint = headerHeight + 20; // header高度 + 20px间距
+        
+
+        
+        // 修复footer检测：只有当footer真正接近粘性元素时才取消粘性
+        // 计算粘性元素底部位置
+        const stickyElementBottom = headerHeight + 20 + sidebarHeight; // header + 间距 + 粘性元素高度
+        
+        // 只有当footer顶部距离粘性元素底部小于50px时才取消粘性
+        const footerTooClose = footerTop < (stickyElementBottom + 50);
+        
+        // 检查是否应该启用粘性效果
+        const shouldBeSticky = sidebarRect.top <= triggerPoint && !footerTooClose;
+        
+        setIsSticky(shouldBeSticky);
+        
+        if (shouldBeSticky) {
+          // 设置固定定位时的宽度和位置
+          setSidebarWidth(parentRect.width - 30); // 减去padding
+          setSidebarOffset(parentRect.left + 15); // 加上padding
+          
+
+        }
+      }
+    };
+
+    // 窗口大小改变时重新计算
+    const handleResize = () => {
+      // 延迟执行，确保DOM更新完成
+      setTimeout(() => {
+        const sidebar = document.getElementById('booking-order-summary');
+        if (sidebar) {
+          const parentRect = sidebar.parentElement.getBoundingClientRect();
+          setSidebarWidth(parentRect.width - 30);
+          setSidebarOffset(parentRect.left + 15);
+        }
+        // 重新计算滚动状态
+        handleScroll();
+      }, 100);
+    };
+
+    // 防抖处理滚动事件
+    let scrollTimer;
+    const debouncedScroll = () => {
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(handleScroll, 10);
+    };
+
+    window.addEventListener('scroll', debouncedScroll, { passive: true });
+    window.addEventListener('resize', handleResize);
+    
+    // 初始计算
+    handleScroll();
+    
+    return () => {
+      window.removeEventListener('scroll', debouncedScroll);
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(scrollTimer);
+    };
+  }, [isSticky]);
+
   // 初始化表单数据
   useEffect(() => {
     // 防止重复初始化
@@ -244,7 +642,9 @@ const Booking = () => {
           full_name: '',
           is_child: true,
           phone: '',
-          wechat_id: ''
+          wechat_id: '',
+          child_age: '',       // 儿童年龄
+          is_primary: false
         });
       }
       
@@ -283,7 +683,9 @@ const Booking = () => {
           full_name: '',
           is_child: true,
           phone: '',
-          wechat_id: ''
+          wechat_id: '',
+          child_age: '',       // 儿童年龄
+          is_primary: false
         });
       }
       
@@ -734,10 +1136,11 @@ const Booking = () => {
           // 一次性批量更新状态，减少重渲染次数
           setPriceDetails(newPriceDetails);
         
-        // 更新表单价格
+        // 更新表单价格 - 根据用户类型显示不同价格
+        const displayPrice = isOperator() ? (priceData.nonAgentPrice || priceData.totalPrice) : priceData.totalPrice;
         setFormData(prev => ({
           ...prev,
-          total_price: priceData.totalPrice ? priceData.totalPrice.toFixed(2) : '0.00'
+          total_price: displayPrice ? displayPrice.toFixed(2) : '0.00'
         }));
         }
         
@@ -949,6 +1352,25 @@ const Booking = () => {
     const departureDateParam = params.get('departureDate');
     const roomCountParam = parseInt(params.get('roomCount') || '1', 10);
     
+    // === AI聊天机器人参数处理 ===
+    const aiServiceType = params.get('serviceType');
+    const aiStartDate = params.get('startDate');
+    const aiEndDate = params.get('endDate');
+    const aiGroupSize = params.get('groupSize');
+    const aiDeparture = params.get('departure');
+    const aiRoomType = params.get('roomType');
+    const aiHotelLevel = params.get('hotelLevel');
+    
+    console.log('🤖 AI聊天机器人参数:', {
+      serviceType: aiServiceType,
+      startDate: aiStartDate,
+      endDate: aiEndDate,
+      groupSize: aiGroupSize,
+      departure: aiDeparture,
+      roomType: aiRoomType,
+      hotelLevel: aiHotelLevel
+    });
+    
     // 从location.state获取详情页传递的信息
     const { tourDate, adultCount, childCount, roomCount, bookingOptions } = location.state || {};
     
@@ -956,25 +1378,42 @@ const Booking = () => {
       tourDate: tourDate,
       arrivalDateParam: arrivalDateParam,
       dateParam: dateParam,
-      departureDateParam: departureDateParam
+      departureDateParam: departureDateParam,
+      aiStartDate: aiStartDate,
+      aiEndDate: aiEndDate
     });
     
-    // 修改日期参数处理逻辑，优先使用arrivalDate
-    // ====关键修改: 强制优先使用URL中的arrivalDate和departureDate====
+    // 修改日期参数处理逻辑，优先使用AI参数，然后是arrivalDate
+    // ====关键修改: AI参数 > URL参数 > 详情页参数====
     let startDateFromParams = null;
     let endDateFromParams = null;
     
-    // 对于跟团游，优先使用arrivalDate和departureDate
-    if ((tourType || '').toLowerCase().includes('group')) {
-      console.log('跟团游模式: 优先使用 arrivalDate 和 departureDate');
-      startDateFromParams = arrivalDateParam ? new Date(arrivalDateParam) : (tourDate ? new Date(tourDate) : null);
-      endDateFromParams = departureDateParam ? new Date(departureDateParam) : null;
-    } else {
-      // 日游模式
-      console.log('日游模式: 优先使用 date 参数');
-      startDateFromParams = dateParam ? new Date(dateParam) : 
-                          (tourDate ? new Date(tourDate) : null);
-      endDateFromParams = startDateFromParams ? new Date(startDateFromParams) : null;
+    // 1. 优先使用AI聊天机器人的日期参数
+    if (aiStartDate) {
+      // 解析中文日期格式（如：6月19日）
+      startDateFromParams = parseDateFromAI(aiStartDate);
+      console.log('AI日期解析 - 开始日期:', aiStartDate, '→', startDateFromParams);
+    }
+    
+    if (aiEndDate) {
+      endDateFromParams = parseDateFromAI(aiEndDate);
+      console.log('AI日期解析 - 结束日期:', aiEndDate, '→', endDateFromParams);
+    }
+    
+    // 2. 如果AI参数不可用，使用原有逻辑
+    if (!startDateFromParams) {
+      // 对于跟团游，优先使用arrivalDate和departureDate
+      if ((tourType || '').toLowerCase().includes('group')) {
+        console.log('跟团游模式: 优先使用 arrivalDate 和 departureDate');
+        startDateFromParams = arrivalDateParam ? new Date(arrivalDateParam) : (tourDate ? new Date(tourDate) : null);
+        endDateFromParams = departureDateParam ? new Date(departureDateParam) : null;
+      } else {
+        // 日游模式
+        console.log('日游模式: 优先使用 date 参数');
+        startDateFromParams = dateParam ? new Date(dateParam) : 
+                            (tourDate ? new Date(tourDate) : null);
+        endDateFromParams = startDateFromParams ? new Date(startDateFromParams) : null;
+      }
     }
     
     // 如果通过上述逻辑仍未获取到有效的开始日期，尝试其他参数作为备选
@@ -990,9 +1429,42 @@ const Booking = () => {
       endDateFromParams: endDateFromParams ? endDateFromParams.toISOString().split('T')[0] : null,
     });
     
-    const adultCountValue = adultCount || parseInt(params.get('adultCount') || '2', 10);
-    const childCountValue = childCount || parseInt(params.get('childCount') || '0', 10);
+    // === 人数处理：AI参数 > 详情页参数 > URL参数 ===
+    let adultCountValue = 2; // 默认值
+    let childCountValue = 0; // 默认值
+    
+    if (aiGroupSize) {
+      // AI提供的是总人数，假设都是成人（可以后续优化）
+      adultCountValue = parseInt(aiGroupSize) || 2;
+      childCountValue = 0;
+      console.log('使用AI参数设置人数:', { adultCount: adultCountValue, childCount: childCountValue });
+    } else {
+      adultCountValue = adultCount || parseInt(params.get('adultCount') || '2', 10);
+      childCountValue = childCount || parseInt(params.get('childCount') || '0', 10);
+      console.log('使用详情页/URL参数设置人数:', { adultCount: adultCountValue, childCount: childCountValue });
+    }
+    
+    // === 房间数处理 ===
     const roomCountValue = roomCount || roomCountParam || 1;
+    
+    // === 接送地点处理：AI参数优先 ===
+    let pickupLocation = '';
+    let dropoffLocation = '';
+    
+    if (aiDeparture) {
+      pickupLocation = aiDeparture;
+      dropoffLocation = aiDeparture; // 通常接送地点相同
+      console.log('使用AI参数设置接送地点:', aiDeparture);
+    }
+    
+    // === 酒店等级处理：AI参数优先 ===
+    let hotelLevel = '4星'; // 默认值
+    if (aiHotelLevel) {
+      hotelLevel = aiHotelLevel;
+      console.log('使用AI参数设置酒店等级:', aiHotelLevel);
+    } else if (bookingOptions?.hotelLevel) {
+      hotelLevel = bookingOptions.hotelLevel;
+    }
     
     console.log('更新表单默认值:', {
       startDate: startDateFromParams,
@@ -1000,7 +1472,9 @@ const Booking = () => {
       adultCount: adultCountValue,
       childCount: childCountValue,
       roomCount: roomCountValue,
-      hotelLevel: bookingOptions?.hotelLevel || '4星'
+      hotelLevel: hotelLevel,
+      pickupLocation: pickupLocation,
+      dropoffLocation: dropoffLocation
     });
     
     // 日期处理，设置行程默认日期
@@ -1020,8 +1494,14 @@ const Booking = () => {
       endDate.setDate(defaultTourDate.getDate() + parseInt(tourData.duration) - 1);
     }
     
-    // 创建房型数组
-    const roomTypesArray = Array(roomCountValue).fill('标准双人间');
+    // === 房型处理：AI参数优先 ===
+    let roomTypesArray = Array(roomCountValue).fill('标准双人间');
+    if (aiRoomType) {
+      // 转换AI的房型描述为系统房型
+      const convertedRoomType = convertAIRoomType(aiRoomType);
+      roomTypesArray = Array(roomCountValue).fill(convertedRoomType);
+      console.log('使用AI参数设置房型:', aiRoomType, '→', convertedRoomType);
+    }
     
     // 更新表单中的所有相关字段
     setFormData(prev => ({
@@ -1030,11 +1510,28 @@ const Booking = () => {
       tour_end_date: endDate,
       pickup_date: defaultTourDate,
       dropoff_date: endDate,
+      pickup_location: pickupLocation || prev.pickup_location,
+      dropoff_location: dropoffLocation || prev.dropoff_location,
       adult_count: adultCountValue,
       child_count: childCountValue,
       hotel_room_count: roomCountValue,
       roomTypes: roomTypesArray,
-      hotel_level: bookingOptions?.hotelLevel || prev.hotel_level
+      hotel_level: hotelLevel,
+      // AI航班信息
+      arrival_flight: aiArrivalFlight || prev.arrival_flight,
+      departure_flight: aiDepartureFlight || prev.departure_flight,
+      // AI航班时间 - 将arrivalTime设置为降落时间
+      arrival_landing_time: aiArrivalTime ? parseTimeToDate(aiArrivalTime, defaultTourDate) : prev.arrival_landing_time,
+      // AI航班详细时间设置
+      arrival_departure_time: aiArrivalFlightDepartureTime ? parseTimeToDate(aiArrivalFlightDepartureTime, defaultTourDate) : prev.arrival_departure_time,
+      arrival_landing_time: aiArrivalFlightLandingTime ? parseTimeToDate(aiArrivalFlightLandingTime, defaultTourDate) : 
+        (aiArrivalTime ? parseTimeToDate(aiArrivalTime, defaultTourDate) : prev.arrival_landing_time),
+      departure_departure_time: aiDepartureFlightDepartureTime ? parseTimeToDate(aiDepartureFlightDepartureTime, endDate) : prev.departure_departure_time,
+      departure_landing_time: aiDepartureFlightLandingTime ? parseTimeToDate(aiDepartureFlightLandingTime, endDate) : prev.departure_landing_time,
+      // AI特殊要求
+      special_requests: aiSpecialRequests ? decodeURIComponent(aiSpecialRequests) : prev.special_requests,
+      // AI行李数
+      luggage_count: aiLuggageCount ? parseInt(aiLuggageCount) : prev.luggage_count
     }));
     
     // 重新创建乘客列表以匹配adultCount和childCount
@@ -1058,7 +1555,9 @@ const Booking = () => {
         full_name: '',
         is_child: true,
         phone: '',
-        wechat_id: ''
+        wechat_id: '',
+        child_age: '',       // 儿童年龄
+        is_primary: false
       });
     }
     
@@ -1068,13 +1567,99 @@ const Booking = () => {
       passengers: updatedPassengers
     }));
     
+    // === AI客户信息处理 ===
+    // 检查是否有客户信息的URL参数（后端可能会传递）
+    const customerInfo = params.get('customerInfo');
+    const customerName1 = params.get('customerName1');
+    const customerPhone1 = params.get('customerPhone1');
+    const customerPassport1 = params.get('customerPassport1');
+    const customerName2 = params.get('customerName2');
+    const customerPhone2 = params.get('customerPhone2');
+    const customerPassport2 = params.get('customerPassport2');
+    
+    // AI航班信息参数
+    const aiArrivalFlight = params.get('arrivalFlight');
+    const aiDepartureFlight = params.get('departureFlight');
+    const aiArrivalTime = params.get('arrivalTime');
+    
+    // AI航班详细时间参数
+    const aiArrivalFlightDepartureTime = params.get('arrivalFlightDepartureTime');
+    const aiArrivalFlightLandingTime = params.get('arrivalFlightLandingTime');
+    const aiDepartureFlightDepartureTime = params.get('departureFlightDepartureTime');
+    const aiDepartureFlightLandingTime = params.get('departureFlightLandingTime');
+    
+    // AI特殊要求参数
+    const aiSpecialRequests = params.get('specialRequests');
+    
+    // AI行李数参数
+    const aiLuggageCount = params.get('luggageCount');
+    
+    console.log('🤖 AI航班和其他信息参数:', {
+      arrivalFlight: aiArrivalFlight,
+      departureFlight: aiDepartureFlight,
+      arrivalTime: aiArrivalTime,
+      arrivalFlightDepartureTime: aiArrivalFlightDepartureTime,
+      arrivalFlightLandingTime: aiArrivalFlightLandingTime,
+      departureFlightDepartureTime: aiDepartureFlightDepartureTime,
+      departureFlightLandingTime: aiDepartureFlightLandingTime,
+      specialRequests: aiSpecialRequests,
+      luggageCount: aiLuggageCount
+    });
+    
+    // 如果有AI传递的客户信息，自动填充到乘客列表
+    if (customerName1 || customerPhone1 || customerName2 || customerPhone2) {
+      console.log('🤖 发现AI客户信息参数，开始填充');
+      
+      setFormData(prev => {
+        const updatedPassengers = [...prev.passengers];
+        
+        // 填充第一位客户信息（主联系人）
+        if (customerName1 && updatedPassengers[0]) {
+          updatedPassengers[0].full_name = decodeURIComponent(customerName1);
+          console.log('填充主联系人姓名:', customerName1);
+        }
+        if (customerPhone1 && updatedPassengers[0]) {
+          updatedPassengers[0].phone = decodeURIComponent(customerPhone1);
+          console.log('填充主联系人电话:', customerPhone1);
+        }
+        if (customerPassport1 && updatedPassengers[0]) {
+          updatedPassengers[0].passport_number = decodeURIComponent(customerPassport1);
+          console.log('填充主联系人护照:', customerPassport1);
+        }
+        
+        // 填充第二位客户信息（如果存在）
+        if ((customerName2 || customerPhone2 || customerPassport2) && updatedPassengers[1]) {
+          if (customerName2) {
+            updatedPassengers[1].full_name = decodeURIComponent(customerName2);
+            console.log('填充第二位客户姓名:', customerName2);
+          }
+          if (customerPhone2) {
+            updatedPassengers[1].phone = decodeURIComponent(customerPhone2);
+            console.log('填充第二位客户电话:', customerPhone2);
+          }
+          if (customerPassport2) {
+            updatedPassengers[1].passport_number = decodeURIComponent(customerPassport2);
+            console.log('填充第二位客户护照:', customerPassport2);
+          }
+        }
+        
+        return {
+          ...prev,
+          passengers: updatedPassengers
+        };
+      });
+    }
+    
     console.log('表单已完全更新:', {
       开始日期: defaultTourDate,
       结束日期: endDate,
       成人数量: adultCountValue,
       儿童数量: childCountValue,
       房间数量: roomCountValue,
-      乘客数量: updatedPassengers.length
+      乘客数量: updatedPassengers.length,
+      接送地点: pickupLocation,
+      酒店等级: hotelLevel,
+      房型: roomTypesArray
     });
   };
   
@@ -1167,86 +1752,18 @@ const Booking = () => {
     }
   };
   
-  // 表单验证函数
+  // 表单验证函数 - 简化为只验证关键字段
   const validateForm = () => {
     const errors = {};
     
-    // 确定旅游类型
-    const isGroupTour = (tourType || '').toLowerCase().includes('group');
-    
-    // 验证旅行日期
-    if (!formData.tour_start_date) errors.tour_start_date = "请选择行程开始日期";
-    if (!formData.tour_end_date) errors.tour_end_date = "请选择行程结束日期";
-    
-    // 航班信息非必填
-    // if (isGroupTour) {
-    //   if (!formData.arrival_flight) errors.arrival_flight = "请填写抵达航班号";
-    //   if (!formData.departure_flight) errors.departure_flight = "请填写返程航班号";
-    // }
-    
-    // 验证接送信息
-    if (!formData.pickup_location) errors.pickup_location = "请填写接车地点";
-    if (!formData.pickup_date) errors.pickup_date = "请选择接车日期";
-    
-    
-    
-    if (!formData.dropoff_date) errors.dropoff_date = "请选择送回日期";
-    
-    // 验证酒店信息(仅限跟团游)
-    if (isGroupTour) {
-      if (!formData.hotel_level) errors.hotel_level = "请选择酒店星级";
-      if (!formData.hotel_room_count || formData.hotel_room_count < 1) errors.hotel_room_count = "请填写有效的房间数量";
-      
-      // 验证每个房间的房型
-      if (formData.roomTypes && formData.roomTypes.length > 0) {
-        formData.roomTypes.forEach((roomType, index) => {
-          if (!roomType) {
-            errors[`roomTypes.${index}`] = "请选择房型";
-          }
-        });
-      } else {
-        errors.roomTypes = "请至少选择一个房型";
-      }
+    // 只验证最基础的必填项
+    if (!tourId) {
+      errors.general = "缺少产品ID";
     }
     
-    // 验证乘客信息
+    // 至少需要一位乘客（但不验证乘客详细信息）
     if (!formData.passengers || formData.passengers.length === 0) {
       errors.passengers = "至少需要添加一位乘客";
-    } else {
-      // 只验证主联系人信息
-      const primaryContact = formData.passengers[0];
-      if (!primaryContact.full_name) {
-        errors[`passengers.0.full_name`] = "请填写主联系人姓名";
-      }
-      if (!primaryContact.phone) {
-        errors[`passengers.0.phone`] = "请填写主联系人联系电话";
-      }
-      if (!primaryContact.wechat_id) {
-        errors[`passengers.0.wechat_id`] = "请填写主联系人微信号";
-      }
-      
-      // 验证所有儿童乘客的年龄
-      formData.passengers.forEach((passenger, index) => {
-        if (passenger.is_child && !passenger.child_age) {
-          errors[`passengers.${index}.child_age`] = "请填写儿童年龄";
-        }
-      });
-    }
-    
-    // 酒店信息验证（只对跟团游进行验证）
-    if (isGroupTour) {
-      if (!formData.hotel_level) errors.hotel_level = '请选择酒店星级';
-      if (!formData.hotel_room_count || formData.hotel_room_count < 1) errors.hotel_room_count = '请选择有效的房间数量';
-      
-      // 酒店日期验证
-      if (!formData.hotelCheckInDate) errors.hotelCheckInDate = '请选择酒店入住日期';
-      if (!formData.hotelCheckOutDate) errors.hotelCheckOutDate = '请选择酒店退房日期';
-      
-      // 日期逻辑检查
-      if (formData.hotelCheckInDate && formData.hotelCheckOutDate && 
-          formData.hotelCheckInDate > formData.hotelCheckOutDate) {
-        errors.hotelCheckOutDate = '退房日期必须晚于入住日期';
-      }
     }
     
     return errors;
@@ -1254,8 +1771,14 @@ const Booking = () => {
   
   // 计算总价格 - 直接使用后端API返回的价格
   const calculateTotalPrice = () => {
-    // 直接返回priceDetails中的总价格，不做任何前端计算
-    return priceDetails.totalPrice?.toFixed(2) || '0.00';
+    // 根据用户类型显示不同价格
+    if (isOperator()) {
+      // 操作员显示原价（nonAgentPrice），如果没有则显示totalPrice
+      return (priceDetails.nonAgentPrice || priceDetails.totalPrice || 0).toFixed(2);
+    } else {
+      // 代理商主账号或普通用户显示实际价格
+      return (priceDetails.totalPrice || 0).toFixed(2);
+    }
   };
   
   // 计算代理商折扣价格
@@ -1343,24 +1866,15 @@ const Booking = () => {
             <div className="position-relative">
               <DatePicker
                 selected={formData.pickup_date}
-                onChange={date => enhancedHandleDateChange('pickup_date', date)}
+                onChange={date => handleDateChange('pickup_date', date)}
                 dateFormat="yyyy-MM-dd"
                 className="form-control"
                 placeholderText="选择接车日期"
-                isInvalid={!!validationErrors.pickup_date}
-                isClearable={false}
-                showMonthDropdown
-                showYearDropdown
-                dropdownMode="select"
               />
               <div className="position-absolute top-0 end-0 pe-3 pt-2">
                 <FaCalendarAlt />
               </div>
             </div>
-            
-            <Form.Control.Feedback type="invalid">
-              {validationErrors.pickup_date}
-            </Form.Control.Feedback>
           </Form.Group>
           <Form.Group as={Col} md={6}>
             <Form.Label>接车地点</Form.Label>
@@ -1370,12 +1884,7 @@ const Booking = () => {
               value={formData.pickup_location}
               onChange={handleChange}
               placeholder="酒店名称/地址"
-              isInvalid={!!validationErrors.pickup_location}
             />
-            
-            <Form.Control.Feedback type="invalid">
-              {validationErrors.pickup_location}
-            </Form.Control.Feedback>
           </Form.Group>
         </Row>
         
@@ -1389,24 +1898,15 @@ const Booking = () => {
                 <div className="position-relative">
                   <DatePicker
                     selected={formData.dropoff_date}
-                    onChange={date => enhancedHandleDateChange('dropoff_date', date)}
+                    onChange={date => handleDateChange('dropoff_date', date)}
                     dateFormat="yyyy-MM-dd"
                     className="form-control"
                     placeholderText="选择送回日期"
-                    isInvalid={!!validationErrors.dropoff_date}
-                    isClearable={false}
-                    showMonthDropdown
-                    showYearDropdown
-                    dropdownMode="select"
                   />
                   <div className="position-absolute top-0 end-0 pe-3 pt-2">
                     <FaCalendarAlt />
                   </div>
                 </div>
-                
-                <Form.Control.Feedback type="invalid">
-                  {validationErrors.dropoff_date}
-                </Form.Control.Feedback>
               </Form.Group>
               <Form.Group as={Col} md={6}>
                 <Form.Label>送回地点</Form.Label>
@@ -1416,12 +1916,7 @@ const Booking = () => {
                   value={formData.dropoff_location}
                   onChange={handleChange}
                   placeholder="酒店名称/地址"
-                  isInvalid={!!validationErrors.dropoff_location}
                 />
-                
-                <Form.Control.Feedback type="invalid">
-                  {validationErrors.dropoff_location}
-                </Form.Control.Feedback>
               </Form.Group>
             </Row>
           </div>
@@ -1459,15 +1954,11 @@ const Booking = () => {
               name={`roomTypes[${i}]`}
               value={(formData.roomTypes && formData.roomTypes[i]) || '双人间'}
               onChange={(e) => handleRoomTypeChange(i, e.target.value)}
-              isInvalid={!!validationErrors[`roomTypes.${i}`]}
             >
               <option value="双人间">双人间</option>
               <option value="三人间">三人间</option>
               <option value="单人间">单人间</option>
             </Form.Select>
-            <Form.Control.Feedback type="invalid">
-              {validationErrors[`roomTypes.${i}`]}
-            </Form.Control.Feedback>
           </Form.Group>
         </Row>
       );
@@ -1531,7 +2022,6 @@ const Booking = () => {
               name="hotel_level"
               value={formData.hotel_level || '4星'}
               onChange={handleChange}
-              isInvalid={!!validationErrors.hotel_level}
             >
               {hotelPrices && hotelPrices.length > 0 ? (
                 hotelPrices.map(hotel => (
@@ -1543,9 +2033,6 @@ const Booking = () => {
                 <option value="4星">4星 - 标准酒店</option>
               )}
             </Form.Select>
-            <Form.Control.Feedback type="invalid">
-              {validationErrors.hotel_level}
-            </Form.Control.Feedback>
           </Form.Group>
           
           <Form.Group as={Col} md={6} className="mb-3">
@@ -1556,11 +2043,7 @@ const Booking = () => {
               value={formData.hotel_room_count || 1}
               onChange={handleRoomCountChange}
               min="1"
-              isInvalid={!!validationErrors.hotel_room_count}
             />
-            <Form.Control.Feedback type="invalid">
-              {validationErrors.hotel_room_count}
-            </Form.Control.Feedback>
             <Form.Text className="text-muted">
               建议房间数: {Math.ceil(formData.adult_count/2)}间
             </Form.Text>
@@ -1574,25 +2057,17 @@ const Booking = () => {
             <div className="position-relative">
               <DatePicker
                 selected={formData.hotelCheckInDate}
-                onChange={date => enhancedHandleDateChange('hotelCheckInDate', date)}
+                onChange={date => handleDateChange('hotelCheckInDate', date)}
                 dateFormat="yyyy-MM-dd"
                 className="form-control"
                 placeholderText="选择酒店入住日期"
                 minDate={formData.tour_start_date}
                 maxDate={formData.hotelCheckOutDate}
-                isInvalid={!!validationErrors.hotelCheckInDate}
-                isClearable={false}
-                showMonthDropdown
-                showYearDropdown
-                dropdownMode="select"
               />
               <div className="position-absolute top-0 end-0 pe-3 pt-2">
                 <FaCalendarAlt />
               </div>
             </div>
-            <Form.Control.Feedback type="invalid">
-              {validationErrors.hotelCheckInDate}
-            </Form.Control.Feedback>
           </Form.Group>
           
           <Form.Group as={Col} md={6} className="mb-3">
@@ -1600,25 +2075,17 @@ const Booking = () => {
             <div className="position-relative">
               <DatePicker
                 selected={formData.hotelCheckOutDate}
-                onChange={date => enhancedHandleDateChange('hotelCheckOutDate', date)}
+                onChange={date => handleDateChange('hotelCheckOutDate', date)}
                 dateFormat="yyyy-MM-dd"
                 className="form-control"
                 placeholderText="选择酒店退房日期"
                 minDate={formData.hotelCheckInDate || formData.tour_start_date}
                 maxDate={formData.tour_end_date}
-                isInvalid={!!validationErrors.hotelCheckOutDate}
-                isClearable={false}
-                showMonthDropdown
-                showYearDropdown
-                dropdownMode="select"
               />
               <div className="position-absolute top-0 end-0 pe-3 pt-2">
                 <FaCalendarAlt />
               </div>
             </div>
-            <Form.Control.Feedback type="invalid">
-              {validationErrors.hotelCheckOutDate}
-            </Form.Control.Feedback>
           </Form.Group>
         </Row>
         
@@ -1718,7 +2185,7 @@ const Booking = () => {
           已选择: {formData.adult_count}位成人 + {formData.child_count}位儿童
           {isGroupTour ? `, ${formData.hotel_room_count}间房` : ''}
           <div className="mt-1 small">
-            <span className="text-danger">*</span> 只需填写主联系人信息，其他乘客信息选填
+            <span className="text-muted">*</span> 所有信息都可以稍后补充完善
           </div>
         </Alert>
         
@@ -1739,81 +2206,53 @@ const Booking = () => {
                 <Form.Group as={Col} md="6" className="mb-3">
                   <Form.Label>
                     姓名
-                    {index === 0 && <span className="text-danger">*</span>}
+                    {index === 0 && <span className="text-muted">（主联系人）</span>}
                   </Form.Label>
                   <Form.Control
-                    required={index === 0}
                     type="text"
-                    placeholder={index === 0 ? "姓名（必填）" : "姓名（选填）"}
+                    placeholder={index === 0 ? "姓名（主联系人）" : "姓名（选填）"}
                     value={passenger.full_name || ''}
                     onChange={(e) => handlePassengerChange(index, 'full_name', e.target.value)}
-                    isInvalid={index === 0 && submitted && !passenger.full_name}
                   />
-                  {index === 0 && submitted && !passenger.full_name && (
-                    <Form.Control.Feedback type="invalid">
-                      请填写主联系人姓名
-                    </Form.Control.Feedback>
-                  )}
                 </Form.Group>
                 
                 {/* 儿童年龄字段 */}
                 {passenger.is_child && (
                   <Form.Group as={Col} md="6" className="mb-3">
-                    <Form.Label>儿童年龄 <span className="text-danger">*</span></Form.Label>
+                    <Form.Label>儿童年龄</Form.Label>
                     <Form.Control
-                      required
                       type="number"
                       min="0"
                       max="17"
-                      placeholder="请输入儿童年龄（必填）"
+                      placeholder="请输入儿童年龄"
                       value={passenger.child_age || ''}
                       onChange={(e) => handlePassengerChange(index, 'child_age', e.target.value)}
                       onBlur={(e) => handlePassengerChange(index, 'child_age', e.target.value, true)}
-                      isInvalid={submitted && passenger.is_child && (!passenger.child_age && passenger.child_age !== 0)}
                     />
-                    {submitted && passenger.is_child && (!passenger.child_age && passenger.child_age !== 0) && (
-                      <Form.Control.Feedback type="invalid">
-                        请填写儿童年龄
-                      </Form.Control.Feedback>
-                    )}
                     <Form.Text className="text-muted">
                       儿童年龄可能会影响价格计算
                     </Form.Text>
                   </Form.Group>
                 )}
                 <Form.Group as={Col} md="6" className="mb-3">
-                  <Form.Label>联系电话{index === 0 && <span className="text-danger">*</span>}</Form.Label>
+                  <Form.Label>联系电话{index === 0 && <span className="text-muted">（主联系人）</span>}</Form.Label>
                   <Form.Control
-                    required={index === 0}
                     type="text"
-                    placeholder={index === 0 ? "联系电话（必填）" : "联系电话（选填）"}
+                    placeholder={index === 0 ? "联系电话（主联系人）" : "联系电话（选填）"}
                     value={passenger.phone || ''}
                     onChange={(e) => handlePassengerChange(index, 'phone', e.target.value)}
-                    isInvalid={index === 0 && !passenger.phone && !!validationErrors[`passengers.${index}.phone`]}
                   />
-                  {index === 0 && (
-                    <Form.Control.Feedback type="invalid">
-                      {validationErrors[`passengers.${index}.phone`]}
-                    </Form.Control.Feedback>
-                  )}
                 </Form.Group>
               </Row>
               <Row>
                 <Form.Group as={Col} md="6" className="mb-3">
-                  <Form.Label>微信号{index === 0 && <span className="text-danger">*</span>}</Form.Label>
+                  <Form.Label>微信号{index === 0 && <span className="text-muted">（主联系人）</span>}</Form.Label>
                   <Form.Control
-                    required={index === 0}
                     type="text"
-                    placeholder={index === 0 ? "微信号（必填）" : "微信号（选填）"}
+                    placeholder={index === 0 ? "微信号（主联系人）" : "微信号（选填）"}
                     value={passenger.wechat_id || ''}
                     onChange={(e) => handlePassengerChange(index, 'wechat_id', e.target.value)}
-                    isInvalid={index === 0 && !passenger.wechat_id && !!validationErrors[`passengers.${index}.wechat_id`]}
                   />
-                  {index === 0 && (
-                    <Form.Control.Feedback type="invalid">
-                      {validationErrors[`passengers.${index}.wechat_id`]}
-                    </Form.Control.Feedback>
-                  )}
                 </Form.Group>
                 <Form.Group as={Col} md="6" className="mb-3">
                   <Form.Check
@@ -2354,6 +2793,390 @@ const Booking = () => {
     }
   };
 
+  // 处理AI智能参数（增强版）
+  const processAIParameters = () => {
+    try {
+      console.log("🤖 开始处理AI增强参数...");
+      console.log("📋 当前URL参数:", Object.fromEntries(searchParams.entries()));
+      
+      const updatedFormData = { ...formData };
+      let hasChanges = false;
+      let processedParams = [];
+      
+      // === 1. 处理产品信息 ===
+      const productId = searchParams.get("productId");
+      const productType = searchParams.get("productType");
+      const serviceType = searchParams.get("serviceType");
+      
+      if (productId && productId !== updatedFormData.tour_id) {
+        updatedFormData.tour_id = productId;
+        hasChanges = true;
+        processedParams.push(`产品ID: ${productId}`);
+        console.log("✅ AI设置产品ID:", productId);
+      }
+      
+      if (productType && productType !== updatedFormData.tour_type) {
+        updatedFormData.tour_type = productType;
+        hasChanges = true;
+        processedParams.push(`产品类型: ${productType}`);
+        console.log("✅ AI设置产品类型:", productType);
+      }
+      
+      if (serviceType) {
+        processedParams.push(`服务类型: ${serviceType}`);
+        console.log("✅ AI识别服务类型:", serviceType);
+      }
+      
+      // === 2. 处理日期参数 ===
+      const startDate = searchParams.get("startDate");
+      const endDate = searchParams.get("endDate");
+      
+      if (startDate) {
+        const parsedStartDate = parseDateFromAI(startDate);
+        if (parsedStartDate) {
+          updatedFormData.tour_start_date = parsedStartDate;
+          updatedFormData.pickup_date = parsedStartDate;
+          updatedFormData.hotelCheckInDate = parsedStartDate;
+          hasChanges = true;
+          processedParams.push(`开始日期: ${startDate} → ${parsedStartDate.toISOString().split('T')[0]}`);
+          console.log("✅ AI设置开始日期:", startDate, "→", parsedStartDate.toISOString().split('T')[0]);
+        }
+      }
+      
+      if (endDate) {
+        const parsedEndDate = parseDateFromAI(endDate);
+        if (parsedEndDate) {
+          updatedFormData.tour_end_date = parsedEndDate;
+          updatedFormData.dropoff_date = parsedEndDate;
+          updatedFormData.hotelCheckOutDate = parsedEndDate;
+          hasChanges = true;
+          processedParams.push(`结束日期: ${endDate} → ${parsedEndDate.toISOString().split('T')[0]}`);
+          console.log("✅ AI设置结束日期:", endDate, "→", parsedEndDate.toISOString().split('T')[0]);
+        }
+      }
+      
+      // === 3. 处理人数参数（支持成人/儿童分别处理）===
+      const groupSize = searchParams.get("groupSize");
+      const adultCount = searchParams.get("adultCount");
+      const childCount = searchParams.get("childCount");
+      
+      // 优先使用具体的成人/儿童数量
+      if (adultCount && !isNaN(adultCount)) {
+        const adults = parseInt(adultCount);
+        if (adults > 0 && adults !== updatedFormData.adult_count) {
+          updatedFormData.adult_count = adults;
+          hasChanges = true;
+          processedParams.push(`成人数量: ${adults}`);
+          console.log("✅ AI设置成人数量:", adults);
+        }
+      }
+      
+      if (childCount && !isNaN(childCount)) {
+        const children = parseInt(childCount);
+        if (children >= 0 && children !== updatedFormData.child_count) {
+          updatedFormData.child_count = children;
+          hasChanges = true;
+          processedParams.push(`儿童数量: ${children}`);
+          console.log("✅ AI设置儿童数量:", children);
+        }
+      }
+      
+      // 如果没有具体的成人/儿童数量，使用总人数
+      if (!adultCount && groupSize && !isNaN(groupSize)) {
+        const size = parseInt(groupSize);
+        if (size > 0 && size !== updatedFormData.adult_count) {
+          updatedFormData.adult_count = size;
+          // 如果没有设置儿童数量，默认为0
+          if (!childCount) {
+            updatedFormData.child_count = 0;
+          }
+          hasChanges = true;
+          processedParams.push(`总人数: ${size}（默认为成人）`);
+          console.log("✅ AI设置总人数（作为成人数）:", size);
+        }
+      }
+      
+      // === 4. 处理行李和其他数量信息 ===
+      const luggageCount = searchParams.get("luggageCount");
+      if (luggageCount && !isNaN(luggageCount)) {
+        const luggage = parseInt(luggageCount);
+        if (luggage >= 0) {
+          updatedFormData.luggage_count = luggage;
+          hasChanges = true;
+          processedParams.push(`行李数量: ${luggage}`);
+          console.log("✅ AI设置行李数:", luggage);
+        }
+      }
+      
+      // === 5. 处理地点信息 ===
+      const departure = searchParams.get("departure");
+      if (departure && departure.trim() !== "") {
+        updatedFormData.pickup_location = departure.trim();
+        hasChanges = true;
+        processedParams.push(`出发地点: ${departure}`);
+        console.log("✅ AI设置出发地点:", departure);
+      }
+      
+      // === 6. 处理住宿信息 ===
+      const roomType = searchParams.get("roomType");
+      if (roomType && roomType.trim() !== "") {
+        const convertedRoomType = convertAIRoomType(roomType);
+        updatedFormData.roomTypes = [convertedRoomType];
+        hasChanges = true;
+        processedParams.push(`房型: ${roomType} → ${convertedRoomType}`);
+        console.log("✅ AI设置房型:", roomType, "→", convertedRoomType);
+      }
+      
+      const hotelLevel = searchParams.get("hotelLevel");
+      if (hotelLevel && hotelLevel.trim() !== "") {
+        updatedFormData.hotel_level = hotelLevel.trim();
+        hasChanges = true;
+        processedParams.push(`酒店级别: ${hotelLevel}`);
+        console.log("✅ AI设置酒店级别:", hotelLevel);
+      }
+      
+      // === 7. 处理航班信息 ===
+      const arrivalFlight = searchParams.get("arrivalFlight");
+      if (arrivalFlight && arrivalFlight.trim() !== "") {
+        updatedFormData.arrival_flight = arrivalFlight.trim();
+        hasChanges = true;
+        processedParams.push(`抵达航班: ${arrivalFlight}`);
+        console.log("✅ AI设置抵达航班:", arrivalFlight);
+      }
+      
+      const departureFlight = searchParams.get("departureFlight");
+      if (departureFlight && departureFlight.trim() !== "") {
+        updatedFormData.departure_flight = departureFlight.trim();
+        hasChanges = true;
+        processedParams.push(`返程航班: ${departureFlight}`);
+        console.log("✅ AI设置返程航班:", departureFlight);
+      }
+      
+      // === 8. 处理航班时间信息（包括AI查询的详细时间）===
+      const arrivalTime = searchParams.get("arrivalTime");
+      const arrivalFlightDepartureTime = searchParams.get("arrivalFlightDepartureTime");
+      const arrivalFlightLandingTime = searchParams.get("arrivalFlightLandingTime");
+      const departureFlightDepartureTime = searchParams.get("departureFlightDepartureTime");
+      const departureFlightLandingTime = searchParams.get("departureFlightLandingTime");
+      
+      if (arrivalTime && updatedFormData.tour_start_date) {
+        try {
+          const timeDate = parseTimeToDate(arrivalTime, updatedFormData.tour_start_date);
+          if (timeDate) {
+            updatedFormData.arrival_departure_time = timeDate;
+            hasChanges = true;
+            processedParams.push(`抵达时间: ${arrivalTime} → ${timeDate.toLocaleTimeString()}`);
+            console.log("✅ AI设置抵达时间:", arrivalTime, "→", timeDate.toLocaleTimeString());
+          }
+        } catch (error) {
+          console.warn("解析抵达时间失败:", arrivalTime, error);
+        }
+      }
+      
+      // 处理AI自动查询的航班详细时间
+      if (arrivalFlightDepartureTime) {
+        try {
+          const decodedTime = decodeURIComponent(arrivalFlightDepartureTime);
+          processedParams.push(`抵达航班起飞时间: ${decodedTime}`);
+          console.log("✅ AI提供抵达航班起飞时间:", decodedTime);
+        } catch (e) {
+          console.warn("解码抵达航班起飞时间失败:", e);
+        }
+      }
+      
+      if (arrivalFlightLandingTime) {
+        try {
+          const decodedTime = decodeURIComponent(arrivalFlightLandingTime);
+          processedParams.push(`抵达航班降落时间: ${decodedTime}`);
+          console.log("✅ AI提供抵达航班降落时间:", decodedTime);
+        } catch (e) {
+          console.warn("解码抵达航班降落时间失败:", e);
+        }
+      }
+      
+      if (departureFlightDepartureTime) {
+        try {
+          const decodedTime = decodeURIComponent(departureFlightDepartureTime);
+          processedParams.push(`返程航班起飞时间: ${decodedTime}`);
+          console.log("✅ AI提供返程航班起飞时间:", decodedTime);
+        } catch (e) {
+          console.warn("解码返程航班起飞时间失败:", e);
+        }
+      }
+      
+      if (departureFlightLandingTime) {
+        try {
+          const decodedTime = decodeURIComponent(departureFlightLandingTime);
+          processedParams.push(`返程航班降落时间: ${decodedTime}`);
+          console.log("✅ AI提供返程航班降落时间:", decodedTime);
+        } catch (e) {
+          console.warn("解码返程航班降落时间失败:", e);
+        }
+      }
+      
+      // === 9. 处理客户信息（支持最多5个客户）===
+      const customers = [];
+      let customerCount = 0;
+      
+      for (let i = 1; i <= 5; i++) {
+        const name = searchParams.get(`customerName${i}`);
+        const phone = searchParams.get(`customerPhone${i}`);
+        const passport = searchParams.get(`customerPassport${i}`);
+        
+        if (name || phone || passport) {
+          try {
+            customers.push({
+              full_name: name || '',
+              phone: phone || '',
+              passport_number: passport || '',
+              is_child: false,
+              is_primary: i === 1 // 第一个客户为主联系人
+            });
+            customerCount++;
+            processedParams.push(`客户${i}: ${name || ''}${phone ? ` ${phone}` : ''}${passport ? ` ${passport}` : ''}`);
+            console.log(`✅ AI设置客户${i}:`, { name, phone, passport });
+          } catch (error) {
+            console.warn(`解码客户${i}信息失败:`, error);
+          }
+        }
+      }
+      
+      if (customers.length > 0) {
+        // 确保乘客数组至少有足够的位置
+        while (updatedFormData.passengers.length < customers.length) {
+          updatedFormData.passengers.push({
+            full_name: '',
+            is_child: false,
+            phone: '',
+            wechat_id: '',
+            child_age: '',
+            passport_number: '',
+            is_primary: false
+          });
+        }
+        
+        // 更新乘客信息
+        customers.forEach((customer, index) => {
+          if (index < updatedFormData.passengers.length) {
+            updatedFormData.passengers[index] = {
+              ...updatedFormData.passengers[index],
+              ...customer
+            };
+          }
+        });
+        hasChanges = true;
+        console.log(`✅ AI设置了${customers.length}个客户的信息`);
+      }
+      
+      // === 10. 处理特殊要求/备注 ===
+      const specialRequests = searchParams.get("specialRequests");
+      if (specialRequests && specialRequests.trim() !== "") {
+        try {
+          const decodedRequests = decodeURIComponent(specialRequests);
+          updatedFormData.special_requests = decodedRequests;
+          hasChanges = true;
+          processedParams.push(`特殊要求: ${decodedRequests.substring(0, 50)}${decodedRequests.length > 50 ? '...' : ''}`);
+          console.log("✅ AI设置特殊要求:", decodedRequests);
+        } catch (e) {
+          console.warn("解码特殊要求失败:", e);
+        }
+      }
+      
+      // === 11. 处理行程信息 ===
+      const itinerary = searchParams.get("itinerary");
+      if (itinerary && itinerary.trim() !== "") {
+        try {
+          const decodedItinerary = decodeURIComponent(itinerary);
+          processedParams.push(`行程信息: ${decodedItinerary.substring(0, 50)}${decodedItinerary.length > 50 ? '...' : ''}`);
+          console.log("✅ AI提供行程信息:", decodedItinerary);
+        } catch (e) {
+          console.warn("解码行程信息失败:", e);
+        }
+      }
+      
+      // === 12. 处理车辆类型 ===
+      const vehicleType = searchParams.get("vehicleType");
+      if (vehicleType && vehicleType.trim() !== "") {
+        try {
+          const decodedVehicleType = decodeURIComponent(vehicleType);
+          processedParams.push(`车辆类型: ${decodedVehicleType}`);
+          console.log("✅ AI识别车辆类型:", decodedVehicleType);
+        } catch (e) {
+          console.warn("解码车辆类型失败:", e);
+        }
+      }
+      
+      // === 13. AI处理标识 ===
+      const aiProcessed = searchParams.get("aiProcessed");
+      const aiProcessedTime = searchParams.get("aiProcessedTime");
+      
+      if (aiProcessed === "true") {
+        console.log("🤖 确认这是AI处理的订单");
+        if (aiProcessedTime) {
+          const timestamp = parseInt(aiProcessedTime);
+          const processTime = new Date(timestamp);
+          console.log("⏰ AI处理时间:", processTime.toLocaleString());
+        }
+      }
+      
+      // === 14. 应用更新并显示结果 ===
+      if (hasChanges) {
+        setFormData(updatedFormData);
+        console.log("🎉 AI参数处理完成，表单已更新");
+        console.log("📊 处理的参数列表:", processedParams);
+        
+        // 显示成功提示，包含处理的参数概要
+        const summary = processedParams.length > 3 ? 
+          `${processedParams.slice(0, 3).join(', ')} 等${processedParams.length}项` : 
+          processedParams.join(', ');
+          
+        toast.success(`🤖 AI智能填写完成！\n已处理: ${summary}`, {
+          duration: 5000,
+          icon: '✨',
+          style: {
+            background: '#f0f9ff',
+            border: '1px solid #0ea5e9',
+            color: '#0c4a6e',
+          }
+        });
+        
+        // 如果有客户信息，提醒用户检查
+        if (customerCount > 0) {
+          setTimeout(() => {
+            toast.info(`👥 已填入${customerCount}位客户信息，请核对准确性`, {
+              duration: 4000,
+              icon: '📋'
+            });
+          }, 1000);
+        }
+        
+        // 自动调整人数相关的表单项
+        setTimeout(() => {
+          updatePassengersBasedOnCount(
+            updatedFormData.adult_count, 
+            updatedFormData.child_count
+          );
+        }, 500);
+        
+      } else {
+        console.log("ℹ️ 未发现可处理的AI参数，跳过自动填写");
+        // 如果确实有AI标识但没有可处理的参数，给出提示
+        if (aiProcessed === "true") {
+          toast.info("🤖 AI已识别订单信息，但无需要填写的参数", {
+            duration: 3000
+          });
+        }
+      }
+      
+    } catch (error) {
+      console.error("❌ 处理AI参数时出错:", error);
+      toast.error("AI参数处理失败，请手动填写表单", {
+        duration: 4000,
+        icon: '⚠️'
+      });
+    }
+  };
+
   // 处理文本解析并填充表单
   const handleParseBookingText = () => {
     if (!parseText.trim()) {
@@ -2376,53 +3199,56 @@ const Booking = () => {
       
       // 更新基本信息
       if (extractedInfo.tourStartDate) {
-        // 确保日期格式正确，显式处理转换和调试
-        try {
-          const parsedDate = new Date(extractedInfo.tourStartDate);
-          console.log('解析开始日期:', extractedInfo.tourStartDate, '转换结果:', parsedDate);
-          if (!isNaN(parsedDate.getTime())) {
-            updatedFormData.tour_start_date = parsedDate;
-          } else {
-            console.error('开始日期解析失败:', extractedInfo.tourStartDate);
-          }
-        } catch (err) {
-          console.error('开始日期转换出错:', err);
-        }
+        updatedFormData.tour_start_date = new Date(extractedInfo.tourStartDate);
       }
       
-      // === 自动推算结束时间 ===
-      if (extractedInfo.tourStartDate && !extractedInfo.tourEndDate && tourDetails.duration) {
-        try {
-          const start = new Date(extractedInfo.tourStartDate);
-          if (!isNaN(start.getTime())) {
-            const duration = parseInt(tourDetails.duration) || 1;
-            const end = new Date(start);
-            end.setDate(start.getDate() + duration - 1);
-            
-            console.log('计算结束日期:', '开始日期=', start, '行程天数=', duration, '结束日期=', end);
-            
-            updatedFormData.tour_end_date = end;
-            // 同步酒店入住/退房和接送时间
-            updatedFormData.hotelCheckInDate = new Date(start);
-            updatedFormData.hotelCheckOutDate = new Date(end);
-            updatedFormData.pickup_date = new Date(start);
-            updatedFormData.dropoff_date = new Date(end);
-          }
-        } catch (err) {
-          console.error('计算结束日期出错:', err);
-        }
-      } else if (extractedInfo.tourEndDate) {
-        try {
-          const parsedEndDate = new Date(extractedInfo.tourEndDate);
-          console.log('解析结束日期:', extractedInfo.tourEndDate, '转换结果:', parsedEndDate);
-          if (!isNaN(parsedEndDate.getTime())) {
-            updatedFormData.tour_end_date = parsedEndDate;
-          }
-        } catch (err) {
-          console.error('结束日期转换出错:', err);
-        }
+      // === 日期处理 ===
+      if (extractedInfo.tourEndDate) {
+        updatedFormData.tour_end_date = new Date(extractedInfo.tourEndDate);
+      } else if (extractedInfo.tourStartDate && tourDetails.duration) {
+        const start = new Date(extractedInfo.tourStartDate);
+        const duration = parseInt(tourDetails.duration) || 1;
+        const end = new Date(start);
+        end.setDate(start.getDate() + duration - 1);
+        updatedFormData.tour_end_date = end;
       }
-      // === END ===
+      
+      // 接车日期 - 如果提取器设置了特定日期，则使用
+      if (extractedInfo.pickupDate) {
+        updatedFormData.pickup_date = new Date(extractedInfo.pickupDate);
+      } else if (extractedInfo.tourStartDate) {
+        // 否则默认使用行程开始日期
+        updatedFormData.pickup_date = new Date(extractedInfo.tourStartDate);
+      }
+      
+      // 送回日期 - 如果提取器设置了特定日期，则使用
+      if (extractedInfo.dropoffDate) {
+        updatedFormData.dropoff_date = new Date(extractedInfo.dropoffDate);
+      } else if (extractedInfo.tourEndDate) {
+        // 否则默认使用行程结束日期
+        updatedFormData.dropoff_date = new Date(extractedInfo.tourEndDate);
+      } else if (updatedFormData.tour_end_date) {
+        updatedFormData.dropoff_date = new Date(updatedFormData.tour_end_date);
+      }
+      
+      // 酒店入住日期 - 如果提取器设置了特定日期，则使用
+      if (extractedInfo.hotelCheckInDate) {
+        updatedFormData.hotelCheckInDate = new Date(extractedInfo.hotelCheckInDate);
+      } else if (extractedInfo.tourStartDate) {
+        // 否则默认使用行程开始日期
+        updatedFormData.hotelCheckInDate = new Date(extractedInfo.tourStartDate);
+      }
+      
+      // 酒店退房日期 - 如果提取器设置了特定日期，则使用
+      if (extractedInfo.hotelCheckOutDate) {
+        updatedFormData.hotelCheckOutDate = new Date(extractedInfo.hotelCheckOutDate);
+      } else if (extractedInfo.tourEndDate) {
+        // 否则默认使用行程结束日期
+        updatedFormData.hotelCheckOutDate = new Date(extractedInfo.tourEndDate);
+      } else if (updatedFormData.tour_end_date) {
+        updatedFormData.hotelCheckOutDate = new Date(updatedFormData.tour_end_date);
+      }
+      // === 日期处理结束 ===
       
       if (extractedInfo.flightNumber) {
         updatedFormData.arrival_flight = extractedInfo.flightNumber;
@@ -2454,9 +3280,7 @@ const Booking = () => {
         updatedFormData.hotel_level = extractedInfo.hotelLevel;
       }
       
-      // 特殊处理备注信息
       if (extractedInfo.specialRequests) {
-        console.log('提取到特殊要求:', extractedInfo.specialRequests);
         updatedFormData.special_requests = extractedInfo.specialRequests;
       }
       
@@ -2489,11 +3313,12 @@ const Booking = () => {
         updatedFormData.luggage_count = extractedInfo.luggageCount;
       }
       
-      // 智能计算房间数量
-      if (extractedInfo.adultCount > 0) {
-        // 默认每2位成人分配1个房间，向上取整
-        const estimatedRooms = Math.ceil(extractedInfo.adultCount / 2);
-        updatedFormData.hotel_room_count = estimatedRooms;
+      // 房间数量 - 固定为2，或使用提取出的值 (如果存在)
+      if (extractedInfo.hotelRoomCount && extractedInfo.hotelRoomCount > 0) {
+        updatedFormData.hotel_room_count = extractedInfo.hotelRoomCount;
+      } else {
+        // 不再自动计算，固定设置为2间
+        updatedFormData.hotel_room_count = 2;
       }
       
       // 更新乘客信息
@@ -2510,12 +3335,12 @@ const Booking = () => {
             full_name: passenger.fullName || '',
             is_child: false,
             phone: passenger.phone || '',
-            wechat_id: '',
+            wechat_id: passenger.wechat || '',
             passport_number: passenger.passportNumber || '',
             is_primary: index === 0 // 第一个成人为主联系人
           });
         });
-        
+            
         // 添加儿童
         childPassengers.forEach(passenger => {
           passengersData.push({
@@ -2523,7 +3348,7 @@ const Booking = () => {
             is_child: true,
             child_age: passenger.childAge || '',
             phone: passenger.phone || '',
-            wechat_id: '',
+            wechat_id: passenger.wechat || '',
             passport_number: passenger.passportNumber || '',
             is_primary: false
           });
@@ -2571,17 +3396,6 @@ const Booking = () => {
         updatedFormData.passengers = passengersData;
       }
       
-      // 输出最终的表单数据，用于诊断
-      console.log('更新后的表单数据:', {
-        开始日期: updatedFormData.tour_start_date,
-        结束日期: updatedFormData.tour_end_date,
-        特殊要求: updatedFormData.special_requests,
-        酒店入住日期: updatedFormData.hotelCheckInDate,
-        酒店退房日期: updatedFormData.hotelCheckOutDate,
-        接车日期: updatedFormData.pickup_date,
-        送回日期: updatedFormData.dropoff_date
-      });
-      
       // 更新表单状态
       setFormData(updatedFormData);
       
@@ -2599,54 +3413,745 @@ const Booking = () => {
       if (extractedInfo.returnFlightNumber) summary.push(`回程: ${extractedInfo.returnFlightNumber}`);
       if (extractedInfo.adultCount) summary.push(`成人: ${extractedInfo.adultCount}人`);
       if (extractedInfo.childCount) summary.push(`儿童: ${extractedInfo.childCount}人`);
-      if (extractedInfo.specialRequests) summary.push(`备注: 已添加`);
       
       toast.success(`预订信息已成功提取并填充！${summary.join('，')}`);
-        
-    } catch (error) {
+        } catch (error) {
       console.error('解析预订文本失败:', error);
       toast.error('解析文本失败，请检查格式或手动填写');
     }
   };
 
-  // 在这里定义一个函数，为handleDateChange添加错误处理和日志记录
-  const enhancedHandleDateChange = (fieldName, date) => {
-    console.log(`日期变更: ${fieldName} = ${date ? date.toISOString() : 'null'}`);
-    
-    // 确保date是有效日期对象
-    if (date && isNaN(date.getTime())) {
-      console.error(`日期格式无效: ${fieldName}`, date);
-      return;
-    }
-    
-    // 直接使用setFormData更新日期，避免使用handleDateChange导致的问题
-    setFormData(prev => {
-      let updated = { ...prev, [fieldName]: date };
-      // 如果更改的是行程开始日期，自动推算结束日期和相关字段
-      if (fieldName === 'tour_start_date' && date && tourDetails.duration) {
-        const duration = parseInt(tourDetails.duration) || 1;
-        const end = new Date(date);
-        end.setDate(date.getDate() + duration - 1);
-        updated.tour_end_date = end;
-        updated.hotelCheckInDate = new Date(date);
-        updated.hotelCheckOutDate = new Date(end);
-        updated.pickup_date = new Date(date);
-        updated.dropoff_date = new Date(end);
-      }
-      // 如果更改的是行程结束日期，自动更新酒店退房和送回日期
-      if (fieldName === 'tour_end_date' && date) {
-        updated.hotelCheckOutDate = new Date(date);
-        updated.dropoff_date = new Date(date);
-      }
-      console.log('更新后的表单数据:', {
-        字段名: fieldName,
-        新日期: date,
-        表单日期: updated[fieldName]
-      });
-      return updated;
-    });
-  };
+  // 组件返回的JSX结构
+  return (
+    <div className="booking-page py-5">
+      <Container>
+        <Breadcrumbs
+          items={[
+            { label: "首页", path: "/" },
+            {
+              label: (tourType || "").toLowerCase().includes("group")
+                ? "跟团游"
+                : "日游",
+              path: (tourType || "").toLowerCase().includes("group")
+                ? "/group-tours"
+                : "/day-tours",
+            },
+            {
+              label: tourDetails?.title || "产品详情",
+              path: `/${
+                (tourType || "").toLowerCase().includes("group")
+                  ? "group"
+                  : "day"
+              }-tours/${tourId}`,
+            },
+            { label: "填写订单", path: "#", active: true },
+          ]}
+        />
 
+        <h2 className="mb-4 text-center">
+          {tourDetails?.title || tourName} 预订
+        </h2>
+        
+        {/* 添加快速填充按钮 */}
+        <div className="text-center mb-4">
+          <Button 
+            variant="primary" 
+            className="quick-parse-btn d-flex align-items-center mx-auto"
+            onClick={() => setShowParseModal(true)}
+          >
+            <FaPaste className="me-2" /> 快速填充预订信息
+          </Button>
+        </div>
+
+        {/* 错误信息显示 */}
+        {(error || submitError) && (
+          <Alert variant="danger" className="mb-4">
+            <FaInfoCircle className="me-2" />
+            {error || submitError}
+          </Alert>
+        )}
+
+        {/* 产品基本信息 - 显示在标题下方 */}
+        <div className="text-center mb-4">
+          <Badge bg="primary" className="me-2">
+            {(tourType || "").toLowerCase().includes("group") ? "跟团游" : "日游"}
+          </Badge>
+          {tourDetails?.duration && (
+            <span className="text-muted">
+              <FaCalendarDay className="me-1" />
+              {parseInt(tourDetails.duration)}天
+              {(tourType || "").toLowerCase().includes("group") ? 
+                `/${getHotelNights()}晚` : ""}
+            </span>
+          )}
+        </div>
+
+        {/* 文本解析模态弹窗 */}
+        <Modal 
+          show={showParseModal} 
+          onHide={() => setShowParseModal(false)}
+          size="lg"
+          centered
+        >
+          <Modal.Header closeButton>
+            <Modal.Title className="d-flex align-items-center">
+              <FaPaste className="text-primary me-2" />
+              快速填充预订信息
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <p className="text-muted mb-3">
+              将中介或客户发送的预订文本信息粘贴在下方，系统将自动识别并填充相关信息
+            </p>
+            <Form.Group>
+              <Form.Control
+                as="textarea"
+                rows={10}
+                placeholder="粘贴预订文本信息，例如：
+服务类型：塔斯马尼亚5日4晚跟团游
+参团日期：2023年12月10日
+到达航班：JQ123
+乘客信息：
+张三 13800138000 护照号E12345678
+李四（儿童8岁） 13900139000
+..."
+                onChange={(e) => setParseText(e.target.value)}
+                value={parseText}
+                className="parse-textarea"
+              />
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowParseModal(false)}>
+              取消
+            </Button>
+            <Button 
+              variant="primary" 
+              className="d-flex align-items-center"
+              onClick={handleParseBookingText}
+            >
+              <FaMagic className="me-2" /> 自动识别并填充
+            </Button>
+          </Modal.Footer>
+        </Modal>
+
+        {/* 预订步骤 */}
+        <div className="booking-steps mb-5">
+          <Row className="justify-content-center">
+            <Col xs={3} md={2}>
+              <div className="booking-step text-center">
+                <div className="step-circle">1</div>
+                <div className="step-name">选择产品</div>
+              </div>
+            </Col>
+            <Col xs={3} md={2}>
+              <div className="booking-step active text-center">
+                <div className="step-circle">2</div>
+                <div className="step-name">填写订单</div>
+              </div>
+            </Col>
+            <Col xs={3} md={2}>
+              <div className="booking-step text-center">
+                <div className="step-circle">3</div>
+                <div className="step-name">支付确认</div>
+              </div>
+            </Col>
+            <Col xs={3} md={2}>
+              <div className="booking-step text-center">
+                <div className="step-circle">4</div>
+                <div className="step-name">预订成功</div>
+              </div>
+            </Col>
+          </Row>
+        </div>
+
+        <Form onSubmit={handleSubmit}>
+          <Row>
+            <Col lg={7}>
+              {/* 左侧列：预订表单 */}
+              <div className="booking-form p-0 pb-5">
+                {/* 返回按钮 */}
+                <div className="mb-4">
+                  <Link
+                    to={
+                      (tourType || "").toLowerCase().includes("group")
+                        ? `/group-tours/${tourId}`
+                        : `/day-tours/${tourId}`
+                    }
+                    className="btn btn-outline-secondary d-inline-flex align-items-center"
+                  >
+                    <FaArrowLeft className="me-2" /> 返回产品详情
+                  </Link>
+                </div>
+
+                {/* 行程日期表单部分 */}
+                <div className="form-section bg-white p-4 mb-4 rounded shadow-sm">
+                  <h5 className="border-bottom pb-2 mb-3">
+                    <FaCalendarAlt className="me-2 text-primary" />
+                    行程日期
+                  </h5>
+                  <Row>
+                    <Form.Group as={Col} md={6} className="mb-3">
+                      <Form.Label>行程开始日期</Form.Label>
+                      <div className="position-relative">
+                        <DatePicker
+                          selected={formData.tour_start_date}
+                          onChange={(date) =>
+                            handleDateChange("tour_start_date", date)
+                          }
+                          dateFormat="yyyy-MM-dd"
+                          className="form-control"
+                          placeholderText="选择行程开始日期"
+                        />
+                        <div className="position-absolute top-0 end-0 pe-3 pt-2">
+                          <FaCalendarAlt />
+                        </div>
+                      </div>
+                    </Form.Group>
+                    <Form.Group as={Col} md={6} className="mb-3">
+                      <Form.Label>行程结束日期</Form.Label>
+                      <div className="position-relative">
+                        <DatePicker
+                          selected={formData.tour_end_date}
+                          onChange={(date) =>
+                            handleDateChange("tour_end_date", date)
+                          }
+                          dateFormat="yyyy-MM-dd"
+                          className="form-control"
+                          placeholderText="选择行程结束日期"
+                          minDate={formData.tour_start_date}
+                        />
+                        <div className="position-absolute top-0 end-0 pe-3 pt-2">
+                          <FaCalendarAlt />
+                        </div>
+                      </div>
+                    </Form.Group>
+                  </Row>
+
+                  {/* 条件渲染，添加航班信息 */}
+                  {(tourType || "").toLowerCase().includes("group") && (
+                    <div className="mt-4 p-3 bg-light rounded border border-primary border-opacity-25" style={{ position: 'relative', zIndex: 10 }}>
+                      <h6 className="mb-3 d-flex align-items-center text-primary">
+                        <FaTicketAlt className="me-2" />
+                        航班信息
+                      </h6>
+                      <Row>
+                        <Form.Group as={Col} md={6} className="mb-3">
+                          <Form.Label>
+                            抵达航班号
+                          </Form.Label>
+                          <Form.Control
+                            type="text"
+                            name="arrival_flight"
+                            value={formData.arrival_flight || ""}
+                            onChange={handleChange}
+                            placeholder="例如: JQ123"
+                            className="flight-input-field"
+                          />
+                          <Form.Text className="text-muted">
+                            填写航班号以便安排接机服务
+                          </Form.Text>
+                        </Form.Group>
+                        <Form.Group as={Col} md={6} className="mb-3">
+                          <Form.Label>
+                            返程航班号
+                          </Form.Label>
+                          <Form.Control
+                            type="text"
+                            name="departure_flight"
+                            value={formData.departure_flight || ""}
+                            onChange={handleChange}
+                            placeholder="例如: JQ456"
+                            className="flight-input-field"
+                          />
+                          <Form.Text className="text-muted">
+                            填写航班号以便安排送机服务
+                          </Form.Text>
+                        </Form.Group>
+                      </Row>
+                      
+                      {/* 添加航班起飞和降落时间 */}
+                      <Row>
+                        <Form.Group as={Col} md={6} className="mb-3">
+                          <Form.Label>
+                            抵达航班起飞时间
+                          </Form.Label>
+                          <div className="position-relative">
+                            <DatePicker
+                              selected={formData.arrival_departure_time}
+                              onChange={date => handleDateChange('arrival_departure_time', date)}
+                              showTimeSelect
+                              timeFormat="HH:mm"
+                              timeIntervals={15}
+                              timeCaption="时间"
+                              dateFormat="yyyy-MM-dd HH:mm"
+                              className="form-control date-time-picker"
+                              placeholderText="选择起飞时间"
+                              showTimeSelectOnly={false}
+                              timeInputLabel="时间："
+                              showTimeInput={false}
+                              popperClassName="date-time-popper"
+                              popperPlacement="bottom-start"
+                            />
+                            <div className="position-absolute top-0 end-0 pe-3 pt-2">
+                              <FaCalendarAlt />
+                            </div>
+                          </div>
+                          <Form.Text className="text-muted">
+                            填写抵达航班起飞时间
+                          </Form.Text>
+                        </Form.Group>
+                        <Form.Group as={Col} md={6} className="mb-3">
+                          <Form.Label>
+                            抵达航班降落时间
+                          </Form.Label>
+                          <div className="position-relative">
+                            <DatePicker
+                              selected={formData.arrival_landing_time}
+                              onChange={date => handleDateChange('arrival_landing_time', date)}
+                              showTimeSelect
+                              timeFormat="HH:mm"
+                              timeIntervals={15}
+                              timeCaption="时间"
+                              dateFormat="yyyy-MM-dd HH:mm"
+                              className="form-control date-time-picker"
+                              placeholderText="选择降落时间"
+                              showTimeSelectOnly={false}
+                              timeInputLabel="时间："
+                              showTimeInput={false}
+                              popperClassName="date-time-popper"
+                              popperPlacement="bottom-start"
+                            />
+                            <div className="position-absolute top-0 end-0 pe-3 pt-2">
+                              <FaCalendarAlt />
+                            </div>
+                          </div>
+                          <Form.Text className="text-muted">
+                            填写抵达航班降落时间
+                          </Form.Text>
+                        </Form.Group>
+                      </Row>
+                      <Row>
+                        <Form.Group as={Col} md={6} className="mb-3">
+                          <Form.Label>
+                            返程航班起飞时间
+                          </Form.Label>
+                          <div className="position-relative">
+                            <DatePicker
+                              selected={formData.departure_departure_time}
+                              onChange={date => handleDateChange('departure_departure_time', date)}
+                              showTimeSelect
+                              timeFormat="HH:mm"
+                              timeIntervals={15}
+                              timeCaption="时间"
+                              dateFormat="yyyy-MM-dd HH:mm"
+                              className="form-control date-time-picker"
+                              placeholderText="选择起飞时间"
+                              showTimeSelectOnly={false}
+                              timeInputLabel="时间："
+                              showTimeInput={false}
+                              popperClassName="date-time-popper"
+                              popperPlacement="bottom-start"
+                            />
+                            <div className="position-absolute top-0 end-0 pe-3 pt-2">
+                              <FaCalendarAlt />
+                            </div>
+                          </div>
+                          <Form.Text className="text-muted">
+                            填写返程航班起飞时间
+                          </Form.Text>
+                        </Form.Group>
+                        <Form.Group as={Col} md={6} className="mb-3">
+                          <Form.Label>
+                            返程航班降落时间
+                          </Form.Label>
+                          <div className="position-relative">
+                            <DatePicker
+                              selected={formData.departure_landing_time}
+                              onChange={date => handleDateChange('departure_landing_time', date)}
+                              showTimeSelect
+                              timeFormat="HH:mm"
+                              timeIntervals={15}
+                              timeCaption="时间"
+                              dateFormat="yyyy-MM-dd HH:mm"
+                              className="form-control date-time-picker"
+                              placeholderText="选择降落时间"
+                              showTimeSelectOnly={false}
+                              timeInputLabel="时间："
+                              showTimeInput={false}
+                              popperClassName="date-time-popper"
+                              popperPlacement="bottom-start"
+                            />
+                            <div className="position-absolute top-0 end-0 pe-3 pt-2">
+                              <FaCalendarAlt />
+                            </div>
+                          </div>
+                          <Form.Text className="text-muted">
+                            填写返程航班降落时间
+                          </Form.Text>
+                        </Form.Group>
+                      </Row>
+                    </div>
+                  )}
+                </div>
+
+                {/* 接送信息部分 */}
+                <div className="form-section bg-white p-4 mb-4 rounded shadow-sm">
+                  <h5 className="border-bottom pb-2 mb-3">
+                    <FaCar className="me-2 text-primary" />
+                    接送信息
+                  </h5>
+                  {renderPickupAndDropoffFields()}
+                </div>
+
+                {/* 条件渲染，跟团游才显示酒店信息 */}
+                {(tourType || "").toLowerCase().includes("group") && (
+                  <div className="form-section bg-white p-4 mb-4 rounded shadow-sm">
+                    <h5 className="border-bottom pb-2 mb-3">
+                      <FaHotel className="me-2 text-primary" />
+                      酒店信息
+                    </h5>
+                    {renderHotelOptions()}
+                  </div>
+                )}
+
+                {/* 乘客信息部分 */}
+                <div className="form-section bg-white p-4 mb-4 rounded shadow-sm">
+                  <h5 className="border-bottom pb-2 mb-3">
+                    <FaUsers className="me-2 text-primary" />
+                    乘客信息
+                  </h5>
+                  {renderPassengers()}
+                </div>
+
+                {/* 特殊要求部分 */}
+                <div className="form-section bg-white p-4 mb-4 rounded shadow-sm">
+                  <h5 className="border-bottom pb-2 mb-3">
+                    <FaLightbulb className="me-2 text-primary" />
+                    特殊要求
+                  </h5>
+                  <Form.Group>
+                    <Form.Label>您的特殊要求或备注</Form.Label>
+                    <Form.Control
+                      as="textarea"
+                      rows={3}
+                      name="special_requests"
+                      value={formData.special_requests || ""}
+                      onChange={handleChange}
+                      placeholder="如有饮食禁忌、健康问题或其他需求，请在此说明"
+                    />
+                    <Form.Text className="text-muted">
+                      我们会尽力满足您的特殊要求，但可能无法保证所有要求都能得到满足。
+                    </Form.Text>
+                  </Form.Group>
+                </div>
+              </div>
+            </Col>
+
+            {/* 右侧产品信息和订单摘要 */}
+            <Col lg={5}>
+              <div 
+                id="booking-order-summary"
+                className={`sticky-sidebar ${isSticky ? 'is-sticky' : ''}`}
+                style={{
+                  position: isSticky ? 'fixed' : 'relative',
+                  top: isSticky ? `${headerHeight + 20}px` : 'auto',
+                  left: isSticky ? `${sidebarOffset}px` : 'auto',
+                  width: isSticky ? `${sidebarWidth}px` : 'auto',
+                  zIndex: isSticky ? 1000 : 'auto',
+                  transition: 'all 0.3s ease',
+                  maxHeight: isSticky ? `calc(100vh - ${headerHeight + 40}px)` : 'auto',
+                  overflowY: isSticky ? 'auto' : 'visible',
+                  // 确保非粘性状态下重置所有定位属性
+                  ...((!isSticky) && {
+                    transform: 'none',
+                    left: 'auto',
+                    right: 'auto'
+                  })
+                }}
+              >
+
+
+                {/* 订单摘要卡片 */}
+                <Card 
+                  className={`shadow order-summary simplified ${isSticky ? 'is-sticky' : ''}`}
+                >
+                  <Card.Header 
+                    className="text-white"
+                    style={{ 
+                      background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)'
+                    }}
+                  >
+                    <h6 className="mb-0">订单摘要</h6>
+                  </Card.Header>
+                  <Card.Body>
+                    {/* 产品信息 - 增强版 */}
+                    <div className="mb-4">
+                      {/* 产品标题和图片 */}
+                      <div className="product-header mb-3">
+                        {tourDetails?.imageUrl && (
+                          <div className="product-image mb-2">
+                            <img 
+                              src={tourDetails.imageUrl} 
+                              alt={tourDetails?.title || tourName}
+                              className="img-fluid rounded"
+                              style={{ width: '100%', height: '120px', objectFit: 'cover' }}
+                            />
+                          </div>
+                        )}
+                        <div className="product-title-section">
+                          <h6 className="product-title mb-1" style={{ fontSize: '14px', fontWeight: '600', lineHeight: '1.4' }}>
+                            {tourDetails?.title || tourName || '产品名称'}
+                          </h6>
+                          {/* 产品类型和时长 */}
+                          <div className="product-meta small text-muted mb-2">
+                            <Badge bg="primary" className="me-2">
+                              {tourType === 'group' || tourType.includes('group') ? '跟团游' : '一日游'}
+                            </Badge>
+                            {tourDetails?.duration > 0 && (
+                              <span className="me-2">
+                                <FaClock className="me-1" />
+                                {tourDetails.duration}天
+                                {tourDetails.hotelNights > 0 && `${tourDetails.hotelNights}晚`}
+                              </span>
+                            )}
+                            {tourDetails?.price && (
+                              <span className="text-primary">
+                                <small>起价¥{tourDetails.price}</small>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 产品亮点 */}
+                      {tourDetails?.highlights && tourDetails.highlights.length > 0 && (
+                        <div className="product-highlights mb-3">
+                          <div className="small fw-semibold text-dark mb-1">
+                            <FaStar className="text-warning me-1" />
+                            产品亮点
+                          </div>
+                          <div className="highlights-list">
+                            {tourDetails.highlights.slice(0, 3).map((highlight, index) => (
+                              <div key={index} className="highlight-item small text-muted mb-1">
+                                <FaCheck className="text-success me-1" style={{ fontSize: '10px' }} />
+                                {typeof highlight === 'string' ? highlight : highlight.description || highlight.name}
+                              </div>
+                            ))}
+                            {tourDetails.highlights.length > 3 && (
+                              <div className="small text-muted">
+                                <small>还有{tourDetails.highlights.length - 3}个亮点...</small>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 订单详情 */}
+                      <div className="booking-details">
+                        <div className="small fw-semibold text-dark mb-2">
+                          <FaCalendarAlt className="me-1" />
+                          订单详情
+                        </div>
+                        <div className="detail-list">
+                          <div className="detail-item d-flex justify-content-between align-items-center mb-1">
+                            <span className="small text-muted">
+                              <FaCalendarDay className="me-1" />
+                              日期
+                            </span>
+                            <span className="small">
+                              {formData.tour_start_date && formData.tour_end_date
+                                ? `${formatDate(formData.tour_start_date)}至${formatDate(formData.tour_end_date)}`
+                                : "日期待定"}
+                            </span>
+                          </div>
+                          <div className="detail-item d-flex justify-content-between align-items-center mb-1">
+                            <span className="small text-muted">
+                              <FaUsers className="me-1" />
+                              人数
+                            </span>
+                            <span className="small">
+                              {priceDetails.adultCount || formData.adult_count}成人
+                              {(priceDetails.childCount || formData.child_count) > 0 && 
+                                ` ${priceDetails.childCount || formData.child_count}儿童`}
+                            </span>
+                          </div>
+                          {/* 酒店信息 - 仅跟团游显示 */}
+                          {(tourType === 'group' || tourType.includes('group')) && (
+                            <>
+                              <div className="detail-item d-flex justify-content-between align-items-center mb-1">
+                                <span className="small text-muted">
+                                  <FaHotel className="me-1" />
+                                  酒店等级
+                                </span>
+                                <span className="small">{formData.hotel_level}</span>
+                              </div>
+                              <div className="detail-item d-flex justify-content-between align-items-center mb-1">
+                                <span className="small text-muted">
+                                  <FaBed className="me-1" />
+                                  房间数量
+                                </span>
+                                <span className="small">{formData.hotel_room_count}间</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 价格明细 */}
+                    <div className="price-breakdown mb-3">
+                      {!isOperator() ? (
+                        <>
+                          <div className="price-item d-flex justify-content-between">
+                            <span>成人 × {priceDetails.adultCount || formData.adult_count}</span>
+                            <span>¥{(priceDetails.adultTotalPrice || priceDetails.basePrice || 0).toFixed(2)}</span>
+                          </div>
+                          
+                          {(priceDetails.childCount || formData.child_count) > 0 && (
+                            <div className="price-item d-flex justify-content-between">
+                              <span>儿童 × {priceDetails.childCount || formData.child_count}</span>
+                              <span>¥{(priceDetails.childrenTotalPrice || 0).toFixed(2)}</span>
+                            </div>
+                          )}
+
+                          {/* 单房差 */}
+                          {priceDetails.extraRoomFee > 0 && (
+                            <div className="price-item d-flex justify-content-between text-warning">
+                              <span>
+                                <i className="fas fa-bed me-1"></i>
+                                单房差 × {priceDetails.extraRooms || 1}间
+                              </span>
+                              <span>+¥{priceDetails.extraRoomFee.toFixed(2)}</span>
+                            </div>
+                          )}
+
+                          {/* 酒店升级费用 */}
+                          {(tourType || "").toLowerCase().includes("group") && 
+                           priceDetails.hotelPriceDifference > 0 && (
+                            <div className="price-item d-flex justify-content-between text-info">
+                              <span>
+                                <i className="fas fa-star me-1"></i>
+                                酒店升级
+                              </span>
+                              <span>+¥{(priceDetails.hotelPriceDifference * (priceDetails.roomCount || 1) * getHotelNights()).toFixed(2)}</span>
+                            </div>
+                          )}
+
+                          {/* 代理商折扣 */}
+                          {isAgent && priceDetails.agentDiscount > 0 && (
+                            <div className="price-item d-flex justify-content-between text-success">
+                              <span>
+                                <i className="fas fa-percentage me-1"></i>
+                                代理商折扣
+                              </span>
+                              <span>-¥{priceDetails.agentDiscount.toFixed(2)}</span>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="price-item d-flex justify-content-center">
+                          <span className="text-muted">价格明细已隐藏</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 总价显示 */}
+                    <div className="price-section">
+                      <div className="d-flex justify-content-between align-items-center">
+                        <span className="fs-6 fw-bold">总计</span>
+                        {!isOperator() ? (
+                          <span className="total-price">
+                            ¥{calculateTotalPrice()}
+                          </span>
+                        ) : (
+                          <span className="text-muted">价格已隐藏</span>
+                        )}
+                      </div>
+                      
+                      {/* 操作员特殊提示 */}
+                      {isOperator() && (
+                        <div className="small text-success mt-1">
+                          <i className="fas fa-gift me-1"></i>
+                          享受代理商优惠价格
+                        </div>
+                      )}
+                      
+                      <div className="small text-muted mt-1">
+                        <i className="fas fa-shield-alt me-1"></i>
+                        价格已包含所有税费
+                      </div>
+                    </div>
+                  </Card.Body>
+                  
+                  <div className="order-summary-footer">
+                    <div className="mt-3 d-none d-lg-block">
+                      <Button
+                        variant="primary"
+                        type="submit"
+                        className="w-100 py-2 fw-bold"
+                        disabled={loading}
+                      >
+                        {loading ? (
+                          <>
+                            <span
+                              className="spinner-border spinner-border-sm me-2"
+                              role="status"
+                              aria-hidden="true"
+                            ></span>
+                            处理中...
+                          </>
+                        ) : (
+                          "提交订单"
+                        )}
+                      </Button>
+                    </div>
+
+
+                  </div>
+                </Card>
+
+
+              </div>
+            </Col>
+          </Row>
+
+          {/* 移动端固定在底部的提交按钮 */}
+          <div className="d-lg-none fixed-bottom bg-white shadow-lg p-3" style={{ zIndex: 1030 }}>
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <span className="fw-bold">总计:</span>
+              {!isOperator() ? (
+                <span className="fs-5 text-primary fw-bold">
+                  ¥{calculateTotalPrice()}
+                </span>
+              ) : (
+                <span className="fs-5 text-muted fw-bold">价格已隐藏</span>
+              )}
+            </div>
+            <Button
+              variant="primary"
+              type="submit"
+              className="w-100 py-2 fw-bold"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <span
+                    className="spinner-border spinner-border-sm me-2"
+                    role="status"
+                    aria-hidden="true"
+                  ></span>
+                  处理中...
+                </>
+              ) : (
+                "提交订单"
+              )}
+            </Button>
+          </div>
+        </Form>
+      </Container>
+    </div>
+  );
 };
 
 export default Booking;

@@ -304,14 +304,15 @@ body:not(.home-page) .toggle_btn {
 
 /* 立即预定按钮样式 */
 .booking-btn {
-  background-color: var(--primaryClr) !important;
+  background: linear-gradient(135deg, #18a6cf 0%, #0261b2 100%) !important;
   color: var(--white) !important;
   border-radius: 30px;
   padding: 8px 20px !important;
   font-weight: 600 !important;
   transition: all var(--transitionSpeed) ease;
-  border: 2px solid var(--primaryClr);
+  border: none !important;
   text-shadow: none !important;
+  box-shadow: 0 4px 10px rgba(8, 107, 178, 0.3) !important;
 }
 
 /* 登录按钮样式 */
@@ -357,10 +358,10 @@ body:not(.home-page) .toggle_btn {
 }
 
 .booking-btn:hover {
-  background-color: var(--white) !important;
-  color: var(--primaryClr) !important;
+  background: linear-gradient(135deg, #1599be 0%, #025099 100%) !important;
+  color: var(--white) !important;
   transform: translateY(-3px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 15px rgba(8, 107, 178, 0.4) !important;
 }
 
 /* 用户下拉菜单样式 */

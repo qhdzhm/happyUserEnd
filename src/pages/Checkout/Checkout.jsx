@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Form, Button, ListGroup, Alert } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import './Checkout.css';
 
 const Checkout = () => {
   // 获取认证状态
   const { isAuthenticated } = useSelector(state => state.auth);
+  
+
   
   // 模拟订单数据
   const orderItems = [
@@ -51,11 +54,11 @@ const Checkout = () => {
   }
   
   return (
-    <Container className="py-5">
+    <Container className="py-5 checkout-container">
       <h2 className="mb-4">结算</h2>
-      <Row>
-        <Col lg={8}>
-          <Card className="mb-4">
+      <Row className="sticky-row" style={{ display: 'flex', alignItems: 'flex-start' }}>
+        <Col lg={8} className="sticky-col">
+          <Card className="mb-4 form-section">
             <Card.Header>
               <h5 className="mb-0">联系信息</h5>
             </Card.Header>
@@ -93,7 +96,7 @@ const Checkout = () => {
             </Card.Body>
           </Card>
           
-          <Card className="mb-4">
+          <Card className="mb-4 form-section">
             <Card.Header>
               <h5 className="mb-0">旅客信息</h5>
             </Card.Header>
@@ -140,7 +143,7 @@ const Checkout = () => {
             </Card.Body>
           </Card>
           
-          <Card className="mb-4">
+          <Card className="mb-4 form-section">
             <Card.Header>
               <h5 className="mb-0">支付方式</h5>
             </Card.Header>
@@ -177,14 +180,14 @@ const Checkout = () => {
         </Col>
         
         <Col lg={4}>
-          <Card className="position-sticky" style={{ top: '2rem' }}>
+          <Card className="order-summary-card">
             <Card.Header>
-              <h5 className="mb-0">订单汇总</h5>
+              <h5 className="mb-0">📋 订单汇总</h5>
             </Card.Header>
             <Card.Body>
               <ListGroup variant="flush">
                 {orderItems.map(item => (
-                  <ListGroup.Item key={item.id} className="px-0">
+                  <ListGroup.Item key={item.id} className="px-0 order-item">
                     <div className="d-flex justify-content-between">
                       <div>
                         <h6 className="mb-0">{item.name}</h6>
@@ -215,7 +218,7 @@ const Checkout = () => {
                   </div>
                 </ListGroup.Item>
                 <ListGroup.Item className="px-0">
-                  <div className="d-flex justify-content-between fw-bold">
+                  <div className="d-flex justify-content-between fw-bold order-total">
                     <span>总计</span>
                     <span>¥{orderTotal.toFixed(2)}</span>
                   </div>
@@ -223,7 +226,7 @@ const Checkout = () => {
               </ListGroup>
               
               <div className="mt-4">
-                <Button variant="primary" size="lg" className="w-100">
+                <Button variant="primary" size="lg" className="w-100 payment-button">
                   确认支付
                 </Button>
                 <div className="text-center mt-2">

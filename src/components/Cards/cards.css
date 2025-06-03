@@ -1,0 +1,618 @@
+/* cards.css - 卡片组件的基本样式 */
+
+/* 基础卡片样式 */
+.tour-card {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  margin-bottom: 20px;
+  height: 100%;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  background: rgba(255, 255, 255, 0.7); /* 半透明背景 */
+  backdrop-filter: blur(5px); /* 添加模糊效果 */
+}
+
+.tour-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* 卡片图片容器 */
+.tour-card-img-container {
+  position: relative;
+  height: 200px;
+  overflow: hidden;
+}
+
+.tour-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.tour-card:hover .tour-card-img {
+  transform: scale(1.1);
+}
+
+/* 卡片内容 */
+.tour-card-content {
+  padding: 15px;
+}
+
+.tour-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.tour-card-meta {
+  margin-bottom: 10px;
+}
+
+.tour-card-location {
+  display: flex;
+  align-items: center;
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.tour-card-location svg {
+  color: #4a90e2;
+  margin-right: 5px;
+}
+
+.tour-card-rating {
+  display: flex;
+  align-items: center;
+  color: #666;
+  font-size: 14px;
+}
+
+.tour-card-rating svg {
+  color: #ffc107;
+  margin-right: 5px;
+}
+
+.tour-card-description {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* 价格显示 */
+.tour-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.tour-card-price {
+  display: flex;
+  flex-direction: column;
+}
+
+.price-label {
+  font-size: 12px;
+  color: #888;
+}
+
+.price-amount {
+  font-size: 16px;
+  font-weight: 700;
+  color: #4a90e2;
+}
+
+.price-original {
+  text-decoration: line-through;
+  color: #999;
+  font-size: 13px;
+  margin-left: 5px;
+}
+
+/* 按钮样式 */
+.view-details-btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.view-details-btn:hover {
+  transform: translateY(-2px);
+}
+
+/* 新设计卡片相关样式 - 确保保留与RedesignedCard相关的样式 */
+.redesigned-tour-card {
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.7); /* 半透明背景 */
+  backdrop-filter: blur(5px); /* 添加模糊效果 */
+  transition: all 0.35s ease;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.04);
+  margin-bottom: 20px;
+  height: 100%;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.redesigned-tour-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.08);
+}
+
+/* 图片容器 */
+.redesigned-tour-card-image {
+  position: relative;
+  height: 260px;
+  overflow: hidden;
+}
+
+.redesigned-tour-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.7s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.redesigned-tour-card:hover .redesigned-tour-card-image img {
+  transform: scale(1.08);
+}
+
+/* 卡片内容样式 */
+.redesigned-tour-card-content {
+  padding: 15px;
+}
+
+.redesigned-tour-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 10px;
+  line-height: 1.4;
+  height: 44px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.redesigned-tour-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.redesigned-tour-location {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: #666;
+}
+
+.redesigned-tour-location svg {
+  color: #4a90e2;
+  margin-right: 5px;
+  font-size: 12px;
+}
+
+.redesigned-tour-rating {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: #ffb400;
+}
+
+.redesigned-tour-rating svg {
+  color: #ffb400;
+  margin-right: 3px;
+  font-size: 12px;
+}
+
+.redesigned-tour-description {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 15px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.redesigned-tour-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+}
+
+.redesigned-tour-price {
+  display: flex;
+  flex-direction: column;
+}
+
+.redesigned-price-label {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 3px;
+}
+
+.redesigned-price-amount {
+  font-size: 17px;
+  font-weight: 700;
+  color: #4a90e2;
+}
+
+.redesigned-price-original {
+  text-decoration: line-through;
+  font-size: 13px;
+  color: #999;
+  margin-left: 5px;
+}
+
+.redesigned-tour-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.redesigned-tour-btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.redesigned-details-btn {
+  background-color: rgba(255, 255, 255, 0.3); /* 半透明背景 */
+  backdrop-filter: blur(5px); /* 添加模糊效果 */
+  border: 1px solid rgba(221, 221, 221, 0.5);
+  color: #666;
+}
+
+.redesigned-details-btn:hover {
+  background-color: rgba(248, 249, 250, 0.5); /* 悬停时稍微不透明 */
+  color: #333;
+  transform: translateY(-2px);
+}
+
+.redesigned-book-btn {
+  background-color: rgba(255, 255, 255, 0.8); /* 改为白色半透明 */
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #333; /* 改为深色文字 */
+}
+
+.redesigned-book-btn:hover {
+  background-color: rgba(255, 255, 255, 0.95); /* 悬停时更不透明 */
+  transform: translateY(-2px);
+}
+
+.redesigned-book-btn svg {
+  margin-right: 5px;
+  font-size: 12px;
+}
+
+.redesigned-discount-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 80, 80, 0.9); /* 使用红色系表示折扣 */
+  color: white;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 12px;
+  z-index: 2;
+}
+
+.redesigned-duration-tag {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  z-index: 2;
+}
+
+.redesigned-duration-tag svg {
+  margin-right: 5px;
+  color: #4a90e2;
+  font-size: 12px;
+}
+
+.image-placeholder {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  color: #999;
+}
+
+/* 响应式调整 */
+@media (max-width: 991px) {
+  .tour-card-img-container,
+  .redesigned-tour-card-image {
+    height: 180px;
+  }
+  
+  .redesigned-tour-card-title {
+    font-size: 15px;
+    height: 42px;
+  }
+}
+
+@media (max-width: 767px) {
+  .tour-card-title,
+  .redesigned-tour-card-title {
+    font-size: 15px;
+  }
+  
+  .tour-card-description,
+  .redesigned-tour-description {
+    font-size: 13px;
+  }
+  
+  .redesigned-tour-buttons {
+    flex-direction: row;
+  }
+}
+
+@media (max-width: 575px) {
+  .tour-card-img-container,
+  .redesigned-tour-card-image {
+    height: 220px;
+  }
+}
+
+/* 简化版卡片样式 */
+.simplified-card {
+  display: flex;
+  flex-direction: column;
+  height: 380px; /* 固定高度 */
+}
+
+.simplified-card .redesigned-tour-card-image {
+  flex: 1;
+  height: unset; /* 取消固定高度，使用flex比例自动计算 */
+}
+
+.simplified-card .redesigned-tour-card-footer {
+  padding: 15px;
+  margin-top: 0;
+  background-color: rgba(255, 255, 255, 0.7); /* 半透明背景 */
+  backdrop-filter: blur(5px); /* 添加模糊效果 */
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.simplified-card .redesigned-tour-price {
+  margin-bottom: 0;
+}
+
+.simplified-card .redesigned-tour-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.simplified-card .redesigned-tour-btn {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+@media (max-width: 767px) {
+  .simplified-card {
+    height: 320px;
+  }
+  
+  .simplified-card .redesigned-tour-card-footer {
+    padding: 10px;
+  }
+  
+  .simplified-card .redesigned-tour-buttons {
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  
+  .simplified-card .redesigned-tour-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 575px) {
+  .simplified-card {
+    height: 300px;
+  }
+}
+
+/* 全图片式卡片样式 */
+.fullimage-card {
+  height: 450px; /* 调整为更高的卡片，类似图片中的比例 */
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.fullimage-card .redesigned-tour-card-image {
+  height: 100%; /* 图片占满整个卡片高度 */
+  position: relative;
+}
+
+.fullimage-card .redesigned-tour-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 半透明覆盖层 */
+.fullimage-card .overlay-content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: transparent; /* 移除半透明背景 */
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 3;
+}
+
+/* 价格区域在覆盖层中的样式 */
+.fullimage-card .redesigned-tour-price {
+  color: white;
+  margin-bottom: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7); /* 增强文字阴影让价格在图片上更清晰 */
+}
+
+.fullimage-card .redesigned-price-amount {
+  color: white;
+  font-size: 18px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+}
+
+.fullimage-card .redesigned-price-original {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* 按钮区域在覆盖层中的样式 */
+.fullimage-card .redesigned-tour-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.fullimage-card .redesigned-tour-btn {
+  padding: 8px 16px;
+  border-radius: 20px;
+  backdrop-filter: blur(5px);
+  font-size: 14px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); /* 添加阴影增强视觉层次 */
+}
+
+.fullimage-card .redesigned-details-btn {
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.fullimage-card .redesigned-details-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.fullimage-card .redesigned-book-btn {
+  background: rgba(255, 255, 255, 0.25); /* 与查看详情按钮保持一致 */
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: white; /* 白色文字 */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); /* 添加文字阴影增强可读性 */
+}
+
+.fullimage-card .redesigned-book-btn:hover {
+  background: rgba(255, 255, 255, 0.4); /* 与查看详情按钮保持一致 */
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.fullimage-card .redesigned-book-btn svg {
+  color: white; /* 图标改为白色 */
+}
+
+/* 重新设计产品名称显示 */
+.tour-name-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.4) 70%, rgba(0, 0, 0, 0) 100%);
+  z-index: 2;
+}
+
+.fullimage-card .tour-name-overlay .tour-name,
+.tour-name {
+  color: #ffffff !important;
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+  padding: 0;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.8), 0 0 10px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  max-width: 100%;
+  line-height: 1.3;
+}
+
+/* 响应式调整 */
+@media (max-width: 767px) {
+  .tour-name {
+    font-size: 18px;
+    padding-bottom: 10px;
+  }
+  
+  .fullimage-card {
+    height: 400px;
+  }
+  
+  .fullimage-card .overlay-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 15px;
+  }
+  
+  .fullimage-card .redesigned-tour-buttons {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .fullimage-card .redesigned-tour-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 575px) {
+  .tour-name {
+    font-size: 16px;
+  }
+  
+  .fullimage-card {
+    height: 350px;
+  }
+} 

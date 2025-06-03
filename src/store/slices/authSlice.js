@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, createAction } from '@reduxjs/toolkit';
 import { login, register, getUserProfile, updateUserProfile, getAgentDiscountRate } from '../../utils/api';
 import { STORAGE_KEYS } from '../../utils/constants';
+import { verifyTokenValidity } from '../../utils/auth';
 
 // 异步action：登录
 export const loginUser = createAsyncThunk(
@@ -148,9 +149,11 @@ export const loginUser = createAsyncThunk(
       
       console.log(`登录成功: 用户类型=${isAgentLogin ? 'agent' : 'regular'}, 用户名=${credentials.username}, Token=${token.substring(0, 15)}...`);
       
+      // 确定实际用户类型（支持操作员）
+      let actualUserType = response.data.userType || (isAgentLogin ? 'agent' : 'regular');
+      
       // 保存用户类型
-      const userType = isAgentLogin ? 'agent' : 'regular';
-      localStorage.setItem('userType', userType);
+      localStorage.setItem('userType', actualUserType);
       localStorage.setItem('username', credentials.username);
       
       // 保存折扣率(如果存在)
@@ -158,12 +161,21 @@ export const loginUser = createAsyncThunk(
         localStorage.setItem('discountRate', response.data.discountRate.toString());
       }
       
-      // 如果是代理商，从响应或token中提取代理商ID
+      // 保存权限信息
+      if (response.data.canSeeDiscount !== undefined) {
+        localStorage.setItem('canSeeDiscount', response.data.canSeeDiscount.toString());
+      }
+      
+      if (response.data.canSeeCredit !== undefined) {
+        localStorage.setItem('canSeeCredit', response.data.canSeeCredit.toString());
+      }
+      
+      // 如果是代理商或操作员，从响应或token中提取代理商ID
       let agentId = null;
-      if (response.data.id) {
-        agentId = response.data.id;
-      } else if (response.data.agentId) {
+      if (response.data.agentId) {
         agentId = response.data.agentId;
+      } else if (response.data.id && (actualUserType === 'agent' || actualUserType === 'agent_operator')) {
+        agentId = response.data.id;
       } else {
         // 尝试从JWT中解析
         try {
@@ -172,7 +184,7 @@ export const loginUser = createAsyncThunk(
           const decoded = JSON.parse(atob(payload));
           if (decoded.agentId) {
             agentId = decoded.agentId;
-          } else if (decoded.id) {
+          } else if (decoded.id && (actualUserType === 'agent' || actualUserType === 'agent_operator')) {
             agentId = decoded.id;
           }
         } catch (e) {
@@ -184,6 +196,11 @@ export const loginUser = createAsyncThunk(
         localStorage.setItem('agentId', agentId.toString());
       }
       
+      // 保存操作员ID（如果是操作员）
+      if (response.data.operatorId) {
+        localStorage.setItem('operatorId', response.data.operatorId.toString());
+      }
+      
       // 构建用户数据对象
       const userData = {
         token,
@@ -191,10 +208,13 @@ export const loginUser = createAsyncThunk(
         username: credentials.username,
         name: response.data.name || response.data.companyName || credentials.username,
         email: response.data.email || `${credentials.username}@example.com`,
-        userType,
-        role: isAgentLogin ? 'agent' : 'user',
+        userType: actualUserType,
+        role: actualUserType === 'agent_operator' ? 'agent_operator' : (isAgentLogin ? 'agent' : 'user'),
         agentId: response.data.agentId || null,
-        discountRate: response.data.discountRate
+        operatorId: response.data.operatorId || null,
+        discountRate: response.data.discountRate,
+        canSeeDiscount: response.data.canSeeDiscount,
+        canSeeCredit: response.data.canSeeCredit
       };
       
       return {
@@ -320,7 +340,10 @@ export const logoutUser = createAction('auth/logout', () => {
   localStorage.removeItem('authentication');
   localStorage.removeItem('jwt');
   localStorage.removeItem('agentId');
+  localStorage.removeItem('operatorId');
   localStorage.removeItem('discountRate');
+  localStorage.removeItem('canSeeDiscount');
+  localStorage.removeItem('canSeeCredit');
   
   // 清除sessionStorage中可能存在的认证信息
   sessionStorage.removeItem('authentication');
@@ -333,12 +356,64 @@ export const logoutUser = createAction('auth/logout', () => {
   };
 });
 
+// 异步action：验证token有效性
+export const validateToken = createAsyncThunk(
+  'auth/validateToken',
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem(STORAGE_KEYS.TOKEN) || localStorage.getItem('token');
+      if (!token) {
+        return false;
+      }
+
+      const isValid = await verifyTokenValidity();
+      
+      if (!isValid) {
+        // 清除localStorage中的认证信息
+        localStorage.removeItem(STORAGE_KEYS.TOKEN);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('userType');
+        localStorage.removeItem('username');
+        localStorage.removeItem('agentId');
+        localStorage.removeItem('operatorId');
+        localStorage.removeItem('discountRate');
+        localStorage.removeItem('canSeeDiscount');
+        localStorage.removeItem('canSeeCredit');
+        return false;
+      }
+
+      // 如果token有效，从localStorage恢复用户信息
+      const username = localStorage.getItem('username');
+      const userType = localStorage.getItem('userType');
+      const agentId = localStorage.getItem('agentId');
+      const operatorId = localStorage.getItem('operatorId');
+      const discountRate = localStorage.getItem('discountRate');
+      
+      return {
+        isAuthenticated: true,
+        token,
+        username,
+        userType: userType || 'regular',
+        role: userType || 'regular',
+        agentId: agentId ? parseInt(agentId, 10) : null,
+        operatorId: operatorId ? parseInt(operatorId, 10) : null,
+        discountRate: discountRate ? parseFloat(discountRate) : null
+      };
+    } catch (error) {
+      console.error('Token验证过程中出错:', error);
+      return rejectWithValue('Token验证失败');
+    }
+  }
+);
+
 // 初始状态
 const initialState = {
   user: JSON.parse(localStorage.getItem('user')) || null,
-  isAuthenticated: !!localStorage.getItem(STORAGE_KEYS.TOKEN),
+  isAuthenticated: false, // 初始设为false，等待token验证
   loading: false,
-  error: null
+  error: null,
+  tokenValidated: false // 添加标记，表示是否已完成token验证
 };
 
 // 创建slice
@@ -351,16 +426,24 @@ const authSlice = createSlice({
       state.user = action.payload.user;
       state.isAuthenticated = action.payload.isAuthenticated;
       state.error = null;
+      state.tokenValidated = true;
     },
     // 登出
     logout: (state) => {
       localStorage.removeItem(STORAGE_KEYS.TOKEN);
+      localStorage.removeItem('token');
       localStorage.removeItem('user');
       localStorage.removeItem('userType');
       localStorage.removeItem('username');
+      localStorage.removeItem('agentId');
+      localStorage.removeItem('operatorId');
+      localStorage.removeItem('discountRate');
+      localStorage.removeItem('canSeeDiscount');
+      localStorage.removeItem('canSeeCredit');
       state.user = null;
       state.isAuthenticated = false;
       state.error = null;
+      state.tokenValidated = true;
     },
     // 清除错误
     clearError: (state) => {
@@ -369,6 +452,33 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // Token验证
+      .addCase(validateToken.pending, (state) => {
+        state.loading = true;
+        state.tokenValidated = false;
+      })
+      .addCase(validateToken.fulfilled, (state, action) => {
+        state.loading = false;
+        state.tokenValidated = true;
+        
+        if (action.payload && action.payload.isAuthenticated) {
+          state.user = action.payload;
+          state.isAuthenticated = true;
+          console.log('Token验证成功，用户信息已恢复:', action.payload);
+        } else {
+          state.user = null;
+          state.isAuthenticated = false;
+          console.log('Token验证失败或无效，用户已登出');
+        }
+      })
+      .addCase(validateToken.rejected, (state, action) => {
+        state.loading = false;
+        state.tokenValidated = true;
+        state.user = null;
+        state.isAuthenticated = false;
+        state.error = action.payload;
+        console.log('Token验证失败:', action.payload);
+      })
       // 登录
       .addCase(loginUser.pending, (state) => {
         state.loading = true;
@@ -390,8 +500,17 @@ const authSlice = createSlice({
           const userRole = action.payload.role || action.payload.userType;
           localStorage.setItem('userType', userRole);
           
-          // 如果是代理商，保存折扣率
-          if (userRole === 'agent') {
+          // 保存权限信息
+          if (action.payload.canSeeDiscount !== undefined) {
+            localStorage.setItem('canSeeDiscount', action.payload.canSeeDiscount.toString());
+          }
+          
+          if (action.payload.canSeeCredit !== undefined) {
+            localStorage.setItem('canSeeCredit', action.payload.canSeeCredit.toString());
+          }
+          
+          // 如果是代理商或操作员，保存相关信息
+          if (userRole === 'agent' || userRole === 'agent_operator') {
             // 从不同可能的属性中获取折扣率
             let discountRate = null;
             
@@ -417,6 +536,11 @@ const authSlice = createSlice({
             // 保存代理商ID
             if (action.payload.agentId) {
               localStorage.setItem('agentId', action.payload.agentId.toString());
+            }
+            
+            // 保存操作员ID（如果是操作员）
+            if (action.payload.operatorId) {
+              localStorage.setItem('operatorId', action.payload.operatorId.toString());
             }
           }
         }

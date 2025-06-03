@@ -433,6 +433,34 @@ export const getOrderDetail = async (orderId) => {
   }
 };
 
+/**
+ * 修改订单信息
+ * @param {Object} updateData - 包含订单ID和更新字段的对象
+ * @returns {Promise} 请求Promise
+ */
+export const updateOrderByAgent = async (updateData) => {
+  try {
+    // 添加认证头部
+    const headers = addAuthHeaders();
+    
+    console.log('用户修改订单，数据:', updateData);
+    
+    // 根据用户类型选择不同的API端点
+    const userType = localStorage.getItem('userType');
+    const endpoint = userType === 'agent' 
+      ? '/api/orders/agent/update' 
+      : '/api/user/orders/update';
+    
+    // 调用修改订单API
+    const response = await request.put(endpoint, updateData, { headers });
+    
+    return response;
+  } catch (error) {
+    console.error('修改订单时出错:', error);
+    throw error;
+  }
+};
+
 export default {
   createBooking,
   createTourBooking,
@@ -446,5 +474,6 @@ export default {
   calculatePrice,
   getOrderList,
   cancelOrder,
-  getOrderDetail
+  getOrderDetail,
+  updateOrderByAgent
 }; 

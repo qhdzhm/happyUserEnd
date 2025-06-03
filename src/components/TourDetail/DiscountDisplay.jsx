@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Typography, Button, Tag, Divider, Spin, Alert } from 'antd';
 import { DollarOutlined, PercentageOutlined, GiftOutlined } from '@ant-design/icons';
 import { calculateTourDiscount } from '../../utils/api';
+import { isOperator } from '../../utils/auth';
 
 const { Title, Text } = Typography;
 
@@ -10,13 +11,16 @@ const DiscountDisplay = ({ tour, isAgent, onPriceCalculated }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // 检查是否为操作员
+  const isUserOperator = isOperator();
+
   useEffect(() => {
     if (!tour || !tour.price) return;
 
     const calculateDiscount = async () => {
-      // 如果不是代理商，不需要计算折扣
-      if (!isAgent) {
-        console.log('用户不是代理商，使用原价');
+      // 如果不是代理商或者是操作员，不需要计算折扣
+      if (!isAgent || isUserOperator) {
+        console.log('用户不是代理商或者是操作员，使用原价');
         setDiscountInfo({
           originalPrice: tour.price,
           discountedPrice: tour.price,
@@ -105,12 +109,12 @@ const DiscountDisplay = ({ tour, isAgent, onPriceCalculated }) => {
     };
 
     calculateDiscount();
-  }, [tour, isAgent, onPriceCalculated]);
+  }, [tour, isAgent, onPriceCalculated, isUserOperator]);
 
   if (!tour || loading) {
     return (
       <Card className="discount-card" bordered={false}>
-        <Spin tip="计算折扣中...">
+        <Spin tip="计算价格中...">
           <div className="discount-loading" style={{ height: '120px' }} />
         </Spin>
       </Card>
@@ -129,15 +133,15 @@ const DiscountDisplay = ({ tour, isAgent, onPriceCalculated }) => {
     savedAmount = 0
   } = discountInfo;
 
-  // 是否有折扣
-  const hasDiscount = discountedPrice < originalPrice;
+  // 是否有折扣 - 操作员不显示折扣信息
+  const hasDiscount = !isUserOperator && discountedPrice < originalPrice;
   
   // 折扣百分比
   const discountPercentage = Math.round((1 - discountRate) * 100);
 
   return (
     <Card className="discount-card" bordered={false}>
-      {error && (
+      {error && !isUserOperator && (
         <Alert
           message="折扣计算出错"
           description={error}
@@ -170,7 +174,7 @@ const DiscountDisplay = ({ tour, isAgent, onPriceCalculated }) => {
           </div>
         </Col>
         
-        {hasDiscount && (
+        {hasDiscount && !isUserOperator && (
           <>
             <Col span={24}>
               <Divider style={{ margin: '12px 0' }} />

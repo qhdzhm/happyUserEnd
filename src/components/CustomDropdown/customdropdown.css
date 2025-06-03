@@ -37,7 +37,7 @@
     bottom: 6px;
     content: "\f52a";
     font-size: var(--bodyText);
-    color: var(--textclr);   
+    color: var(--textClr);   
 }
 
 .dropdown-custom .dropdown-toggle::after {
@@ -47,7 +47,7 @@
     bottom: 6px;
     content: "\f282";
     font-size: var(--bodyText);
-    color: var(--textclr);   
+    color: var(--textClr);   
 }
 
 .dropdown-custom .dropdown-menu {
@@ -66,6 +66,17 @@
 .dropdown-custom  .list-unstyled li:hover a{
 
     font-weight: bold;
+}
+
+/* Banner版本的图标和按钮样式 */
+.box-search-banner .dropdown-custom .dropdown-toggle::before,
+.box-search-banner .dropdown-custom .dropdown-toggle::after {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* 确保乘客选择下拉菜单中的文本不重叠 */
+.box-search-banner .guest-dropdown button {
+    padding-left: 46px !important;
 }
 
 

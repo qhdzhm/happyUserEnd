@@ -3,8 +3,11 @@ import { Container, Alert, Button, Form, Row, Col, Table, Pagination, Card, Badg
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { getOrderList, cancelOrder } from '../../services/bookingService';
-import { FaSearch, FaEye, FaTimes, FaFilter, FaCalendarAlt, FaUser, FaPhone, FaTag, FaRegMoneyBillAlt } from 'react-icons/fa';
+import { FaSearch, FaEye, FaTimes, FaFilter, FaCalendarAlt, FaUser, FaPhone, FaTag, FaRegMoneyBillAlt, FaEdit, FaMapMarkerAlt, FaUsers, FaUserTie } from 'react-icons/fa';
 import './User.css';
+import axios from 'axios';
+import { toast } from 'react-hot-toast';
+import { addAuthHeaders, isOperator } from '../../utils/auth';
 
 /**
  * 我的订单页面
@@ -216,12 +219,168 @@ const Orders = () => {
   
   // 查看订单详情
   const handleViewOrder = (order) => {
-    console.log('查看订单详情，订单号:', order.orderNumber, '订单ID:', order.bookingId);
-    
-    // 使用订单号在URL中，对用户更友好，但在state中只传递bookingId，不再传递完整订单数据
-    navigate(`/order-detail/${order.orderNumber}`, {
-      state: { bookingId: order.bookingId }
+    // 将订单ID和页面来源添加到URL，以便在详情页面返回时能够回到订单页面
+    navigate(`/user/orders/${order.bookingId || order.id}`, { 
+      state: { 
+        fromPage: 'orders',
+        pageParams: params
+      } 
     });
+  };
+  
+  // 修改订单
+  const handleEditOrder = (order) => {
+    // 跳转到订单修改页面
+    navigate(`/booking/edit/${order.bookingId || order.id}`, {
+      state: {
+        fromPage: 'orders',
+        pageParams: params
+      }
+    });
+  };
+  
+  // 处理下载订单文档
+  const handleDownloadDocument = async (order) => {
+    if (!order) return;
+    
+    try {
+      toast.loading('正在获取订单信息...');
+      
+      // 获取当前订单ID
+      const orderIdToUse = order.bookingId || order.id;
+      if (!orderIdToUse) {
+        toast.error('无法获取订单ID，请刷新页面重试');
+        return;
+      }
+      
+      // 1. 从API重新获取最新的订单数据
+      const headers = addAuthHeaders();
+      const orderResponse = await axios.get(`/api/user/bookings/${orderIdToUse}`, { headers });
+      
+      if (!orderResponse.data || !orderResponse.data.data) {
+        toast.error('获取订单数据失败，请刷新页面重试');
+        return;
+      }
+      
+      // 获取到最新的订单数据
+      const freshOrderData = orderResponse.data.data;
+      console.log('从API获取的最新订单数据:', freshOrderData);
+      
+      // 2. 获取行程信息
+      const tourId = freshOrderData.tour_id || freshOrderData.tourId;
+      const tourType = freshOrderData.tour_type || freshOrderData.tourType || 'day';
+      
+      if (!tourId) {
+        toast.error('订单缺少行程信息，无法生成文档');
+        return;
+      }
+      
+      // 构建获取行程信息的URL
+      const tourApiUrl = tourType.toLowerCase().includes('group') 
+        ? `/api/user/group-tours/${tourId}`
+        : `/api/user/day-tours/${tourId}`;
+      
+      toast.loading('正在获取行程信息...');
+      const tourResponse = await axios.get(tourApiUrl, { headers });
+      
+      let tourData = null;
+      if (tourResponse.data && (tourResponse.data.code === 1 || tourResponse.data.code === 200)) {
+        tourData = tourResponse.data.data;
+        console.log('从API获取的行程数据:', tourData);
+      }
+      
+      // 3. 准备数据
+      toast.loading(order.paymentStatus === 'paid' ? '正在生成发票...' : '正在生成确认单...');
+      
+      // 从API获取的数据优先级高于页面已有数据
+      const dataForDocument = {
+        // 基本订单信息
+        id: freshOrderData.order_number || freshOrderData.orderNumber || order.id,
+        orderNumber: freshOrderData.order_number || freshOrderData.orderNumber || order.id,
+        bookingId: freshOrderData.id || orderIdToUse,
+        createdAt: freshOrderData.created_at || freshOrderData.createdAt || new Date().toISOString(),
+        
+        // 用户信息
+        contactPerson: freshOrderData.contact_person || freshOrderData.contactPerson || 
+                     freshOrderData.passenger_name || freshOrderData.passengerName,
+        contactPhone: freshOrderData.contact_phone || freshOrderData.contactPhone || 
+                     freshOrderData.passenger_phone || freshOrderData.passengerPhone,
+        contact: {
+          name: freshOrderData.contact_person || freshOrderData.contactPerson || 
+                freshOrderData.passenger_name || freshOrderData.passengerName,
+          phone: freshOrderData.contact_phone || freshOrderData.contactPhone || 
+                freshOrderData.passenger_phone || freshOrderData.passengerPhone
+        },
+        
+        // 行程信息 
+        tour: {
+          id: tourId,
+          name: freshOrderData.tour_name || freshOrderData.tourName,
+          startDate: freshOrderData.tour_start_date || freshOrderData.tourStartDate,
+          endDate: freshOrderData.tour_end_date || freshOrderData.tourEndDate,
+          duration: freshOrderData.duration || tourData?.duration || 1,
+          adults: freshOrderData.adult_count || freshOrderData.adultCount || 0,
+          children: freshOrderData.child_count || freshOrderData.childCount || 0,
+          hotelLevel: freshOrderData.hotel_level || freshOrderData.hotelLevel || '',
+          pickupLocation: freshOrderData.pickup_location || freshOrderData.pickupLocation || ''
+        },
+        
+        // 行程安排数据
+        itineraryData: tourData || {},
+        
+        // 价格信息
+        total: freshOrderData.total_price || freshOrderData.totalPrice || order.totalPrice || 0,
+        
+        // 结合API中可能的日期字段
+        departureDate: freshOrderData.tour_start_date || freshOrderData.tourStartDate || 
+                      freshOrderData.departure_date || freshOrderData.departureDate,
+        returnDate: freshOrderData.tour_end_date || freshOrderData.tourEndDate || 
+                   freshOrderData.return_date || freshOrderData.returnDate,
+        pickupLocation: freshOrderData.pickup_location || freshOrderData.pickupLocation || '',
+      };
+      
+      console.log('传递给文档生成的数据:', dataForDocument);
+      
+      // 根据支付状态和用户权限选择生成确认单或发票
+      const { generateOrderConfirmation, generateOrderInvoice } = await import('../../utils/helpers');
+      let pdfBlob;
+      
+      // 操作员不能下载发票（因为显示具体金额），只能下载确认单
+      if (order.paymentStatus === 'paid' && !isOperator()) {
+        // 生成发票
+        pdfBlob = await generateOrderInvoice(dataForDocument);
+      } else {
+        // 生成确认单
+        pdfBlob = await generateOrderConfirmation(dataForDocument);
+      }
+      
+      // 创建下载链接
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // 根据文档类型设置文件名
+      if (order.paymentStatus === 'paid' && !isOperator()) {
+        link.download = `发票_${dataForDocument.id}.pdf`;
+      } else {
+        link.download = `订单确认单_${dataForDocument.id}.pdf`;
+      }
+      
+      // 模拟点击下载
+      document.body.appendChild(link);
+      link.click();
+      
+      // 清理
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      toast.dismiss();
+      toast.success((order.paymentStatus === 'paid' && !isOperator()) ? '发票已下载' : '确认单已下载');
+    } catch (error) {
+      console.error('下载文档出错:', error);
+      toast.dismiss();
+      toast.error('下载失败: ' + (error.message || '请稍后再试'));
+    }
   };
   
   // 显示取消订单确认框
@@ -414,6 +573,12 @@ const Orders = () => {
               <div className="mb-2">
                 <FaPhone className="me-1" /> {order.contactPhone}
               </div>
+              {/* 代理商主账号显示操作员信息 */}
+              {localStorage.getItem('userType') === 'agent' && order.operatorName && (
+                <div className="mb-2 text-muted">
+                  <FaUserTie className="me-1" /> 操作员: {order.operatorName}
+                </div>
+              )}
               {order.tourStartDate && (
                 <div className="small">
                   出行日期: {formatDate(order.tourStartDate)}
@@ -424,19 +589,44 @@ const Orders = () => {
             <Col md={3}>
               <div className="d-flex align-items-center">
                 <FaRegMoneyBillAlt className="me-2 text-success" size={20} />
-                <h5 className="mb-0 text-success">¥{order.totalPrice?.toFixed(2) || '0.00'}</h5>
+                {isOperator() ? (
+                  <h5 className="mb-0 text-muted">价格已隐藏</h5>
+                ) : (
+                  <h5 className="mb-0 text-success">¥{order.totalPrice?.toFixed(2) || '0.00'}</h5>
+                )}
               </div>
             </Col>
             
             <Col md={2} className="text-end">
-              <div className="d-flex justify-content-end">
+              <div className="d-flex flex-column align-items-end">
                 <Button 
                   variant="outline-primary" 
                   size="sm"
                   onClick={() => handleViewOrder(order)}
-                  className="me-2 btn-horizontal-text"
+                  className="mb-2 btn-horizontal-text"
                 >
                   <FaEye className="me-1" /> 查看
+                </Button>
+                
+                {order.paymentStatus === 'unpaid' && order.status !== 'cancelled' && (
+                  <Button 
+                    variant="outline-warning" 
+                    size="sm"
+                    onClick={() => handleEditOrder(order)}
+                    className="mb-2 btn-horizontal-text"
+                  >
+                    <FaEdit className="me-1" /> 修改
+                  </Button>
+                )}
+                
+                {/* 发票下载权限控制：操作员不能下载发票（显示具体金额），只能下载确认单 */}
+                <Button 
+                  variant="outline-secondary" 
+                  size="sm"
+                  onClick={() => handleDownloadDocument(order)}
+                  className="mb-2 btn-horizontal-text"
+                >
+                  {order.paymentStatus === 'paid' && !isOperator() ? '下载发票' : '下载确认单'}
                 </Button>
                 
                 {order.paymentStatus === 'unpaid' && order.status !== 'cancelled' && (

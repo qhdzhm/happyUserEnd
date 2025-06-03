@@ -41,13 +41,30 @@ const Header = () => {
   const { discountRate } = useSelector(state => state.ui);
   const dispatch = useDispatch();
 
-  // 从用户信息或本地存储中获取用户角色
-  const userRole = user?.role || localStorage.getItem('userType');
-  const isAgent = userRole === 'agent';
+  // 从用户信息或本地存储中获取用户角色，确保正确识别代理商
+  const userType = user?.userType || user?.role || localStorage.getItem('userType') || 'regular';
+  const isAgent = userType === 'agent' || userType === 'agent_operator';
+  const isOperator = userType === 'agent_operator'; // 判断是否为操作员
   
-  // 获取有效的折扣率
-  const effectiveDiscountRate = user?.discountRate || discountRate || localStorage.getItem('discountRate');
-  const formattedDiscountRate = formatDiscountRate(effectiveDiscountRate);
+  // 获取用户显示名称
+  const getUserDisplayName = () => {
+    if (user?.username) return user.username;
+    if (user?.name) return user.name;
+    if (user?.companyName) return user.companyName;
+    
+    // 从localStorage获取
+    const storedUsername = localStorage.getItem('username');
+    if (storedUsername) return storedUsername;
+    
+    // 根据用户类型返回默认名称
+    if (userType === 'agent_operator') return '操作员';
+    if (userType === 'agent') return '代理商';
+    return '用户';
+  };
+  
+  // 获取有效的折扣率 - 操作员不显示折扣信息
+  const effectiveDiscountRate = !isOperator ? (user?.discountRate || discountRate || localStorage.getItem('discountRate')) : null;
+  const formattedDiscountRate = !isOperator ? formatDiscountRate(effectiveDiscountRate) : null;
 
   const toggleMenu = () => {
     setOpen(!open);
@@ -171,8 +188,8 @@ const Header = () => {
                             ) : (
                               <FaUser className="me-1" />
                             )}
-                            {user?.username || user?.name || '用户'}
-                            {isAgent && formattedDiscountRate && (
+                            {getUserDisplayName()}
+                            {isAgent && !isOperator && formattedDiscountRate && (
                               <span className="ms-1 discount-badge-mobile">{formattedDiscountRate}折</span>
                             )}
                           </Dropdown.Toggle>
@@ -182,7 +199,10 @@ const Header = () => {
                             )}
                             <Dropdown.Item as={Link} to="/orders">我的订单</Dropdown.Item>
                             {isAgent && (
-                              <Dropdown.Item as={Link} to="/profile">代理商中心</Dropdown.Item>
+                              <>
+                                <Dropdown.Item as={Link} to="/profile">代理商中心</Dropdown.Item>
+                                <Dropdown.Item as={Link} to="/test-operator">操作员测试</Dropdown.Item>
+                              </>
                             )}
                             <Dropdown.Divider />
                             <Dropdown.Item onClick={handleLogout}>退出登录</Dropdown.Item>
@@ -217,8 +237,8 @@ const Header = () => {
                         <>
                           <FaUserTie className="me-1" /> 
                           <span className="user-name agent">
-                            {user?.username || user?.name || user?.companyName || '代理商'}
-                            {formattedDiscountRate && (
+                            {getUserDisplayName()}
+                            {!isOperator && formattedDiscountRate && (
                               <Badge bg="info" className="ms-2 discount-badge">
                                 <FaPercent className="me-1" size="0.8em" />
                                 {formattedDiscountRate}折
@@ -229,7 +249,7 @@ const Header = () => {
                       ) : (
                         <>
                           <FaUser className="me-1" />
-                          <span className="user-name">{user?.username || user?.name || '用户'}</span>
+                          <span className="user-name">{getUserDisplayName()}</span>
                         </>
                       )}
                     </Dropdown.Toggle>
@@ -239,7 +259,10 @@ const Header = () => {
                       )}
                       <Dropdown.Item as={Link} to="/orders">我的订单</Dropdown.Item>
                       {isAgent && (
-                        <Dropdown.Item as={Link} to="/profile">代理商中心</Dropdown.Item>
+                        <>
+                          <Dropdown.Item as={Link} to="/profile">代理商中心</Dropdown.Item>
+                          <Dropdown.Item as={Link} to="/test-operator">操作员测试</Dropdown.Item>
+                        </>
                       )}
                       <Dropdown.Divider />
                       <Dropdown.Item onClick={handleLogout}>退出登录</Dropdown.Item>

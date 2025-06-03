@@ -159,40 +159,41 @@
 
 /* 主按钮样式 */
 .primaryBtn {
-  background-color: #e67e22;
+  background: linear-gradient(135deg, #18a6cf 0%, #0261b2 100%);
   color: #fff !important;
   padding: 10px 20px;
-  border-radius: 5px;
+  border-radius: 30px;
   text-decoration: none;
   font-weight: bold;
   transition: all 0.3s ease;
   display: inline-block;
   border: none;
   cursor: pointer;
+  box-shadow: 0 4px 10px rgba(8, 107, 178, 0.3);
 }
 
 .primaryBtn:hover {
-  background-color: #d35400;
+  background: linear-gradient(135deg, #1599be 0%, #025099 100%);
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 15px rgba(8, 107, 178, 0.4);
 }
 
 /* 次要按钮样式 */
 .secondaryBtn {
   background-color: transparent;
-  color: #e67e22 !important;
+  color: #0b80c3 !important;
   padding: 9px 19px;
-  border-radius: 5px;
+  border-radius: 30px;
   text-decoration: none;
   font-weight: bold;
   transition: all 0.3s ease;
   display: inline-block;
-  border: 1px solid #e67e22;
+  border: 1px solid #0b80c3;
   cursor: pointer;
 }
 
 .secondaryBtn:hover {
-  background-color: #e67e22;
+  background: linear-gradient(135deg, #18a6cf 0%, #0261b2 100%);
   color: #fff !important;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -221,7 +222,7 @@
   transform: translateX(-50%);
   width: 80px;
   height: 3px;
-  background-color: #e67e22;
+  background: linear-gradient(135deg, #18a6cf 0%, #0261b2 100%);
 }
 
 @media (max-width: 768px) {

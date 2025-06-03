@@ -62,25 +62,14 @@ export const handleApiError = (error, fallbackMessage = '请求失败') => {
         localStorage.removeItem('userType');
         localStorage.removeItem('agentId');
         
-        // 使用Redux显示友好通知
-        store.dispatch(
-          showNotification({
-            type: 'warning',
-            message: '您的登录已过期，即将跳转到登录页面',
-            duration: 3000
-          })
-        );
-        
-        // 延迟跳转，给用户时间看到通知
-        setTimeout(() => {
-          // 将用户重定向到登录页面
-          window.location.href = '/login';
-        }, 1500);
+        // 静默跳转，不显示提示
+        // 立即跳转到登录页面
+        window.location.href = '/login';
         
         // 延迟重置重定向状态
         setTimeout(() => {
           isRedirecting = false;
-        }, 3000);
+        }, 1000);
       }
       
       return new ApiError('用户未授权，请重新登录', status, data);

@@ -6,7 +6,7 @@ import "../AdvanceSearch/search.css";
 import { Container, Row, Col, Button, Dropdown, Form, InputGroup, Spinner } from "react-bootstrap";
 import CustomDropdown from "../CustomDropdown/CustomDropdown";
 import { useNavigate } from "react-router-dom";
-import { FaSearch, FaChevronDown, FaMapMarkerAlt, FaCalendarAlt, FaUsers } from "react-icons/fa";
+import { FaSearch, FaChevronDown, FaMapMarkerAlt, FaCalendarAlt } from "react-icons/fa";
 import { getAllDayTours, getAllGroupTours } from "../../utils/api";
 
 const AdvanceSearch = ({ inBanner = false }) => {
@@ -465,59 +465,60 @@ const AdvanceSearch = ({ inBanner = false }) => {
           <div className="search-item">
             <label>旅客</label>
             <div className="search-item-content">
-              <Dropdown className="dropdown-custom guest-dropdown" show={showGuestDropdown} onToggle={toggleGuestDropdown}>
-                <Dropdown.Toggle id="dropdown-custom-components" className="banner-dropdown">
-                  <FaUsers className="dropdown-prefix-icon" />
-                  <span>{adults} 成人, {children} 儿童</span>
-                </Dropdown.Toggle>
+              <div className="input-with-icon">
+                <Dropdown className="dropdown-custom guest-dropdown" show={showGuestDropdown} onToggle={toggleGuestDropdown}>
+                  <Dropdown.Toggle id="dropdown-custom-components" className="banner-dropdown">
+                    <span>{adults} 成人, {children} 儿童</span>
+                  </Dropdown.Toggle>
 
-                <Dropdown.Menu>
-                  <div className="guest-selector-content">
-                    <div className="guest-type">
-                      <span>成人</span>
-                      <div className="guest-controls">
-                        <button 
-                          className="guest-btn" 
-                          onClick={decreaseAdults}
-                          disabled={adults <= 1}
-                          type="button"
-                        >
-                          <span>-</span>
-                        </button>
-                        <span className="guest-count">{adults}</span>
-                        <button 
-                          className="guest-btn" 
-                          onClick={increaseAdults}
-                          type="button"
-                        >
-                          <span>+</span>
-                        </button>
+                  <Dropdown.Menu>
+                    <div className="guest-selector-content">
+                      <div className="guest-type">
+                        <span>成人</span>
+                        <div className="guest-controls">
+                          <button 
+                            className="guest-btn" 
+                            onClick={decreaseAdults}
+                            disabled={adults <= 1}
+                            type="button"
+                          >
+                            <span>-</span>
+                          </button>
+                          <span className="guest-count">{adults}</span>
+                          <button 
+                            className="guest-btn" 
+                            onClick={increaseAdults}
+                            type="button"
+                          >
+                            <span>+</span>
+                          </button>
+                        </div>
+                      </div>
+                      <div className="guest-type">
+                        <span>儿童</span>
+                        <div className="guest-controls">
+                          <button 
+                            className="guest-btn" 
+                            onClick={decreaseChildren}
+                            disabled={children <= 0}
+                            type="button"
+                          >
+                            <span>-</span>
+                          </button>
+                          <span className="guest-count">{children}</span>
+                          <button 
+                            className="guest-btn" 
+                            onClick={increaseChildren}
+                            type="button"
+                          >
+                            <span>+</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <div className="guest-type">
-                      <span>儿童</span>
-                      <div className="guest-controls">
-                        <button 
-                          className="guest-btn" 
-                          onClick={decreaseChildren}
-                          disabled={children <= 0}
-                          type="button"
-                        >
-                          <span>-</span>
-                        </button>
-                        <span className="guest-count">{children}</span>
-                        <button 
-                          className="guest-btn" 
-                          onClick={increaseChildren}
-                          type="button"
-                        >
-                          <span>+</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </Dropdown.Menu>
-              </Dropdown>
+                  </Dropdown.Menu>
+                </Dropdown>
+              </div>
             </div>
           </div>
           

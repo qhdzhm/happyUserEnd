@@ -296,32 +296,32 @@ instance.interceptors.response.use(
       // 导入清除token函数
       const { clearToken } = require('./auth');
       
-      // 判断是否已经显示过未授权提示
-      if (!window.unAuthAlertShown) {
-        window.unAuthAlertShown = true;
+      // 判断是否已经显示过未授权提示，使用更具体的键名避免冲突
+      if (!window.authErrorHandled) {
+        window.authErrorHandled = true;
         
-        // 显示未授权消息
-        store.dispatch(showNotification({
-          type: 'error',
-          message: '您的登录已过期，请重新登录'
-        }));
-        
+        // 不显示错误消息，静默处理
         // 清除所有认证信息
         clearToken();
         
         // 派发退出action
         store.dispatch({ type: 'auth/logout' });
         
-        // 重定向到登录页面，带上当前路径以便登录后返回
+        // 立即重定向到登录页面，不显示任何提示
         const currentPath = window.location.pathname;
         if (currentPath !== '/login' && currentPath !== '/register') {
-          setTimeout(() => {
-            window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
-            // 重置标志
-            window.unAuthAlertShown = false;
-          }, 1500);
+          // 立即跳转，无延迟
+          window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
         }
+        
+        // 短时间后重置标志，允许下次处理
+        setTimeout(() => {
+          window.authErrorHandled = false;
+        }, 1000);
       }
+      
+      // 直接返回reject，不显示错误通知
+      return Promise.reject(error);
     }
     
     // 如果有请求元数据，处理请求拒绝
@@ -336,7 +336,7 @@ instance.interceptors.response.use(
       }
     }
     
-    // 显示错误通知
+    // 显示错误通知（仅非401/403错误）
     let errorMessage = '请求失败';
     
     // 尝试从错误响应中获取详细信息
@@ -353,13 +353,11 @@ instance.interceptors.response.use(
       errorMessage = '网络连接异常，请检查您的网络';
     }
     
-    // 仅在非401/403错误时显示通知，避免重复
-    if (status !== 401 && status !== 403) {
-      store.dispatch(showNotification({
-        type: 'danger',
-        message: errorMessage
-      }));
-    }
+    // 只显示非认证错误的通知
+    store.dispatch(showNotification({
+      type: 'danger',
+      message: errorMessage
+    }));
     
     return Promise.reject(error);
   }

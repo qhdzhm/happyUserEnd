@@ -1,10 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./footer.css"
-import { Col, Container, Row ,ListGroup} from "react-bootstrap";
-import { NavLink } from "react-router-dom";
+import { Col, Container, Row, Form, Button } from "react-bootstrap";
+import { NavLink, useLocation } from "react-router-dom";
+import tasmaniaVideo from "../../../assets/videos/footer.mp4";
+import logo from "../../../assets/images/logo/logo.png";
 
 const Footer = () => {
   const [visible, setVisible]=useState(false);
+  const location = useLocation();
+  const isHomePage = location.pathname === '/';
 
   const toggleVisible=()=>{
     const scrolled = document.documentElement.scrollTop;
@@ -23,96 +27,115 @@ const Footer = () => {
     })
   }
 
+  useEffect(() => {
   if(typeof window !== "undefined"){
-    window.addEventListener("scroll", toggleVisible)
+      window.addEventListener("scroll", toggleVisible);
+      return () => {
+        window.removeEventListener("scroll", toggleVisible);
+      };
   }
-
+  }, []);
 
   return (
     <>
-    <footer className="pt-5">
-      <Container>
-        <Row>
-          <Col md="3" sm="12" className="quick_link mt-3 mt-md-0 ">
-            <h4 className="mt-lg-0 mt-sm-3">公司 </h4>
-            <ListGroup variant="flush">
-              <ListGroup.Item>
-                <NavLink to="/">关于我们</NavLink>
-              </ListGroup.Item>
-              <ListGroup.Item>
-              <NavLink to="/">新闻</NavLink>
-              </ListGroup.Item>
-              <ListGroup.Item>
-              <NavLink to="/">常见问题</NavLink>
-              </ListGroup.Item>
-             
-            </ListGroup>
-          </Col>
-          <Col md="3" sm="12" className="quick_link mt-3 mt-md-0 ">
-          <h4 className="mt-lg-0 mt-sm-3">探索 </h4>
-          <ListGroup variant="flush">
-              <ListGroup.Item>
-                <NavLink to="/"> 常见问题</NavLink>
-              </ListGroup.Item>
-              <ListGroup.Item>
-              <NavLink to="/">旅游列表</NavLink>
-              </ListGroup.Item>
-              <ListGroup.Item>
-              <NavLink to="/"> 目的地</NavLink>
-              </ListGroup.Item>
-             
-            </ListGroup>
-          </Col>
-          <Col md="3" sm="12" className="quick_link mt-3 mt-md-0 ">
-          <h4 className="mt-lg-0 mt-sm-3">快速链接 </h4>
-          <ListGroup variant="flush">
-              <ListGroup.Item>
-                <NavLink to="/"> 首页</NavLink>
-              </ListGroup.Item>
-              <ListGroup.Item>
-              <NavLink to="/">关于我们 </NavLink>
-              </ListGroup.Item>
-              <ListGroup.Item>
-              <NavLink to="/"> 联系我们 </NavLink>
-              </ListGroup.Item>
-             
-            </ListGroup>
-          </Col>
-          <Col md="3" sm="12" className="location mt-3 mt-md-0 ">
-          <h4 className="mt-lg-0 mt-sm-3">联系信息 </h4>
+    <footer className={`${isHomePage ? 'home-page-footer' : ''}`}>
+      <div className="video-container">
+        <video autoPlay muted loop className="footer-video">
+          <source src={tasmaniaVideo} type="video/mp4" />
+        </video>
+        <div className="footer-overlay"></div>
+      </div>
 
-          <div className="d-flex align-items-center">
-            <p className="pb-2"> 塔斯马尼亚, 霍巴特, 澳大利亚</p>
+      <div className="footer-subscribe-section">
+        <Container>
+          <div className="keep-in-touch text-center">
+            <h5>联系我们</h5>
+            <h2 className="travel-title">与我们一起旅行</h2>
+            <div className="email-subscription">
+              <Form className="d-flex justify-content-center">
+                <div className="email-input-container">
+                  <Form.Control type="email" placeholder="请输入您的邮箱地址" className="footer-email-input" />
+                  <Button className="send-btn">发送 <i className="bi bi-send-fill"></i></Button>
+                </div>
+              </Form>
+            </div>
           </div>
+        </Container>
+      </div>
 
-          <div className="d-flex align-items-top my-2">
-          <i className="bi bi-geo-alt me-3"></i>
-          <a target="_blank" href="mailto:qhdzhm110119@gmail.com" className="d-block" rel="noreferrer" >qhdzhm110119@gmail.com</a>
+      <div className="footer-main">
+        <Container>
+          <div className="footer-content">
+            <Row className="g-4">
+              <Col lg="6" md="6" sm="12">
+                <div className="footer-brand">
+                  <div className="brand-logo">
+                    <img src={logo} alt="Happy Tassie Holiday" className="footer-logo-img" />
+                  </div>
+                  <p className="brand-description">
+                    塔斯马尼亚岛是一个充满魅力的自然天堂，拥有壮丽的自然风光、丰富的野生动物和独特的文化遗产。
+                  </p>
+                </div>
+              </Col>
+              
+              <Col lg="6" md="6" sm="12">
+                <Row>
+                  <Col lg="4" md="4" sm="12">
+                    <div className="footer-links">
+                      <h5>我们的服务</h5>
+                      <ul>
+                        <li><NavLink to="/"><i className="bi bi-chevron-right"></i> 塔斯马尼亚观光</NavLink></li>
+                        <li><NavLink to="/"><i className="bi bi-chevron-right"></i> 私人定制</NavLink></li>
+                        <li><NavLink to="/"><i className="bi bi-chevron-right"></i> 旅游保险</NavLink></li>
+                        <li><NavLink to="/"><i className="bi bi-chevron-right"></i> 专业摄影</NavLink></li>
+                        <li><NavLink to="/"><i className="bi bi-chevron-right"></i> 安全保障</NavLink></li>
+                      </ul>
+                    </div>
+                  </Col>
+                  
+                  <Col lg="4" md="4" sm="12">
+                    <div className="footer-links">
+                      <h5>热门目的地</h5>
+                      <ul>
+                        <li><NavLink to="/"><i className="bi bi-chevron-right"></i> 霍巴特</NavLink></li>
+                        <li><NavLink to="/"><i className="bi bi-chevron-right"></i> 摇篮山</NavLink></li>
+                        <li><NavLink to="/"><i className="bi bi-chevron-right"></i> 菲欣娜湾</NavLink></li>
+                        <li><NavLink to="/"><i className="bi bi-chevron-right"></i> 布鲁尼岛</NavLink></li>
+                        <li><NavLink to="/"><i className="bi bi-chevron-right"></i> 朗塞斯顿</NavLink></li>
+                      </ul>
+                    </div>
+                  </Col>
+                  
+                  <Col lg="4" md="4" sm="12">
+                    <div className="footer-qrcode">
+                      <h5>扫码关注</h5>
+                      <div className="qrcode-box">
+                        <i className="bi bi-qr-code"></i>
+                        <p>微信公众号</p>
+                      </div>
+                    </div>
+                  </Col>
+                </Row>
+              </Col>
+            </Row>
+            
+            <div className="footer-copyright">
+              <p>HAPPY TASSIE TRAVEL</p>
+              <p>版权所有 © 2024 澳大利亚塔斯马尼亚旅行社</p>
+            </div>
           </div>
-          <div className="d-flex align-items-top ">
-          <i className="bi bi-telephone me-3"></i>
-          <a target="_blank" href="tel:0478759693" className="d-block" rel="noreferrer" >0478759693</a>
-          </div>
-         
-          </Col>
-        </Row>
-        <Row className="py-2 bdr mt-3">
-        <Col className="col copyright">
-        <p className="text-light">   @ 2024. Happy Tassie Travel 版权所有 </p> 
-        </Col>
-        </Row>
-
-      </Container>
+        </Container>
+      </div>
     </footer>
 
     <div id="back-top"
-    onClick={scrollTop}
-     className={visible ? "active" : ""}>
-    <i className="bi bi-arrow-up"></i>
-
+      onClick={scrollTop}
+      className={visible ? "active" : ""}>
+      <i className="bi bi-arrow-up"></i>
     </div>
     </>
   );
 };
 
 export default Footer;
+

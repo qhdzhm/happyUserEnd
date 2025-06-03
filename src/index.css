@@ -13,11 +13,11 @@
   --black: #000000;
   --textClr: #333333;
   
-  /* 更新主色调为偏红色系，与logo风格相匹配 */
-  --primaryClr: #c83e3e; /* 主要红色 */
-  --secondaryClr: #fff5f5; /* 浅红色背景 */
-  --accentClr: #e07070; /* 辅助红色 */
-  --bgClr: #f9e9e9; /* 更浅的背景色 */
+  /* 更新主色调为蓝色渐变系 */
+  --primaryClr: #0b80c3; /* 主要蓝色 */
+  --secondaryClr: #e6f7ff; /* 浅蓝色背景 */
+  --accentClr: #0261b2; /* 辅助蓝色 */
+  --bgClr: #e6f4ff; /* 更浅的背景色 */
   
   --bs-box-shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
   --bs-box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
@@ -31,11 +31,11 @@
   --transitionSpeed: 0.3s;
 
   /* 自定义Bootstrap主题色 */
-  --bs-primary: #ff6b6b !important;
-  --bs-primary-rgb: 255, 107, 107 !important;
-  --bs-primary-text-emphasis: #e05050 !important;
-  --bs-primary-bg-subtle: #ffe8e8 !important;
-  --bs-primary-border-subtle: #ffb3b3 !important;
+  --bs-primary: #0ab8b6 !important;
+  --bs-primary-rgb: 10, 184, 182 !important;
+  --bs-primary-text-emphasis: #09807f !important;
+  --bs-primary-bg-subtle: #e6fffd !important;
+  --bs-primary-border-subtle: #86e9e7 !important;
 }
 
 
@@ -131,28 +131,27 @@ table {
 }
 
 .btn-primary {
-  background-color: var(--primaryClr);
-  border-color: var(--primaryClr);
+  background: linear-gradient(135deg, #18a6cf 0%, #0261b2 100%);
+  border: none;
   border-radius: 30px;
   padding: 10px 25px;
   font-weight: 600;
   transition: all var(--transitionSpeed) ease;
+  box-shadow: 0 4px 10px rgba(8, 107, 178, 0.3);
 
-  --bs-btn-bg: #ff6b6b !important;
-  --bs-btn-border-color: #ff6b6b !important;
-  --bs-btn-hover-bg: #e05050 !important;
-  --bs-btn-hover-border-color: #e05050 !important;
-  --bs-btn-active-bg: #e05050 !important;
-  --bs-btn-active-border-color: #e05050 !important;
-  --bs-btn-disabled-bg: #ffb3b3 !important;
-  --bs-btn-disabled-border-color: #ffb3b3 !important;
+  --bs-btn-bg: linear-gradient(135deg, #18a6cf 0%, #0261b2 100%) !important;
+  --bs-btn-border-color: transparent !important;
+  --bs-btn-hover-bg: linear-gradient(135deg, #1599be 0%, #025099 100%) !important;
+  --bs-btn-hover-border-color: transparent !important;
+  --bs-btn-active-bg: linear-gradient(135deg, #1599be 0%, #025099 100%) !important;
+  --bs-btn-active-border-color: transparent !important;
+  --bs-btn-disabled-bg: #90cdf4 !important;
+  --bs-btn-disabled-border-color: transparent !important;
 }
 
 .btn-primary:hover {
-  background-color: var(--accentClr);
-  border-color: var(--accentClr);
   transform: translateY(-3px);
-  box-shadow: 0 5px 15px rgba(200, 62, 62, 0.2);
+  box-shadow: 0 6px 15px rgba(8, 107, 178, 0.4);
 }
 
 .card {
@@ -169,34 +168,34 @@ table {
 }
 
 .btn-outline-primary {
-  --bs-btn-color: #ff6b6b !important;
-  --bs-btn-border-color: #ff6b6b !important;
-  --bs-btn-hover-bg: #ff6b6b !important;
-  --bs-btn-hover-border-color: #ff6b6b !important;
-  --bs-btn-active-bg: #ff6b6b !important;
-  --bs-btn-active-border-color: #ff6b6b !important;
-  --bs-btn-disabled-color: #ffb3b3 !important;
-  --bs-btn-disabled-border-color: #ffb3b3 !important;
+  --bs-btn-color: #0ab8b6 !important;
+  --bs-btn-border-color: #0ab8b6 !important;
+  --bs-btn-hover-bg: #0ab8b6 !important;
+  --bs-btn-hover-border-color: #0ab8b6 !important;
+  --bs-btn-active-bg: #0ab8b6 !important;
+  --bs-btn-active-border-color: #0ab8b6 !important;
+  --bs-btn-disabled-color: #86e9e7 !important;
+  --bs-btn-disabled-border-color: #86e9e7 !important;
 }
 
 .text-primary {
-  color: #ff6b6b !important;
+  color: #0ab8b6 !important;
 }
 
 .bg-primary {
-  background-color: #ff6b6b !important;
+  background-color: #0ab8b6 !important;
 }
 
 .border-primary {
-  border-color: #ff6b6b !important;
+  border-color: #0ab8b6 !important;
 }
 
 .link-primary {
-  color: #ff6b6b !important;
+  color: #0ab8b6 !important;
 }
 
 .link-primary:hover, .link-primary:focus {
-  color: #e05050 !important;
+  color: #09807f !important;
 }
 
 /* 全局容器宽度设置 - 覆盖Bootstrap的容器设置 */
@@ -216,37 +215,37 @@ table {
 
 @media (min-width: 768px) {
   .container {
-    max-width: 720px;
+    max-width: 620px;
   }
 }
 
 @media (min-width: 992px) {
   .container {
-    max-width: 960px;
+    max-width: 860px;
   }
 }
 
 @media (min-width: 1200px) {
   .container {
-    max-width: 1200px !important;
+    max-width: 1100px !important;
   }
 }
 
 @media (min-width: 1400px) {
   .container {
-    max-width: 1320px !important;
+    max-width: 1220px !important;
   }
 }
 
 @media (min-width: 1600px) {
   .container {
-    max-width: 1520px !important;
+    max-width: 1420px !important;
   }
 }
 
 @media (min-width: 1800px) {
   .container {
-    max-width: 1680px !important;
+    max-width: 1580px !important;
   }
 }
 

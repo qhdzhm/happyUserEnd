@@ -6,6 +6,7 @@ import { BsClock, BsTag } from 'react-icons/bs';
 import { calculateTourDiscount } from "../../utils/api";
 import { getImageUrl } from "../../utils/imageUtils";
 import { useSelector } from 'react-redux';
+import { isOperator } from '../../utils/auth';
 
 // 组件内折扣价格请求的随机延迟时间范围
 const MIN_REQUEST_DELAY = 300; // 最小延迟时间(毫秒)
@@ -32,8 +33,8 @@ const Cards = ({destination}) => {
 
   // 获取折扣价格的函数(使用useCallback以避免不必要的重新创建)
   const fetchDiscountPrice = useCallback(async () => {
-    // 如果不是代理商或没有代理商ID，不计算折扣价格
-    if (!isAgent || !agentId || requestInProgressRef.current) return;
+    // 如果不是代理商或没有代理商ID，或者是操作员，不计算折扣价格
+    if (!isAgent || !agentId || requestInProgressRef.current || isOperator()) return;
     
     try {
       // 获取旅游信息
@@ -209,7 +210,7 @@ const Cards = ({destination}) => {
 
   // 检查是否有有效折扣
   const hasDiscount = () => {
-    return isAgent && discountPrice && discountPrice < destination.price;
+    return !isOperator() && isAgent && discountPrice && discountPrice < destination.price;
   };
   
   // 获取分类名称
@@ -292,7 +293,7 @@ const Cards = ({destination}) => {
           />
         )}
         
-        {discountPercent && (
+        {discountPercent && !isOperator() && (
           <div className="discount-badge">
             节省{discountPercent}%
           </div>
@@ -344,7 +345,7 @@ const Cards = ({destination}) => {
             <div className="product-tour-card-price loading">
               价格计算中...
             </div>
-          ) : hasDiscount() ? (
+          ) : (hasDiscount() && !isOperator()) ? (
             <div className="product-tour-card-price">
               <span className="discounted-price">${discountPrice.toFixed(2)}</span>
               <span className="original-price">${destination.price.toFixed(2)}</span>
