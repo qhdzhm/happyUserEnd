@@ -50,7 +50,15 @@ const BookingConfirmationPage = () => {
                      '实际价格:', result.discountedPrice);
         
         // 提示用户价格已更新
-        toast.info('价格信息已更新，请确认最新价格');
+        toast('价格信息已更新，请确认最新价格', {
+          duration: 3000,
+          style: {
+            background: '#e3f2fd',
+            color: '#1976d2',
+            border: '1px solid #bbdefb'
+          },
+          icon: 'ℹ️',
+        });
         
         // 更新价格
         return {

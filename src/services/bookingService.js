@@ -78,9 +78,10 @@ export const createTourBooking = (data) => {
  * @param {number} roomCount - 房间数量 (可选)
  * @param {number} userId - 用户ID (可选)
  * @param {Array} childrenAges - 儿童年龄数组 (可选)
+ * @param {string} roomType - 房间类型 (可选)
  * @returns {Promise} 返回价格数据
  */
-export const calculateTourPrice = async (tourId, tourType, adultCount, childCount, hotelLevel, agentId = null, roomCount = 1, userId = null, childrenAges = []) => {
+export const calculateTourPrice = async (tourId, tourType, adultCount, childCount, hotelLevel, agentId = null, roomCount = 1, userId = null, childrenAges = [], roomType = null) => {
   try {
     // 将所有参数解析为适当的类型
     const numericTourId = parseInt(tourId, 10);
@@ -98,6 +99,12 @@ export const calculateTourPrice = async (tourId, tourType, adultCount, childCoun
     params.append('childCount', numericChildCount);
     params.append('hotelLevel', hotelLevel);
     params.append('roomCount', numericRoomCount);
+    
+    // 添加房间类型参数
+    if (roomType) {
+      params.append('roomType', roomType);
+      console.log('添加房间类型参数:', roomType);
+    }
     
     // 添加儿童年龄参数，如果有的话
     if (childrenAges && childrenAges.length > 0) {

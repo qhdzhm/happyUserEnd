@@ -45,6 +45,8 @@ const ChatBot = ({ userType = 1, userId = null }) => {
     // 添加防抖和缓存机制
     const lastLoginCheckRef = useRef(null);
     const loginCheckTimeoutRef = useRef(null);
+    const lastUserIdRef = useRef(null); // 用于检测用户切换
+    const lastIsLoggedInRef = useRef(null); // 用于检测登录状态切换
     
     // 检测登录状态 - 添加防抖和缓存
     const checkLoginStatus = () => {
@@ -172,11 +174,39 @@ const ChatBot = ({ userType = 1, userId = null }) => {
     
     // 滚动到底部
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        // 使用setTimeout确保DOM完全渲染后再滚动
+        setTimeout(() => {
+            if (messagesEndRef.current) {
+                messagesEndRef.current.scrollIntoView({ 
+                    behavior: "smooth",
+                    block: "end",
+                    inline: "nearest"
+                });
+            }
+        }, 100);
+    };
+    
+    // 强制滚动到底部（用于长消息）
+    const forceScrollToBottom = () => {
+        setTimeout(() => {
+            const messagesContainer = document.querySelector('.chatbot-messages');
+            if (messagesContainer) {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+            // 双重保险，再用ref滚动一次
+            if (messagesEndRef.current) {
+                messagesEndRef.current.scrollIntoView({ 
+                    behavior: "smooth",
+                    block: "end",
+                    inline: "nearest"
+                });
+            }
+        }, 200);
     };
     
     useEffect(() => {
-        scrollToBottom();
+        // 对于新消息，使用强制滚动确保到达底部
+        forceScrollToBottom();
     }, [messages]);
     
     // 初始化时检查登录状态
@@ -500,11 +530,17 @@ const ChatBot = ({ userType = 1, userId = null }) => {
         const messageContent = inputValue;
         setInputValue('');
         
+        // 立即滚动到底部显示用户发送的消息
+        setTimeout(() => forceScrollToBottom(), 50);
+        
         if (serviceMode === 'ai') {
             await sendAIMessage(messageContent);
         } else if (serviceMode === 'human') {
             await sendServiceMessage(messageContent);
         }
+        
+        // 发送完成后再次滚动，确保bot回复也能看到
+        setTimeout(() => forceScrollToBottom(), 300);
     };
 
     // 处理登录按钮点击
@@ -652,12 +688,60 @@ const ChatBot = ({ userType = 1, userId = null }) => {
         setVisible(true);
     }, []);
     
-    // 清空聊天记录
+    // 清空聊天记录（内部方法）
+    const clearChatHistory = () => {
+        setMessages([]);
+        setServiceMode('ai');
+        setServiceSession(null);
+        setServiceStatus('');
+        setUnreadCount(0);
+        setShowRating(false);
+        // 断开WebSocket连接
+        websocketService.disconnect();
+        console.log('已清除聊天记录');
+    };
+    
+    // 检测用户切换
+    const checkUserSwitch = () => {
+        const currentUserId = userInfo?.agentId || userInfo?.operatorId || userInfo?.username || null;
+        const currentIsLoggedIn = isLoggedIn;
+        
+        // 检测用户ID变化
+        if (lastUserIdRef.current !== null && lastUserIdRef.current !== currentUserId) {
+            console.log('检测到用户切换:', { 
+                from: lastUserIdRef.current, 
+                to: currentUserId 
+            });
+            clearChatHistory();
+        }
+        
+        // 检测登录状态变化（从登录到登出，或从登出到登录）
+        if (lastIsLoggedInRef.current !== null && lastIsLoggedInRef.current !== currentIsLoggedIn) {
+            console.log('检测到登录状态变化:', { 
+                from: lastIsLoggedInRef.current, 
+                to: currentIsLoggedIn 
+            });
+            clearChatHistory();
+        }
+        
+        // 更新最后的用户ID和登录状态
+        lastUserIdRef.current = currentUserId;
+        lastIsLoggedInRef.current = currentIsLoggedIn;
+    };
+
+    // 监听用户信息变化，检测用户切换
+    useEffect(() => {
+        checkUserSwitch();
+    }, [userInfo, isLoggedIn]);
+
+    // 清空聊天记录（公开方法）
     const clearMessages = () => {
         setMessages([{
             id: Date.now(),
             type: 'bot',
-            content: '聊天记录已清空。有什么可以帮助您的吗？',
+            content: isLoggedIn ? 
+                `您好${userInfo?.name ? '，' + userInfo.name : ''}！聊天记录已清空。有什么可以帮助您的吗？` :
+                '您好！聊天记录已清空。有什么可以帮助您的吗？',
             timestamp: new Date()
         }]);
     };

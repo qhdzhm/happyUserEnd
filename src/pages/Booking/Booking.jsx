@@ -58,15 +58,13 @@ const DEFAULT_FORM_DATA = {
   total_price: '0.00'
 };
 
-// AI辅助函数：智能解析AI传递的日期信息（增强版）
+// AI辅助函数：解析中文日期格式
 const parseDateFromAI = (dateStr) => {
   if (!dateStr) return null;
   
   try {
-    console.log(`🗓️ 开始解析AI日期: "${dateStr}"`);
-    
-    // 处理中文格式：5月29日、6月19日等
-    const monthDayMatch = dateStr.match(/(\d{1,2})月(\d{1,2})日/);
+    // 处理类似 "6月19日" 的格式
+    const monthDayMatch = dateStr.match(/(\d+)月(\d+)日/);
     if (monthDayMatch) {
       const month = parseInt(monthDayMatch[1]);
       const day = parseInt(monthDayMatch[2]);
@@ -74,120 +72,20 @@ const parseDateFromAI = (dateStr) => {
       
       // 创建日期，月份需要减1（JavaScript Date月份从0开始）
       const date = new Date(currentYear, month - 1, day);
-      
-      // 如果日期已经过了，设置为明年
-      if (date < new Date()) {
-        date.setFullYear(currentYear + 1);
-      }
-      
-      console.log(`✅ 中文日期解析成功: "${dateStr}" → ${date.toISOString().split('T')[0]}`);
+      console.log(`AI日期解析: "${dateStr}" → ${date.toISOString().split('T')[0]}`);
       return date;
     }
     
-    // 处理英文格式：May 29、June 19等
-    const englishDateMatch = dateStr.match(/([A-Za-z]+)\s+(\d{1,2})/);
-    if (englishDateMatch) {
-      const monthName = englishDateMatch[1];
-      const day = parseInt(englishDateMatch[2]);
-      const currentYear = new Date().getFullYear();
-      
-      // 月份名称映射
-      const monthMap = {
-        'january': 0, 'jan': 0, '一月': 0,
-        'february': 1, 'feb': 1, '二月': 1,
-        'march': 2, 'mar': 2, '三月': 2,
-        'april': 3, 'apr': 3, '四月': 3,
-        'may': 4, '五月': 4,
-        'june': 5, 'jun': 5, '六月': 5,
-        'july': 6, 'jul': 6, '七月': 6,
-        'august': 7, 'aug': 7, '八月': 7,
-        'september': 8, 'sep': 8, '九月': 8,
-        'october': 9, 'oct': 9, '十月': 9,
-        'november': 10, 'nov': 10, '十一月': 10,
-        'december': 11, 'dec': 11, '十二月': 11
-      };
-      
-      const monthIndex = monthMap[monthName.toLowerCase()];
-      if (monthIndex !== undefined) {
-        const date = new Date(currentYear, monthIndex, day);
-        
-        // 如果日期已经过了，设置为明年
-        if (date < new Date()) {
-          date.setFullYear(currentYear + 1);
-        }
-        
-        console.log(`✅ 英文日期解析成功: "${dateStr}" → ${date.toISOString().split('T')[0]}`);
-        return date;
-      }
-    }
-    
-    // 处理数字格式：2024-05-29、29/05/2024、05/29/2024等
-    const isoDateMatch = dateStr.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
-    if (isoDateMatch) {
-      const year = parseInt(isoDateMatch[1]);
-      const month = parseInt(isoDateMatch[2]) - 1; // 月份减1
-      const day = parseInt(isoDateMatch[3]);
-      const date = new Date(year, month, day);
-      console.log(`✅ ISO日期解析成功: "${dateStr}" → ${date.toISOString().split('T')[0]}`);
-      return date;
-    }
-    
-    // 处理斜杠格式：29/05/2024、05/29/2024
-    const slashDateMatch = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-    if (slashDateMatch) {
-      // 假设是日/月/年格式（DD/MM/YYYY）
-      const day = parseInt(slashDateMatch[1]);
-      const month = parseInt(slashDateMatch[2]) - 1;
-      const year = parseInt(slashDateMatch[3]);
-      
-      // 如果日期大于12，则认为是DD/MM/YYYY格式
-      if (day <= 12 && month > 12) {
-        // 实际是MM/DD/YYYY格式
-        const date = new Date(year, day - 1, month + 1);
-        console.log(`✅ MM/DD/YYYY格式解析成功: "${dateStr}" → ${date.toISOString().split('T')[0]}`);
-        return date;
-      } else {
-        // DD/MM/YYYY格式
-        const date = new Date(year, month, day);
-        console.log(`✅ DD/MM/YYYY格式解析成功: "${dateStr}" → ${date.toISOString().split('T')[0]}`);
-        return date;
-      }
-    }
-    
-    // 处理相对日期：明天、后天、下周一等
-    const now = new Date();
-    if (dateStr.includes('明天') || dateStr.toLowerCase().includes('tomorrow')) {
-      const tomorrow = new Date(now);
-      tomorrow.setDate(now.getDate() + 1);
-      console.log(`✅ 相对日期解析成功: "${dateStr}" → ${tomorrow.toISOString().split('T')[0]}`);
-      return tomorrow;
-    }
-    
-    if (dateStr.includes('后天')) {
-      const dayAfterTomorrow = new Date(now);
-      dayAfterTomorrow.setDate(now.getDate() + 2);
-      console.log(`✅ 相对日期解析成功: "${dateStr}" → ${dayAfterTomorrow.toISOString().split('T')[0]}`);
-      return dayAfterTomorrow;
-    }
-    
-    if (dateStr.includes('下周')) {
-      const nextWeek = new Date(now);
-      nextWeek.setDate(now.getDate() + 7);
-      console.log(`✅ 相对日期解析成功: "${dateStr}" → ${nextWeek.toISOString().split('T')[0]}`);
-      return nextWeek;
-    }
-    
-    // 最后尝试使用JavaScript的原生Date解析
+    // 处理其他日期格式（如ISO格式）
     const fallbackDate = new Date(dateStr);
     if (!isNaN(fallbackDate.getTime())) {
-      console.log(`✅ 原生解析成功: "${dateStr}" → ${fallbackDate.toISOString().split('T')[0]}`);
       return fallbackDate;
     }
     
-    console.warn(`⚠️ 无法解析AI日期格式: "${dateStr}"`);
+    console.warn('无法解析AI日期格式:', dateStr);
     return null;
   } catch (error) {
-    console.error(`❌ AI日期解析错误: "${dateStr}"`, error);
+    console.error('AI日期解析错误:', error, dateStr);
     return null;
   }
 };
@@ -226,14 +124,24 @@ const convertAIRoomType = (aiRoomType) => {
   }
 };
 
-// AI辅助函数：智能解析时间字符串并转换为Date对象（增强版）
+// AI辅助函数：自动计算行程结束日期
+const calculateEndDateFromDuration = (startDate, duration) => {
+  if (!startDate || !duration || duration <= 1) {
+    return startDate; // 如果是1日游或无效参数，结束日期就是开始日期
+  }
+  
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + parseInt(duration) - 1);
+  console.log(`🗓️ 自动计算结束日期: 开始=${startDate.toISOString().split('T')[0]}, 天数=${duration}, 结束=${endDate.toISOString().split('T')[0]}`);
+  return endDate;
+};
+
+// AI辅助函数：解析时间字符串并转换为Date对象
 const parseTimeToDate = (timeStr, baseDate) => {
   if (!timeStr || !baseDate) return null;
   
   try {
-    console.log(`⏰ 开始解析AI时间: "${timeStr}" 基准日期: ${baseDate.toISOString().split('T')[0]}`);
-    
-    // 处理标准时间格式：09:15、9:15 AM、21:30等
+    // 处理 "09:15" 或 "9:15 AM" 等格式
     const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
     if (timeMatch) {
       let hours = parseInt(timeMatch[1]);
@@ -242,71 +150,25 @@ const parseTimeToDate = (timeStr, baseDate) => {
       
       // 处理AM/PM格式
       if (ampm) {
-        const period = ampm.toUpperCase();
-        if (period === 'PM' && hours !== 12) {
+        if (ampm.toUpperCase() === 'PM' && hours !== 12) {
           hours += 12;
-        } else if (period === 'AM' && hours === 12) {
+        } else if (ampm.toUpperCase() === 'AM' && hours === 12) {
           hours = 0;
         }
       }
       
-      // 验证时间有效性
-      if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
-        // 创建新的Date对象，使用baseDate的日期部分和解析的时间部分
-        const resultDate = new Date(baseDate);
-        resultDate.setHours(hours, minutes, 0, 0);
-        
-        console.log(`✅ 时间解析成功: "${timeStr}" → ${resultDate.toLocaleString()}`);
-        return resultDate;
-      } else {
-        console.warn(`⚠️ 时间值无效: 小时=${hours}, 分钟=${minutes}`);
-      }
+      // 创建新的Date对象，使用baseDate的日期部分和解析的时间部分
+      const resultDate = new Date(baseDate);
+      resultDate.setHours(hours, minutes, 0, 0);
+      
+      console.log(`AI时间解析: "${timeStr}" → ${resultDate.toLocaleString()}`);
+      return resultDate;
     }
     
-    // 处理中文时间格式：上午9点15分、下午2点30分等
-    const chineseTimeMatch = timeStr.match(/(上午|下午|凌晨|中午)(\d{1,2})点?(\d{0,2})分?/);
-    if (chineseTimeMatch) {
-      const period = chineseTimeMatch[1];
-      let hours = parseInt(chineseTimeMatch[2]);
-      const minutes = chineseTimeMatch[3] ? parseInt(chineseTimeMatch[3]) : 0;
-      
-      // 根据中文时段调整小时
-      if (period === '下午' && hours !== 12) {
-        hours += 12;
-      } else if (period === '上午' && hours === 12) {
-        hours = 0;
-      } else if (period === '凌晨' && hours === 12) {
-        hours = 0;
-      }
-      
-      if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
-        const resultDate = new Date(baseDate);
-        resultDate.setHours(hours, minutes, 0, 0);
-        
-        console.log(`✅ 中文时间解析成功: "${timeStr}" → ${resultDate.toLocaleString()}`);
-        return resultDate;
-      }
-    }
-    
-    // 处理24小时制格式：14:30、1430等
-    const hour24Match = timeStr.match(/(\d{1,2})(\d{2})/);
-    if (hour24Match && timeStr.length === 4) {
-      const hours = parseInt(hour24Match[1]);
-      const minutes = parseInt(hour24Match[2]);
-      
-      if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
-        const resultDate = new Date(baseDate);
-        resultDate.setHours(hours, minutes, 0, 0);
-        
-        console.log(`✅ 24小时制解析成功: "${timeStr}" → ${resultDate.toLocaleString()}`);
-        return resultDate;
-      }
-    }
-    
-    console.warn(`⚠️ 无法解析AI时间格式: "${timeStr}"`);
+    console.warn('无法解析AI时间格式:', timeStr);
     return null;
   } catch (error) {
-    console.error(`❌ AI时间解析错误: "${timeStr}"`, error);
+    console.error('AI时间解析错误:', error, timeStr);
     return null;
   }
 };
@@ -353,19 +215,12 @@ const Booking = () => {
       finalTourType: tourType,
       allParams: Object.fromEntries(searchParams.entries())
     });
-    
-    // 处理AI聊天机器人传递的参数
-    if (!aiParamsProcessed.current && searchParams.size > 0) {
-      processAIParameters();
-      aiParamsProcessed.current = true;
-    }
   }, [tourId, tourType]); // 只在tourId或tourType变化时输出
   
   // 使用ref跟踪组件状态，避免循环渲染
   const tourDataFetched = useRef(false);
   const priceLoaded = useRef(false);
   const formInitialized = useRef(false);
-  const aiParamsProcessed = useRef(false); // 新增：跟踪AI参数是否已处理
   
   const [loading, setLoading] = useState(false);
   const [tourDetails, setTourDetails] = useState({
@@ -778,7 +633,8 @@ const Booking = () => {
         adultCount: formData.adult_count,
         childCount: formData.child_count,
         roomCount: formData.hotel_room_count,
-        hotelLevel: formData.hotel_level
+        hotelLevel: formData.hotel_level,
+        roomTypes: formData.roomTypes
       });
       
       // 使用防抖机制，避免频繁API请求
@@ -787,7 +643,42 @@ const Booking = () => {
     
     // 不添加fetchTourPrice到依赖数组，避免循环调用
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.adult_count, formData.child_count, formData.hotel_level, formData.room_type, formData.hotel_room_count, tourId]);
+  }, [formData.adult_count, formData.child_count, formData.hotel_level, formData.roomTypes, formData.hotel_room_count, tourId]);
+  
+  // 监听tourDetails变化，自动计算缺失的结束日期
+  useEffect(() => {
+    // 当产品信息加载完成，且有开始日期但没有结束日期时，自动计算结束日期
+    if (tourDetails?.duration && 
+        formData.tour_start_date && 
+        !formData.tour_end_date && 
+        parseInt(tourDetails.duration) > 1) {
+      
+      console.log("🤖 检测到缺失结束日期，开始自动计算...");
+      console.log("产品天数:", tourDetails.duration, "开始日期:", formData.tour_start_date);
+      
+      const calculatedEndDate = calculateEndDateFromDuration(
+        formData.tour_start_date, 
+        tourDetails.duration
+      );
+      
+      if (calculatedEndDate && calculatedEndDate !== formData.tour_start_date) {
+        console.log("✅ 自动设置结束日期:", calculatedEndDate.toISOString().split('T')[0]);
+        
+        setFormData(prev => ({
+          ...prev,
+          tour_end_date: calculatedEndDate,
+          dropoff_date: calculatedEndDate,
+          hotelCheckOutDate: calculatedEndDate
+        }));
+        
+        // 显示提示
+        toast.success(`🗓️ 已自动计算${tourDetails.duration}日游结束日期`, {
+          duration: 3000,
+          icon: '✨'
+        });
+      }
+    }
+  }, [tourDetails?.duration, formData.tour_start_date, formData.tour_end_date]);
   
   // 创建一个统一的价格更新调度函数
   const schedulePriceUpdate = () => {
@@ -809,51 +700,6 @@ const Booking = () => {
     setPriceDebounceTimer(timer);
   };
   
-  // 处理根据主联系人信息自动填充第一位乘客信息
-  useEffect(() => {
-    if (formData.passengers.length > 0) {
-      const updatedPassengers = [...formData.passengers];
-      updatedPassengers[0] = {
-        ...updatedPassengers[0],
-        name: formData.contact_person || '',
-        // 可以添加其他需要自动填充的字段
-      };
-      setFormData(prev => ({
-        ...prev,
-        passengers: updatedPassengers
-      }));
-    }
-  }, [formData.contact_person]);
-  
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    console.log('表单字段变更:', { name, value, event: e });
-    
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-    
-    // 如果修改的是酒店等级，显示提示但不直接调用fetchTourPrice
-    // 让useEffect的防抖机制处理价格更新
-    if (name === 'hotel_level') {
-      toast.success(`正在更新${value}酒店的价格...`);
-    }
-  };
-  
-  // 处理接送时间不同选项变更
-  const handlePickupTimeChange = (e) => {
-    const { checked } = e.target;
-    
-    // 更新整个表单数据，包括复选框状态和同步接送时间
-    setFormData(prev => ({
-      ...prev,
-      pickupTimeDifferent: checked,
-      // 如果取消勾选，将接送时间重新与行程时间同步
-      pickup_date: !checked ? prev.tour_start_date : prev.pickup_date,
-      dropoff_date: !checked ? prev.tour_end_date : prev.dropoff_date
-    }));
-  };
   
   // 处理日期变化
   const handleDateChange = (fieldName, date) => {
@@ -1048,6 +894,10 @@ const Booking = () => {
       const hotelLevel = formData.hotel_level || '4星';
       const numericRoomCount = parseInt(formData.hotel_room_count, 10) || 1;
       
+      // 获取房间类型信息 - 新增房型支持
+      const roomTypes = formData.roomTypes || [];
+      const firstRoomType = roomTypes.length > 0 ? roomTypes[0] : null;
+      
       // 确保tourId是整数
       const numericTourId = parseInt(tourId, 10);
       
@@ -1058,7 +908,7 @@ const Booking = () => {
         return '0.00';
       }
       
-      console.log(`计算价格: tourId=${numericTourId}, tourType=${tourTypeParam}, adultCount=${numericAdultCount}, childCount=${numericChildCount}, hotelLevel=${hotelLevel}, roomCount=${numericRoomCount}`);
+      console.log(`计算价格: tourId=${numericTourId}, tourType=${tourTypeParam}, adultCount=${numericAdultCount}, childCount=${numericChildCount}, hotelLevel=${hotelLevel}, roomCount=${numericRoomCount}, roomType=${firstRoomType}`);
       
       // 记录tourDetails状态，检查酒店晚数信息
       console.log('当前tourDetails信息:', {
@@ -1072,7 +922,13 @@ const Booking = () => {
       // 如果是代理商，获取代理商ID
       const numericAgentId = isAgent && agentId ? parseInt(agentId, 10) : null;
       
-      // 调用服务端API计算价格
+      // 获取儿童年龄数组
+      const childrenAges = formData.passengers
+        ?.filter(p => p.is_child && p.child_age)
+        .map(p => parseInt(p.child_age, 10))
+        .filter(age => !isNaN(age)) || [];
+      
+      // 调用服务端API计算价格 - 新增房型参数
       const response = await calculateTourPrice(
         numericTourId,
         tourTypeParam,
@@ -1080,7 +936,10 @@ const Booking = () => {
         numericChildCount,
         hotelLevel,
         numericAgentId,
-        numericRoomCount
+        numericRoomCount,
+        null, // userId
+        childrenAges,
+        firstRoomType // roomType - 传递房间类型
       );
       
       if (response && response.code === 1 && response.data) {
@@ -1116,6 +975,7 @@ const Booking = () => {
           discountRate: priceData.discountRate || 1,
           hotelNights: hotelNights,
           roomCount: priceData.roomCount || numericRoomCount,
+          roomType: priceData.roomType || firstRoomType, // 保存房型信息
           // 其他价格相关字段
           hotelPriceDifference: priceData.hotelPriceDifference || 0,
           dailySingleRoomSupplement: priceData.dailySingleRoomSupplement || 0,
@@ -1144,7 +1004,7 @@ const Booking = () => {
         }));
         }
         
-        console.log(`成人: ${numericAdultCount}人，儿童: ${numericChildCount}人，房间: ${numericRoomCount}间，酒店差价计算: ${priceData.hotelPriceDifference || 0}/晚 × ${hotelNights}晚 × ${numericRoomCount}间 = ${(priceData.hotelPriceDifference || 0) * hotelNights * numericRoomCount}`);
+        console.log(`成人: ${numericAdultCount}人，儿童: ${numericChildCount}人，房间: ${numericRoomCount}间，房型: ${firstRoomType || '未指定'}，酒店差价计算: ${priceData.hotelPriceDifference || 0}/晚 × ${hotelNights}晚 × ${numericRoomCount}间 = ${(priceData.hotelPriceDifference || 0) * hotelNights * numericRoomCount}`);
         
         setIsPriceLoading(false);
         return priceData.totalPrice ? priceData.totalPrice.toFixed(2) : '0.00';
@@ -1491,8 +1351,19 @@ const Booking = () => {
     
     // 如果是跟团游且没有结束日期，根据行程天数计算结束日期
     if (!endDateFromParams && tourData.duration > 1) {
-      endDate.setDate(defaultTourDate.getDate() + parseInt(tourData.duration) - 1);
+      console.log(`🗓️ 检测到跟团游(${tourData.duration}天)且无结束日期，开始自动计算...`);
+      const calculatedEndDate = calculateEndDateFromDuration(defaultTourDate, tourData.duration);
+      if (calculatedEndDate) {
+        endDate = calculatedEndDate;
+        console.log(`✅ 在updateFormWithTourDefaults中自动计算结束日期: ${endDate.toISOString().split('T')[0]}`);
+      }
+    } else if (!endDateFromParams) {
+      // 如果是1日游或无有效天数，结束日期等于开始日期
+      console.log(`🗓️ 1日游或无有效天数，结束日期设为开始日期`);
+      endDate = new Date(defaultTourDate);
     }
+    
+    console.log(`📅 最终设置的日期: 开始=${defaultTourDate.toISOString().split('T')[0]}, 结束=${endDate.toISOString().split('T')[0]}`);
     
     // === 房型处理：AI参数优先 ===
     let roomTypesArray = Array(roomCountValue).fill('标准双人间');
@@ -1972,10 +1843,21 @@ const Booking = () => {
     const newRoomTypes = [...(formData.roomTypes || [])];
     newRoomTypes[index] = value;
     
+    console.log(`房间 ${index + 1} 房型变更: ${formData.roomTypes?.[index] || '未设置'} → ${value}`);
+    
     setFormData(prev => ({
       ...prev,
       roomTypes: newRoomTypes
     }));
+    
+    // 房型变化后立即触发价格更新
+    // 使用 setTimeout 确保状态更新后再触发价格计算
+    setTimeout(() => {
+      if (tourId && formData.adult_count > 0) {
+        console.log('房型变更，立即更新价格');
+        schedulePriceUpdate();
+      }
+    }, 50);
   };
   
   // 处理房间数量变化
@@ -2793,390 +2675,6 @@ const Booking = () => {
     }
   };
 
-  // 处理AI智能参数（增强版）
-  const processAIParameters = () => {
-    try {
-      console.log("🤖 开始处理AI增强参数...");
-      console.log("📋 当前URL参数:", Object.fromEntries(searchParams.entries()));
-      
-      const updatedFormData = { ...formData };
-      let hasChanges = false;
-      let processedParams = [];
-      
-      // === 1. 处理产品信息 ===
-      const productId = searchParams.get("productId");
-      const productType = searchParams.get("productType");
-      const serviceType = searchParams.get("serviceType");
-      
-      if (productId && productId !== updatedFormData.tour_id) {
-        updatedFormData.tour_id = productId;
-        hasChanges = true;
-        processedParams.push(`产品ID: ${productId}`);
-        console.log("✅ AI设置产品ID:", productId);
-      }
-      
-      if (productType && productType !== updatedFormData.tour_type) {
-        updatedFormData.tour_type = productType;
-        hasChanges = true;
-        processedParams.push(`产品类型: ${productType}`);
-        console.log("✅ AI设置产品类型:", productType);
-      }
-      
-      if (serviceType) {
-        processedParams.push(`服务类型: ${serviceType}`);
-        console.log("✅ AI识别服务类型:", serviceType);
-      }
-      
-      // === 2. 处理日期参数 ===
-      const startDate = searchParams.get("startDate");
-      const endDate = searchParams.get("endDate");
-      
-      if (startDate) {
-        const parsedStartDate = parseDateFromAI(startDate);
-        if (parsedStartDate) {
-          updatedFormData.tour_start_date = parsedStartDate;
-          updatedFormData.pickup_date = parsedStartDate;
-          updatedFormData.hotelCheckInDate = parsedStartDate;
-          hasChanges = true;
-          processedParams.push(`开始日期: ${startDate} → ${parsedStartDate.toISOString().split('T')[0]}`);
-          console.log("✅ AI设置开始日期:", startDate, "→", parsedStartDate.toISOString().split('T')[0]);
-        }
-      }
-      
-      if (endDate) {
-        const parsedEndDate = parseDateFromAI(endDate);
-        if (parsedEndDate) {
-          updatedFormData.tour_end_date = parsedEndDate;
-          updatedFormData.dropoff_date = parsedEndDate;
-          updatedFormData.hotelCheckOutDate = parsedEndDate;
-          hasChanges = true;
-          processedParams.push(`结束日期: ${endDate} → ${parsedEndDate.toISOString().split('T')[0]}`);
-          console.log("✅ AI设置结束日期:", endDate, "→", parsedEndDate.toISOString().split('T')[0]);
-        }
-      }
-      
-      // === 3. 处理人数参数（支持成人/儿童分别处理）===
-      const groupSize = searchParams.get("groupSize");
-      const adultCount = searchParams.get("adultCount");
-      const childCount = searchParams.get("childCount");
-      
-      // 优先使用具体的成人/儿童数量
-      if (adultCount && !isNaN(adultCount)) {
-        const adults = parseInt(adultCount);
-        if (adults > 0 && adults !== updatedFormData.adult_count) {
-          updatedFormData.adult_count = adults;
-          hasChanges = true;
-          processedParams.push(`成人数量: ${adults}`);
-          console.log("✅ AI设置成人数量:", adults);
-        }
-      }
-      
-      if (childCount && !isNaN(childCount)) {
-        const children = parseInt(childCount);
-        if (children >= 0 && children !== updatedFormData.child_count) {
-          updatedFormData.child_count = children;
-          hasChanges = true;
-          processedParams.push(`儿童数量: ${children}`);
-          console.log("✅ AI设置儿童数量:", children);
-        }
-      }
-      
-      // 如果没有具体的成人/儿童数量，使用总人数
-      if (!adultCount && groupSize && !isNaN(groupSize)) {
-        const size = parseInt(groupSize);
-        if (size > 0 && size !== updatedFormData.adult_count) {
-          updatedFormData.adult_count = size;
-          // 如果没有设置儿童数量，默认为0
-          if (!childCount) {
-            updatedFormData.child_count = 0;
-          }
-          hasChanges = true;
-          processedParams.push(`总人数: ${size}（默认为成人）`);
-          console.log("✅ AI设置总人数（作为成人数）:", size);
-        }
-      }
-      
-      // === 4. 处理行李和其他数量信息 ===
-      const luggageCount = searchParams.get("luggageCount");
-      if (luggageCount && !isNaN(luggageCount)) {
-        const luggage = parseInt(luggageCount);
-        if (luggage >= 0) {
-          updatedFormData.luggage_count = luggage;
-          hasChanges = true;
-          processedParams.push(`行李数量: ${luggage}`);
-          console.log("✅ AI设置行李数:", luggage);
-        }
-      }
-      
-      // === 5. 处理地点信息 ===
-      const departure = searchParams.get("departure");
-      if (departure && departure.trim() !== "") {
-        updatedFormData.pickup_location = departure.trim();
-        hasChanges = true;
-        processedParams.push(`出发地点: ${departure}`);
-        console.log("✅ AI设置出发地点:", departure);
-      }
-      
-      // === 6. 处理住宿信息 ===
-      const roomType = searchParams.get("roomType");
-      if (roomType && roomType.trim() !== "") {
-        const convertedRoomType = convertAIRoomType(roomType);
-        updatedFormData.roomTypes = [convertedRoomType];
-        hasChanges = true;
-        processedParams.push(`房型: ${roomType} → ${convertedRoomType}`);
-        console.log("✅ AI设置房型:", roomType, "→", convertedRoomType);
-      }
-      
-      const hotelLevel = searchParams.get("hotelLevel");
-      if (hotelLevel && hotelLevel.trim() !== "") {
-        updatedFormData.hotel_level = hotelLevel.trim();
-        hasChanges = true;
-        processedParams.push(`酒店级别: ${hotelLevel}`);
-        console.log("✅ AI设置酒店级别:", hotelLevel);
-      }
-      
-      // === 7. 处理航班信息 ===
-      const arrivalFlight = searchParams.get("arrivalFlight");
-      if (arrivalFlight && arrivalFlight.trim() !== "") {
-        updatedFormData.arrival_flight = arrivalFlight.trim();
-        hasChanges = true;
-        processedParams.push(`抵达航班: ${arrivalFlight}`);
-        console.log("✅ AI设置抵达航班:", arrivalFlight);
-      }
-      
-      const departureFlight = searchParams.get("departureFlight");
-      if (departureFlight && departureFlight.trim() !== "") {
-        updatedFormData.departure_flight = departureFlight.trim();
-        hasChanges = true;
-        processedParams.push(`返程航班: ${departureFlight}`);
-        console.log("✅ AI设置返程航班:", departureFlight);
-      }
-      
-      // === 8. 处理航班时间信息（包括AI查询的详细时间）===
-      const arrivalTime = searchParams.get("arrivalTime");
-      const arrivalFlightDepartureTime = searchParams.get("arrivalFlightDepartureTime");
-      const arrivalFlightLandingTime = searchParams.get("arrivalFlightLandingTime");
-      const departureFlightDepartureTime = searchParams.get("departureFlightDepartureTime");
-      const departureFlightLandingTime = searchParams.get("departureFlightLandingTime");
-      
-      if (arrivalTime && updatedFormData.tour_start_date) {
-        try {
-          const timeDate = parseTimeToDate(arrivalTime, updatedFormData.tour_start_date);
-          if (timeDate) {
-            updatedFormData.arrival_departure_time = timeDate;
-            hasChanges = true;
-            processedParams.push(`抵达时间: ${arrivalTime} → ${timeDate.toLocaleTimeString()}`);
-            console.log("✅ AI设置抵达时间:", arrivalTime, "→", timeDate.toLocaleTimeString());
-          }
-        } catch (error) {
-          console.warn("解析抵达时间失败:", arrivalTime, error);
-        }
-      }
-      
-      // 处理AI自动查询的航班详细时间
-      if (arrivalFlightDepartureTime) {
-        try {
-          const decodedTime = decodeURIComponent(arrivalFlightDepartureTime);
-          processedParams.push(`抵达航班起飞时间: ${decodedTime}`);
-          console.log("✅ AI提供抵达航班起飞时间:", decodedTime);
-        } catch (e) {
-          console.warn("解码抵达航班起飞时间失败:", e);
-        }
-      }
-      
-      if (arrivalFlightLandingTime) {
-        try {
-          const decodedTime = decodeURIComponent(arrivalFlightLandingTime);
-          processedParams.push(`抵达航班降落时间: ${decodedTime}`);
-          console.log("✅ AI提供抵达航班降落时间:", decodedTime);
-        } catch (e) {
-          console.warn("解码抵达航班降落时间失败:", e);
-        }
-      }
-      
-      if (departureFlightDepartureTime) {
-        try {
-          const decodedTime = decodeURIComponent(departureFlightDepartureTime);
-          processedParams.push(`返程航班起飞时间: ${decodedTime}`);
-          console.log("✅ AI提供返程航班起飞时间:", decodedTime);
-        } catch (e) {
-          console.warn("解码返程航班起飞时间失败:", e);
-        }
-      }
-      
-      if (departureFlightLandingTime) {
-        try {
-          const decodedTime = decodeURIComponent(departureFlightLandingTime);
-          processedParams.push(`返程航班降落时间: ${decodedTime}`);
-          console.log("✅ AI提供返程航班降落时间:", decodedTime);
-        } catch (e) {
-          console.warn("解码返程航班降落时间失败:", e);
-        }
-      }
-      
-      // === 9. 处理客户信息（支持最多5个客户）===
-      const customers = [];
-      let customerCount = 0;
-      
-      for (let i = 1; i <= 5; i++) {
-        const name = searchParams.get(`customerName${i}`);
-        const phone = searchParams.get(`customerPhone${i}`);
-        const passport = searchParams.get(`customerPassport${i}`);
-        
-        if (name || phone || passport) {
-          try {
-            customers.push({
-              full_name: name || '',
-              phone: phone || '',
-              passport_number: passport || '',
-              is_child: false,
-              is_primary: i === 1 // 第一个客户为主联系人
-            });
-            customerCount++;
-            processedParams.push(`客户${i}: ${name || ''}${phone ? ` ${phone}` : ''}${passport ? ` ${passport}` : ''}`);
-            console.log(`✅ AI设置客户${i}:`, { name, phone, passport });
-          } catch (error) {
-            console.warn(`解码客户${i}信息失败:`, error);
-          }
-        }
-      }
-      
-      if (customers.length > 0) {
-        // 确保乘客数组至少有足够的位置
-        while (updatedFormData.passengers.length < customers.length) {
-          updatedFormData.passengers.push({
-            full_name: '',
-            is_child: false,
-            phone: '',
-            wechat_id: '',
-            child_age: '',
-            passport_number: '',
-            is_primary: false
-          });
-        }
-        
-        // 更新乘客信息
-        customers.forEach((customer, index) => {
-          if (index < updatedFormData.passengers.length) {
-            updatedFormData.passengers[index] = {
-              ...updatedFormData.passengers[index],
-              ...customer
-            };
-          }
-        });
-        hasChanges = true;
-        console.log(`✅ AI设置了${customers.length}个客户的信息`);
-      }
-      
-      // === 10. 处理特殊要求/备注 ===
-      const specialRequests = searchParams.get("specialRequests");
-      if (specialRequests && specialRequests.trim() !== "") {
-        try {
-          const decodedRequests = decodeURIComponent(specialRequests);
-          updatedFormData.special_requests = decodedRequests;
-          hasChanges = true;
-          processedParams.push(`特殊要求: ${decodedRequests.substring(0, 50)}${decodedRequests.length > 50 ? '...' : ''}`);
-          console.log("✅ AI设置特殊要求:", decodedRequests);
-        } catch (e) {
-          console.warn("解码特殊要求失败:", e);
-        }
-      }
-      
-      // === 11. 处理行程信息 ===
-      const itinerary = searchParams.get("itinerary");
-      if (itinerary && itinerary.trim() !== "") {
-        try {
-          const decodedItinerary = decodeURIComponent(itinerary);
-          processedParams.push(`行程信息: ${decodedItinerary.substring(0, 50)}${decodedItinerary.length > 50 ? '...' : ''}`);
-          console.log("✅ AI提供行程信息:", decodedItinerary);
-        } catch (e) {
-          console.warn("解码行程信息失败:", e);
-        }
-      }
-      
-      // === 12. 处理车辆类型 ===
-      const vehicleType = searchParams.get("vehicleType");
-      if (vehicleType && vehicleType.trim() !== "") {
-        try {
-          const decodedVehicleType = decodeURIComponent(vehicleType);
-          processedParams.push(`车辆类型: ${decodedVehicleType}`);
-          console.log("✅ AI识别车辆类型:", decodedVehicleType);
-        } catch (e) {
-          console.warn("解码车辆类型失败:", e);
-        }
-      }
-      
-      // === 13. AI处理标识 ===
-      const aiProcessed = searchParams.get("aiProcessed");
-      const aiProcessedTime = searchParams.get("aiProcessedTime");
-      
-      if (aiProcessed === "true") {
-        console.log("🤖 确认这是AI处理的订单");
-        if (aiProcessedTime) {
-          const timestamp = parseInt(aiProcessedTime);
-          const processTime = new Date(timestamp);
-          console.log("⏰ AI处理时间:", processTime.toLocaleString());
-        }
-      }
-      
-      // === 14. 应用更新并显示结果 ===
-      if (hasChanges) {
-        setFormData(updatedFormData);
-        console.log("🎉 AI参数处理完成，表单已更新");
-        console.log("📊 处理的参数列表:", processedParams);
-        
-        // 显示成功提示，包含处理的参数概要
-        const summary = processedParams.length > 3 ? 
-          `${processedParams.slice(0, 3).join(', ')} 等${processedParams.length}项` : 
-          processedParams.join(', ');
-          
-        toast.success(`🤖 AI智能填写完成！\n已处理: ${summary}`, {
-          duration: 5000,
-          icon: '✨',
-          style: {
-            background: '#f0f9ff',
-            border: '1px solid #0ea5e9',
-            color: '#0c4a6e',
-          }
-        });
-        
-        // 如果有客户信息，提醒用户检查
-        if (customerCount > 0) {
-          setTimeout(() => {
-            toast.info(`👥 已填入${customerCount}位客户信息，请核对准确性`, {
-              duration: 4000,
-              icon: '📋'
-            });
-          }, 1000);
-        }
-        
-        // 自动调整人数相关的表单项
-        setTimeout(() => {
-          updatePassengersBasedOnCount(
-            updatedFormData.adult_count, 
-            updatedFormData.child_count
-          );
-        }, 500);
-        
-      } else {
-        console.log("ℹ️ 未发现可处理的AI参数，跳过自动填写");
-        // 如果确实有AI标识但没有可处理的参数，给出提示
-        if (aiProcessed === "true") {
-          toast.info("🤖 AI已识别订单信息，但无需要填写的参数", {
-            duration: 3000
-          });
-        }
-      }
-      
-    } catch (error) {
-      console.error("❌ 处理AI参数时出错:", error);
-      toast.error("AI参数处理失败，请手动填写表单", {
-        duration: 4000,
-        icon: '⚠️'
-      });
-    }
-  };
-
   // 处理文本解析并填充表单
   const handleParseBookingText = () => {
     if (!parseText.trim()) {
@@ -3418,6 +2916,23 @@ const Booking = () => {
         } catch (error) {
       console.error('解析预订文本失败:', error);
       toast.error('解析文本失败，请检查格式或手动填写');
+    }
+  };
+
+  // 处理表单字段变化
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    console.log('表单字段变更:', { name, value, event: e });
+    
+    setFormData({
+      ...formData,
+      [name]: value
+    });
+    
+    // 如果修改的是酒店等级，显示提示但不直接调用fetchTourPrice
+    // 让useEffect的防抖机制处理价格更新
+    if (name === 'hotel_level') {
+      toast.success(`正在更新${value}酒店的价格...`);
     }
   };
 

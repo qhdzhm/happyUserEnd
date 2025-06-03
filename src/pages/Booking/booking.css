@@ -1156,9 +1156,13 @@
 /* 响应式调整 */
 @media (max-width: 991.98px) {
   .sticky-sidebar {
-    position: sticky; /* 保持粘性定位，不再设为static */
-    top: 10px; /* 减小顶部间距 */
-    max-height: calc(100vh - 20px);
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    width: auto !important;
+    z-index: auto !important;
+    max-height: none !important;
+    overflow-y: visible !important;
   }
   
   .tour-summary {
@@ -1271,7 +1275,7 @@
   margin-bottom: 15px;
 }
 
-/* 粘性滚动相关样式 */
+/* 粘性滚动相关样式 - 优化版 */
 .sticky-sidebar {
   transition: all 0.3s ease;
 }
@@ -1281,6 +1285,9 @@
   scrollbar-width: none;
   /* IE and Edge */
   -ms-overflow-style: none;
+  /* 为聊天窗口预留空间 */
+  right: 100px !important; /* 为聊天窗口留出空间 */
+  width: 320px !important; /* 减小宽度 */
 }
 
 .sticky-sidebar::-webkit-scrollbar {
@@ -1299,21 +1306,42 @@
   transform: translateY(-5px) scale(1.02);
 }
 
-.order-summary .card-header {
-  transition: background 0.3s ease;
+/* 简化版订单摘要 - 粘性状态 */
+.order-summary.simplified.is-sticky {
+  max-height: 500px !important; /* 限制最大高度 */
+  overflow-y: auto;
 }
 
-/* 确保在小屏幕上不启用粘性效果 */
-@media (max-width: 991.98px) {
-  .sticky-sidebar {
-    position: relative !important;
-    top: auto !important;
-    left: auto !important;
-    width: auto !important;
-    z-index: auto !important;
-    max-height: none !important;
-    overflow-y: visible !important;
-  }
+/* 隐藏粘性状态下的详细信息 */
+.order-summary.simplified.is-sticky .product-image {
+  display: none; /* 隐藏产品图片 */
+}
+
+.order-summary.simplified.is-sticky .product-highlights {
+  display: none; /* 隐藏产品亮点 */
+}
+
+.order-summary.simplified.is-sticky .price-breakdown {
+  display: none; /* 隐藏详细价格明细 */
+}
+
+.order-summary.simplified.is-sticky .booking-details {
+  max-height: 100px;
+  overflow: hidden;
+}
+
+.order-summary.simplified.is-sticky .booking-details .detail-item:nth-child(n+3) {
+  display: none; /* 只显示前2个详情项 */
+}
+
+/* 强调总价 */
+.order-summary.simplified.is-sticky .total-price {
+  font-size: 1.4rem !important;
+  font-weight: bold !important;
+  color: #28a745 !important;
+  padding: 15px 0 !important;
+  border-top: 2px solid #e9ecef;
+  margin-top: 15px;
 }
 
 /* 粘性状态指示器 */
