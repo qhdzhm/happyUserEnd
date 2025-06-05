@@ -9,7 +9,7 @@
 /coverage
 
 # production
-/build
+# /build  # 注释掉以允许部署时提交build文件
 
 # misc
 .DS_Store
