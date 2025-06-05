@@ -195,32 +195,32 @@ const Checkout = () => {
                           {item.date} x {item.quantity}
                         </small>
                       </div>
-                      <span>¥{(item.price * item.quantity).toFixed(2)}</span>
+                      <span>${(item.price * item.quantity).toFixed(2)}</span>
                     </div>
                   </ListGroup.Item>
                 ))}
                 <ListGroup.Item className="px-0">
                   <div className="d-flex justify-content-between">
                     <span>小计</span>
-                    <span>¥{orderTotal.toFixed(2)}</span>
+                    <span>${orderTotal.toFixed(2)}</span>
                   </div>
                 </ListGroup.Item>
                 <ListGroup.Item className="px-0">
                   <div className="d-flex justify-content-between">
                     <span>服务费</span>
-                    <span>¥0.00</span>
+                    <span>$0.00</span>
                   </div>
                 </ListGroup.Item>
                 <ListGroup.Item className="px-0">
                   <div className="d-flex justify-content-between">
                     <span>折扣</span>
-                    <span>-¥0.00</span>
+                    <span>-$0.00</span>
                   </div>
                 </ListGroup.Item>
                 <ListGroup.Item className="px-0">
                   <div className="d-flex justify-content-between fw-bold order-total">
                     <span>总计</span>
-                    <span>¥{orderTotal.toFixed(2)}</span>
+                    <span>${orderTotal.toFixed(2)}</span>
                   </div>
                 </ListGroup.Item>
               </ListGroup>

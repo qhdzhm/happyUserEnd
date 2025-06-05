@@ -816,7 +816,7 @@ const OrderSuccess = () => {
                     </div>
                     <div className="text-end">
                       {!isOperator() ? (
-                        <div>¥{Number(orderData.payment.price).toFixed(2)}</div>
+                        <div>${Number(orderData.payment.price).toFixed(2)}</div>
                       ) : (
                         <div className="text-muted">价格已隐藏</div>
                       )}
@@ -825,7 +825,7 @@ const OrderSuccess = () => {
                   <ListGroup.Item className="d-flex justify-content-between fw-bold px-0 border-top mt-2 pt-2">
                     <span>订单总额</span>
                     {!isOperator() ? (
-                      <span className="text-primary">¥{Number(orderData.payment.price).toFixed(2)}</span>
+                      <span className="text-primary">${Number(orderData.payment.price).toFixed(2)}</span>
                     ) : (
                       <span className="text-muted">价格已隐藏</span>
                     )}

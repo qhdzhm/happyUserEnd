@@ -50,8 +50,16 @@ const AdvanceSearch = ({ inBanner = false }) => {
       fetchTourSuggestions();
       // 当用户选择了类型后，直接显示建议下拉菜单
       setShowSuggestions(true);
+    } else {
+      // 当没有选择产品类型时，加载所有产品
+      fetchAllTourSuggestions();
     }
   }, [selectedTourType]);
+
+  // 初始加载所有产品，无论是否选择了类型
+  useEffect(() => {
+    fetchAllTourSuggestions();
+  }, []); // 只在组件挂载时执行一次
 
   // 当关键字或所有产品列表变化时进行本地过滤
   useEffect(() => {
@@ -127,7 +135,8 @@ const AdvanceSearch = ({ inBanner = false }) => {
           id: tour.id,
           name: tour.title || tour.name || `${selectedTourType} ${tour.id}`,
           type: params.tourTypes === "day_tour" ? "day-tours" : "group-tours",
-          image: tour.coverImage || tour.image || tour.image_url || '/images/placeholder.jpg'
+          image: tour.coverImage || tour.image || tour.image_url || '/images/placeholder.jpg',
+          uniqueKey: `${params.tourTypes}-${tour.id}`
         }));
         
         // 存储所有产品用于本地过滤
@@ -147,6 +156,92 @@ const AdvanceSearch = ({ inBanner = false }) => {
     }
   };
 
+  // 新增：获取所有产品的函数
+  const fetchAllTourSuggestions = async () => {
+    setLoadingSuggestions(true);
+    
+    try {
+      console.log('开始获取所有产品数据...');
+      
+      // 同时获取一日游和跟团游数据
+      const [dayToursResponse, groupToursResponse] = await Promise.all([
+        getAllDayTours({ _source: 'search' }).catch(err => {
+          console.error('获取一日游数据失败:', err);
+          return null;
+        }),
+        getAllGroupTours({ _source: 'search' }).catch(err => {
+          console.error('获取跟团游数据失败:', err);
+          return null;
+        })
+      ]);
+      
+      let allTours = [];
+      
+      // 处理一日游数据
+      if (dayToursResponse && dayToursResponse.code === 1 && dayToursResponse.data) {
+        const dayTours = Array.isArray(dayToursResponse.data) 
+          ? dayToursResponse.data 
+          : (dayToursResponse.data.records || []);
+        
+        console.log('一日游原始数据:', dayTours);
+        
+        const formattedDayTours = dayTours.map(tour => ({
+          id: tour.id,
+          name: tour.title || tour.name || `一日游 ${tour.id}`,
+          type: "day-tours",
+          image: tour.coverImage || tour.image || tour.image_url || tour.cover_image || '/images/placeholder.jpg',
+          tourType: '一日游',
+          uniqueKey: `day-${tour.id}`
+        }));
+        
+        allTours = [...allTours, ...formattedDayTours];
+        console.log('格式化后的一日游数据:', formattedDayTours);
+      } else {
+        console.log('一日游数据响应异常:', dayToursResponse);
+      }
+      
+      // 处理跟团游数据
+      if (groupToursResponse && groupToursResponse.code === 1 && groupToursResponse.data) {
+        const groupTours = Array.isArray(groupToursResponse.data) 
+          ? groupToursResponse.data 
+          : (groupToursResponse.data.records || []);
+        
+        console.log('跟团游原始数据:', groupTours);
+        
+        const formattedGroupTours = groupTours.map(tour => ({
+          id: tour.id,
+          name: tour.title || tour.name || `跟团游 ${tour.id}`,
+          type: "group-tours",
+          image: tour.coverImage || tour.image || tour.image_url || tour.cover_image || '/images/placeholder.jpg',
+          tourType: '跟团游',
+          uniqueKey: `group-${tour.id}`
+        }));
+        
+        allTours = [...allTours, ...formattedGroupTours];
+        console.log('格式化后的跟团游数据:', formattedGroupTours);
+      } else {
+        console.log('跟团游数据响应异常:', groupToursResponse);
+      }
+      
+      console.log(`成功获取到${allTours.length}个产品（包含所有类型）`);
+      
+      // 存储所有产品用于本地过滤
+      setAllTours(allTours);
+      setFilteredSuggestions(allTours);
+      
+      if (allTours.length === 0) {
+        console.warn('警告：没有获取到任何产品数据');
+      }
+      
+    } catch (error) {
+      console.error("获取所有产品失败:", error);
+      setAllTours([]);
+      setFilteredSuggestions([]);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
   const handleTourTypeSelect = (value) => {
     setSelectedTourType(value);
     // 清空之前的建议
@@ -154,13 +249,33 @@ const AdvanceSearch = ({ inBanner = false }) => {
     setFilteredSuggestions([]);
     setKeyword("");
     setSelectedTour(null);
+    
+    // 如果选择了一日游且已经有开始日期，自动设置结束日期
+    if (value === "一日游" && startDate) {
+      setEndDate(startDate);
+      console.log("选择一日游，自动设置结束日期等于开始日期");
+    }
+    // 如果选择了跟团游，清空结束日期，等待用户选择具体产品或手动设置
+    else if (value === "跟团游") {
+      setEndDate(null);
+      console.log("选择跟团游，清空结束日期，等待进一步选择");
+    }
   };
 
   // 处理关键字输入
   const handleKeywordChange = (e) => {
     const value = e.target.value;
     setKeyword(value);
-    setShowSuggestions(true);
+    
+    // 无论是否选择了产品类型，都显示建议
+    if (!showSuggestions) {
+      setShowSuggestions(true);
+    }
+    
+    // 如果还没有加载产品数据，则立即加载
+    if (allTours.length === 0) {
+      fetchAllTourSuggestions();
+    }
     
     // 如果之前选择了特定产品，但用户改变了输入，清除选择
     if (selectedTour && value !== selectedTour.name) {
@@ -173,24 +288,147 @@ const AdvanceSearch = ({ inBanner = false }) => {
     setSelectedTour(tour);
     setKeyword(tour.name);
     setShowSuggestions(false);
+    
+    // 根据选择的产品自动设置产品类型
+    if (tour.tourType) {
+      setSelectedTourType(tour.tourType);
+    }
+    
+    // 如果已经选择了开始日期，根据产品类型自动计算结束日期
+    if (startDate) {
+      calculateEndDate(tour, startDate);
+    }
+  };
+
+  // 根据产品和开始日期计算结束日期
+  const calculateEndDate = (tour, startDateValue) => {
+    if (!tour || !startDateValue) return;
+    
+    // 一日游：结束日期等于开始日期
+    if (tour.tourType === "一日游" || tour.type === "day-tours") {
+      setEndDate(startDateValue);
+      return;
+    }
+    
+    // 多日游：根据产品信息计算结束日期
+    if (tour.tourType === "跟团游" || tour.type === "group-tours") {
+      // 尝试从产品名称中提取天数信息
+      const duration = extractDurationFromTourName(tour.name);
+      const calculatedEndDate = new Date(startDateValue);
+      calculatedEndDate.setDate(calculatedEndDate.getDate() + duration - 1);
+      setEndDate(calculatedEndDate);
+      
+      console.log(`多日游产品 "${tour.name}" 天数: ${duration}天，结束日期:`, calculatedEndDate.toISOString().split('T')[0]);
+      return;
+    }
+  };
+
+  // 从产品名称中提取天数信息
+  const extractDurationFromTourName = (tourName) => {
+    if (!tourName) return 3; // 默认3天
+    
+    // 常见的天数表达模式
+    const patterns = [
+      /(\d+)天(\d+)夜/,     // "3天2夜"
+      /(\d+)日(\d+)夜/,     // "3日2夜"  
+      /(\d+)天/,            // "3天"
+      /(\d+)日/,            // "3日"
+      /(\d+)D(\d+)N/i,      // "3D2N"
+      /(\d+)天游/,          // "3天游"
+    ];
+    
+    for (const pattern of patterns) {
+      const match = tourName.match(pattern);
+      if (match && match[1]) {
+        const days = parseInt(match[1], 10);
+        if (days > 0 && days <= 30) { // 合理的天数范围
+          return days;
+        }
+      }
+    }
+    
+    // 如果没有找到天数信息，根据产品类型返回默认值
+    if (tourName.includes("深度") || tourName.includes("豪华")) {
+      return 5; // 深度游默认5天
+    } else if (tourName.includes("周末") || tourName.includes("短途")) {
+      return 2; // 短途游默认2天
+    }
+    
+    return 3; // 其他情况默认3天
+  };
+
+  // 处理开始日期变化
+  const handleStartDateChange = (date) => {
+    setStartDate(date);
+    
+    if (date) {
+      // 如果已经选择了具体产品，根据产品计算结束日期
+      if (selectedTour) {
+        calculateEndDate(selectedTour, date);
+      } 
+      // 如果只选择了产品类型（一日游），自动设置结束日期等于开始日期
+      else if (selectedTourType === "一日游") {
+        setEndDate(date);
+      }
+      // 如果是跟团游但没选择具体产品，不自动设置结束日期，让用户手动选择
+    }
+  };
+
+  // 处理结束日期变化
+  const handleEndDateChange = (date) => {
+    // 如果是一日游（无论是选择了类型还是具体产品），不允许用户手动修改结束日期
+    if (selectedTourType === "一日游" || 
+        (selectedTour && (selectedTour.tourType === "一日游" || selectedTour.type === "day-tours"))) {
+      return;
+    }
+    setEndDate(date);
   };
 
   // 切换显示建议下拉菜单
   const toggleSuggestions = () => {
-    if (selectedTourType) {
-      if (!showSuggestions) {
-        setShowSuggestions(true);
-      } else {
-        setShowSuggestions(false);
+    if (!showSuggestions) {
+      setShowSuggestions(true);
+      // 如果没有加载产品，则加载所有产品
+      if (allTours.length === 0) {
+        fetchAllTourSuggestions();
       }
+    } else {
+      setShowSuggestions(false);
     }
   };
 
-  // 搜索提交
+  // 搜索提交 - 增强版本
   const handleSearch = () => {
+    // 验证必要的搜索条件
+    if (!startDate) {
+      alert("请选择出发日期");
+      return;
+    }
+    
     // 如果选择了特定产品，直接导航到产品详情页
     if (selectedTour) {
-      navigate(`/${selectedTour.type}/${selectedTour.id}`);
+      const params = new URLSearchParams();
+      params.append('fromSearch', 'true');
+      params.append('startDate', startDate.toISOString().split('T')[0]);
+      
+      // 如果有结束日期，添加结束日期参数
+      if (endDate) {
+        params.append('endDate', endDate.toISOString().split('T')[0]);
+      }
+      
+      // 添加人数信息
+      params.append('adults', adults);
+      params.append('children', children);
+      
+      // 添加总人数（方便后端计算）
+      params.append('totalGuests', adults + children);
+      
+      // 添加产品信息
+      params.append('tourName', selectedTour.name);
+      params.append('tourType', selectedTour.tourType || selectedTour.type);
+      
+      console.log("导航到产品详情页，参数:", params.toString());
+      navigate(`/${selectedTour.type}/${selectedTour.id}?${params.toString()}`);
       return;
     }
     
@@ -203,8 +441,8 @@ const AdvanceSearch = ({ inBanner = false }) => {
     } else if (selectedTourType === "跟团游") {
       queryParams.append('tourTypes', 'group_tour');
     } else {
-      // 如果没有选择，默认为一日游
-      queryParams.append('tourTypes', 'day_tour');
+      // 如果没有选择产品类型，搜索所有类型
+      queryParams.append('tourTypes', 'all');
     }
     
     // 添加关键字搜索参数
@@ -213,9 +451,7 @@ const AdvanceSearch = ({ inBanner = false }) => {
     }
     
     // 添加日期信息
-    if (startDate) {
-      queryParams.append('startDate', startDate.toISOString().split('T')[0]);
-    }
+    queryParams.append('startDate', startDate.toISOString().split('T')[0]);
     
     if (endDate) {
       queryParams.append('endDate', endDate.toISOString().split('T')[0]);
@@ -224,15 +460,13 @@ const AdvanceSearch = ({ inBanner = false }) => {
     // 添加人数信息
     queryParams.append('adults', adults);
     queryParams.append('children', children);
+    queryParams.append('totalGuests', adults + children);
     
     // 添加标记
     queryParams.append('fromAdvanceSearch', 'true');
     
-    // 导航到旅游路线页面
+    console.log("导航到搜索结果页，参数:", queryParams.toString());
     navigate(`/tours?${queryParams.toString()}`);
-    
-    // 打印日志
-    console.log("高级搜索参数:", queryParams.toString());
   };
 
   const increaseAdults = () => {
@@ -361,24 +595,22 @@ const AdvanceSearch = ({ inBanner = false }) => {
                   <input
                     type="text"
                     className="keyword-input"
-                    placeholder={selectedTourType ? `输入关键字或选择${selectedTourType}产品` : "请先选择产品类型"}
+                    placeholder={selectedTourType ? `输入关键字或选择${selectedTourType}产品` : "输入关键字搜索所有产品"}
                     value={keyword}
                     onChange={handleKeywordChange}
-                    onFocus={() => selectedTourType && setShowSuggestions(true)}
+                    onFocus={() => setShowSuggestions(true)}
                     ref={inputRef}
-                    disabled={!selectedTourType}
                   />
                   <button 
                     className={`dropdown-toggle-btn ${showSuggestions ? 'active' : ''}`}
                     onClick={toggleSuggestions}
-                    disabled={!selectedTourType}
                   >
                     <FaChevronDown />
                   </button>
                 </div>
                 
                 {/* 产品建议下拉框 */}
-                {showSuggestions && selectedTourType && (
+                {showSuggestions && (
                   <div className="tour-suggestions-dropdown">
                     {loadingSuggestions ? (
                       <div className="suggestions-loading">
@@ -388,20 +620,27 @@ const AdvanceSearch = ({ inBanner = false }) => {
                     ) : filteredSuggestions.length > 0 ? (
                       <>
                         <div className="suggestions-header">
-                          选择{selectedTourType}产品 ({filteredSuggestions.length}/{allTours.length})
+                          选择{selectedTourType || '所有'}产品 ({filteredSuggestions.length}/{allTours.length})
                         </div>
                         <div className="suggestions-list">
                           {filteredSuggestions.map(tour => (
                             <div 
-                              key={tour.id} 
+                              key={tour.uniqueKey || `${tour.type}-${tour.id}`}
                               className={`tour-suggestion-item ${selectedTour && selectedTour.id === tour.id ? 'active' : ''}`}
                               onClick={() => handleSelectTour(tour)}
                             >
                               <div className="tour-suggestion-img">
                                 <img src={tour.image} alt={tour.name} />
                               </div>
-                              <div className="tour-suggestion-name" title={tour.name}>
-                                {tour.name}
+                              <div className="tour-suggestion-info">
+                                <div className="tour-suggestion-name" title={tour.name}>
+                                  {tour.name}
+                                </div>
+                                {tour.tourType && (
+                                  <div className="tour-suggestion-type">
+                                    {tour.tourType}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           ))}
@@ -409,7 +648,7 @@ const AdvanceSearch = ({ inBanner = false }) => {
                       </>
                     ) : (
                       <div className="no-suggestions">
-                        <span>未找到{selectedTourType}产品</span>
+                        <span>未找到{selectedTourType || ''}产品</span>
                         {keyword && (
                           <div className="no-matches-hint">
                             尝试使用其他关键词
@@ -430,13 +669,14 @@ const AdvanceSearch = ({ inBanner = false }) => {
                 <FaCalendarAlt className="search-icon" />
                 <DatePicker
                   selected={startDate}
-                  onChange={(date) => setStartDate(date)}
+                  onChange={handleStartDateChange}
                   selectsStart
                   startDate={startDate}
                   endDate={endDate}
                   placeholderText="选择日期"
                   dateFormat="yyyy-MM-dd"
                   className="banner-datepicker"
+                  minDate={new Date()} // 不允许选择过去的日期
                 />
               </div>
             </div>
@@ -449,14 +689,25 @@ const AdvanceSearch = ({ inBanner = false }) => {
                 <FaCalendarAlt className="search-icon" />
                 <DatePicker
                   selected={endDate}
-                  onChange={(date) => setEndDate(date)}
+                  onChange={handleEndDateChange}
                   selectsEnd
                   startDate={startDate}
                   endDate={endDate}
-                  minDate={startDate}
-                  placeholderText="选择日期"
+                  minDate={startDate || new Date()}
+                  placeholderText={
+                    selectedTourType === "一日游" || 
+                    (selectedTour && (selectedTour.tourType === "一日游" || selectedTour.type === "day-tours"))
+                      ? "自动设置同天" 
+                      : selectedTour 
+                        ? "自动计算" 
+                        : "选择日期"
+                  }
                   dateFormat="yyyy-MM-dd"
                   className="banner-datepicker"
+                  disabled={
+                    selectedTourType === "一日游" || 
+                    (selectedTour && (selectedTour.tourType === "一日游" || selectedTour.type === "day-tours"))
+                  }
                 />
               </div>
             </div>
@@ -562,24 +813,22 @@ const AdvanceSearch = ({ inBanner = false }) => {
                         <input
                           type="text"
                           className="keyword-input-regular"
-                          placeholder={selectedTourType ? `输入关键字或选择${selectedTourType}产品` : "请先选择产品类型"}
+                          placeholder={selectedTourType ? `输入关键字或选择${selectedTourType}产品` : "输入关键字搜索所有产品"}
                           value={keyword}
                           onChange={handleKeywordChange}
-                          onFocus={() => selectedTourType && setShowSuggestions(true)}
+                          onFocus={() => setShowSuggestions(true)}
                           ref={inputRef}
-                          disabled={!selectedTourType}
                         />
                         <button 
                           className={`dropdown-toggle-btn regular ${showSuggestions ? 'active' : ''}`}
                           onClick={toggleSuggestions}
-                          disabled={!selectedTourType}
                         >
                           <FaChevronDown />
                         </button>
                       </div>
                       
                       {/* 产品建议下拉框 - 常规搜索样式 */}
-                      {showSuggestions && selectedTourType && (
+                      {showSuggestions && (
                         <div className="tour-suggestions-dropdown-regular">
                           {loadingSuggestions ? (
                             <div className="suggestions-loading">
@@ -589,20 +838,27 @@ const AdvanceSearch = ({ inBanner = false }) => {
                           ) : filteredSuggestions.length > 0 ? (
                             <>
                               <div className="suggestions-header">
-                                选择{selectedTourType}产品 ({filteredSuggestions.length}/{allTours.length})
+                                选择{selectedTourType || '所有'}产品 ({filteredSuggestions.length}/{allTours.length})
                               </div>
                               <div className="suggestions-list">
                                 {filteredSuggestions.map(tour => (
                                   <div 
-                                    key={tour.id} 
+                                    key={tour.uniqueKey || `${tour.type}-${tour.id}`}
                                     className={`tour-suggestion-item ${selectedTour && selectedTour.id === tour.id ? 'active' : ''}`}
                                     onClick={() => handleSelectTour(tour)}
                                   >
                                     <div className="tour-suggestion-img">
                                       <img src={tour.image} alt={tour.name} />
                                     </div>
-                                    <div className="tour-suggestion-name" title={tour.name}>
-                                      {tour.name}
+                                    <div className="tour-suggestion-info">
+                                      <div className="tour-suggestion-name" title={tour.name}>
+                                        {tour.name}
+                                      </div>
+                                      {tour.tourType && (
+                                        <div className="tour-suggestion-type">
+                                          {tour.tourType}
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                 ))}
@@ -610,7 +866,7 @@ const AdvanceSearch = ({ inBanner = false }) => {
                             </>
                           ) : (
                             <div className="no-suggestions">
-                              <span>未找到{selectedTourType}产品</span>
+                              <span>未找到{selectedTourType || ''}产品</span>
                               {keyword && (
                                 <div className="no-matches-hint">
                                   尝试使用其他关键词
@@ -628,12 +884,13 @@ const AdvanceSearch = ({ inBanner = false }) => {
                   <label className="item-search-label">到达时间</label>
                   <DatePicker
                     selected={startDate}
-                    onChange={(date) => setStartDate(date)}
+                    onChange={handleStartDateChange}
                     selectsStart
                     startDate={startDate}
                     endDate={endDate}
                     placeholderText="选择日期"
                     dateFormat="yyyy-MM-dd"
+                    minDate={new Date()} // 不允许选择过去的日期
                   />
                 </div>
                 
@@ -641,13 +898,24 @@ const AdvanceSearch = ({ inBanner = false }) => {
                   <label className="item-search-label">离开时间</label>
                   <DatePicker
                     selected={endDate}
-                    onChange={(date) => setEndDate(date)}
+                    onChange={handleEndDateChange}
                     selectsEnd
                     startDate={startDate}
                     endDate={endDate}
-                    minDate={startDate}
-                    placeholderText="选择日期"
+                    minDate={startDate || new Date()}
+                    placeholderText={
+                      selectedTourType === "一日游" || 
+                      (selectedTour && (selectedTour.tourType === "一日游" || selectedTour.type === "day-tours"))
+                        ? "自动设置同天" 
+                        : selectedTour 
+                          ? "自动计算" 
+                          : "选择日期"
+                    }
                     dateFormat="yyyy-MM-dd"
+                    disabled={
+                      selectedTourType === "一日游" || 
+                      (selectedTour && (selectedTour.tourType === "一日游" || selectedTour.type === "day-tours"))
+                    }
                   />
                 </div>
                 

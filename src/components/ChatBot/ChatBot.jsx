@@ -12,12 +12,15 @@ import {
     CheckCircleOutlined,
     ClockCircleOutlined,
     ExclamationCircleOutlined,
-    LoginOutlined
+    LoginOutlined,
+    SettingOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import customerServiceApi from '../../services/customerServiceApi';
 import websocketService from '../../services/websocketService';
+import AISettings from './AISettings';
+import { getCurrentAIConfig, collectPerformanceData } from '../../utils/aiConfig';
 import './ChatBot.css';
 
 const ChatBot = ({ userType = 1, userId = null }) => {
@@ -38,6 +41,15 @@ const ChatBot = ({ userType = 1, userId = null }) => {
     // 登录状态
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [userInfo, setUserInfo] = useState(null);
+    
+    // 添加防抖和重试相关状态
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const lastSubmitTimeRef = useRef(0);
+    const submitTimeoutRef = useRef(null);
+    
+    // AI设置相关状态
+    const [showAISettings, setShowAISettings] = useState(false);
+    const [currentAIProvider, setCurrentAIProvider] = useState('qwen'); // 默认为通义千问
     
     const messagesEndRef = useRef(null);
     const navigate = useNavigate();
@@ -431,13 +443,35 @@ const ChatBot = ({ userType = 1, userId = null }) => {
         
         setLoading(true);
         
+        // 添加用户体验优化 - 显示AI正在思考的消息
+        const thinkingMessage = {
+            id: Date.now() + 0.5,
+            type: 'bot',
+            content: '🤔 正在为您智能分析，请稍候...',
+            timestamp: new Date(),
+            isThinking: true
+        };
+        setMessages(prev => [...prev, thinkingMessage]);
+        
         try {
+            // 配置更长的超时时间，针对通义千问优化
             const response = await axios.post('/api/chatbot/message', {
                 sessionId,
                 message: content,
                 userType,
                 userId
+            }, {
+                timeout: 30000, // 通义千问响应更快，可以设为30秒
+                headers: {
+                    'X-Request-Priority': 'high', // 标记为高优先级请求
+                    'X-AI-Provider': 'qwen',   // 标识AI提供商为通义千问
+                    'X-Current-Page': window.location.pathname, // 当前页面路径
+                    'X-Current-URL': window.location.href // 完整当前URL
+                }
             });
+            
+            // 移除"正在思考"的消息
+            setMessages(prev => prev.filter(msg => !msg.isThinking));
             
             if (response.data.code === 1) {
                 const botResponse = {
@@ -454,11 +488,24 @@ const ChatBot = ({ userType = 1, userId = null }) => {
                 
                 // 如果是订单信息，显示跳转按钮并自动跳转
                 if (botResponse.messageType === 2 && botResponse.redirectUrl) {
-                    message.success('订单信息解析完成！2秒后自动跳转到订单页面');
-                    setTimeout(() => {
-                        navigate(botResponse.redirectUrl);
-                        setVisible(false);
-                    }, 2000);
+                    const currentPath = window.location.pathname;
+                    const isAlreadyOnBookingPage = currentPath === '/booking' || currentPath.includes('/booking');
+                    
+                    if (isAlreadyOnBookingPage) {
+                        // 如果已经在订单页面，显示提示并强制刷新页面以应用新参数
+                        message.success('订单信息解析完成！页面将更新以显示新的订单信息');
+                        setTimeout(() => {
+                            // 强制刷新页面到新的URL
+                            window.location.href = botResponse.redirectUrl;
+                        }, 1500);
+                    } else {
+                        // 如果不在订单页面，正常跳转
+                        message.success('订单信息解析完成！2秒后自动跳转到订单页面');
+                        setTimeout(() => {
+                            navigate(botResponse.redirectUrl);
+                            setVisible(false);
+                        }, 2000);
+                    }
                 }
             } else {
                 throw new Error(response.data.msg || '服务器响应错误');
@@ -467,8 +514,16 @@ const ChatBot = ({ userType = 1, userId = null }) => {
         } catch (error) {
             console.error('发送AI消息失败:', error);
             
-            let errorMessage = '抱歉，服务暂时不可用，请稍后重试。';
-            if (error.response?.data?.data?.errorCode === 'RATE_LIMIT') {
+            // 移除"正在思考"的消息
+            setMessages(prev => prev.filter(msg => !msg.isThinking));
+            
+            let errorMessage = '抱歉，AI服务响应较慢，请稍后重试。';
+            let showRetryButton = false;
+            
+            if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+                errorMessage = '⏰ AI响应超时，这可能是网络问题。您可以：\n1. 点击下方重试按钮\n2. 简化您的问题重新提问\n3. 转接人工客服获得帮助';
+                showRetryButton = true;
+            } else if (error.response?.data?.data?.errorCode === 'RATE_LIMIT') {
                 errorMessage = '请求过于频繁，请稍后再试。';
             } else if (error.response?.data?.data?.errorCode === 'PERMISSION_DENIED') {
                 errorMessage = '抱歉，您没有权限发送订单信息。';
@@ -479,7 +534,9 @@ const ChatBot = ({ userType = 1, userId = null }) => {
                 type: 'bot',
                 content: errorMessage,
                 timestamp: new Date(),
-                isError: true
+                isError: true,
+                showRetryButton,
+                retryContent: content // 保存原始内容用于重试
             };
             setMessages(prev => [...prev, errorBotMessage]);
         } finally {
@@ -519,6 +576,22 @@ const ChatBot = ({ userType = 1, userId = null }) => {
     const sendMessage = async () => {
         if (!inputValue.trim()) return;
         
+        // 防抖检查 - 防止快速连续提交
+        const now = Date.now();
+        if (now - lastSubmitTimeRef.current < 2000) { // 2秒内不允许重复提交
+            message.warning('请不要频繁发送消息，请稍等片刻再试');
+            return;
+        }
+        
+        // 检查是否正在提交
+        if (isSubmitting || loading) {
+            message.warning('消息正在处理中，请稍候...');
+            return;
+        }
+        
+        setIsSubmitting(true);
+        lastSubmitTimeRef.current = now;
+        
         const userMessage = {
             id: Date.now(),
             type: 'user',
@@ -533,14 +606,37 @@ const ChatBot = ({ userType = 1, userId = null }) => {
         // 立即滚动到底部显示用户发送的消息
         setTimeout(() => forceScrollToBottom(), 50);
         
-        if (serviceMode === 'ai') {
-            await sendAIMessage(messageContent);
-        } else if (serviceMode === 'human') {
-            await sendServiceMessage(messageContent);
+        try {
+            if (serviceMode === 'ai') {
+                await sendAIMessage(messageContent);
+            } else if (serviceMode === 'human') {
+                await sendServiceMessage(messageContent);
+            }
+        } catch (error) {
+            console.error('发送消息失败:', error);
+        } finally {
+            setIsSubmitting(false);
+            // 发送完成后再次滚动，确保bot回复也能看到
+            setTimeout(() => forceScrollToBottom(), 300);
+        }
+    };
+    
+    // 重试发送消息
+    const retryMessage = async (content) => {
+        if (isSubmitting || loading) {
+            message.warning('请等待当前消息处理完成');
+            return;
         }
         
-        // 发送完成后再次滚动，确保bot回复也能看到
-        setTimeout(() => forceScrollToBottom(), 300);
+        setIsSubmitting(true);
+        
+        try {
+            await sendAIMessage(content);
+        } catch (error) {
+            console.error('重试发送失败:', error);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     // 处理登录按钮点击
@@ -782,6 +878,36 @@ const ChatBot = ({ userType = 1, userId = null }) => {
         }
     };
     
+    // 初始化时检查连接状态
+    useEffect(() => {
+        // 初始化AI配置
+        const aiConfig = getCurrentAIConfig();
+        setCurrentAIProvider(aiConfig.provider);
+    }, []);
+    
+    // 处理AI提供商变更
+    const handleAIProviderChange = (newProvider) => {
+        setCurrentAIProvider(newProvider);
+        
+        // 显示切换成功消息
+        const providerNames = {
+            'deepseek': 'DeepSeek AI',
+            'qwen': '通义千问',
+            'zhipu': '智谱GLM',
+            'baichuan': '百川AI'
+        };
+        
+        const switchMessage = {
+            id: Date.now(),
+            type: 'system',
+            content: `已切换到 ${providerNames[newProvider]} 服务。新的AI服务将在下次对话时生效。`,
+            timestamp: new Date()
+        };
+        setMessages(prev => [...prev, switchMessage]);
+        
+        message.success(`已切换到 ${providerNames[newProvider]} 服务`);
+    };
+    
     return (
         <>
             {/* 悬浮按钮 */}
@@ -819,6 +945,16 @@ const ChatBot = ({ userType = 1, userId = null }) => {
                             </span>
                         </div>
                         <div className="chatbot-header-actions">
+                            {serviceMode === 'ai' && (
+                                <Button 
+                                    type="text" 
+                                    size="small"
+                                    icon={<SettingOutlined />}
+                                    onClick={() => setShowAISettings(true)}
+                                    className="chatbot-action-btn"
+                                    title="AI设置"
+                                />
+                            )}
                             {serviceMode === 'human' && (
                                 <Button 
                                     type="text" 
@@ -1081,6 +1217,13 @@ const ChatBot = ({ userType = 1, userId = null }) => {
                     )}
                 </div>
             )}
+            
+            {/* AI设置模态框 */}
+            <AISettings
+                visible={showAISettings}
+                onClose={() => setShowAISettings(false)}
+                onProviderChange={handleAIProviderChange}
+            />
         </>
     );
 };

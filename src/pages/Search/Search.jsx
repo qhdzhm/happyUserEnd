@@ -254,7 +254,7 @@ const Search = () => {
                               <PriceDisplay 
                                 price={Number(attraction.price)}
                                 discountPrice={attraction.discount_price ? Number(attraction.discount_price) : null}
-                                currency="¥"
+                                currency="$"
                                 size="sm"
                                 showBadge={false}
                               />

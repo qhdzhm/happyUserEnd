@@ -489,8 +489,8 @@ const Payment = () => {
                       <Col md={6} className="text-end">
                         {!isOperator() && (
                           <>
-                            <p className="mb-1">支付金额: ¥{formatPrice(orderData.totalPrice || orderData.total || 0)}</p>
-                            <p className="mb-0">剩余信用额度: ¥{formatPrice(agentCredit)}</p>
+                            <p className="mb-1">支付金额: ${formatPrice(orderData.totalPrice || orderData.total || 0)}</p>
+                            <p className="mb-0">剩余信用额度: ${formatPrice(agentCredit)}</p>
                           </>
                         )}
                       </Col>
@@ -546,7 +546,7 @@ const Payment = () => {
                                 ) : isOperator() ? (
                                   '可用于支付'
                                 ) : (
-                                  `¥${formatPrice(agentCredit)}`
+                                  `$${formatPrice(agentCredit)}`
                                 )}
                               </div>
                             </div>
@@ -640,7 +640,7 @@ const Payment = () => {
                                     '使用代理商信用额度'
                                   ) : (
                                     <>
-                                      可用额度: ¥{formatPrice(agentCredit)}
+                                      可用额度: ${formatPrice(agentCredit)}
                                       {!isCreditSufficient && ' (额度不足)'}
                                     </>
                                   )}
@@ -682,7 +682,7 @@ const Payment = () => {
                         {submitting ? '处理中...' : (
                           isOperator() ? (
                             !isCreditSufficient ? '信用额度不足' : '确认支付'
-                          ) : `确认支付 ¥${formatPrice(orderTotal)}`
+                          ) : `确认支付 $${formatPrice(orderTotal)}`
                         )}
                       </Button>
                     </div>
@@ -738,7 +738,7 @@ const Payment = () => {
                       ) : isAgentOperator ? (
                         <h5 className="mb-0 text-muted">价格已隐藏</h5>
                       ) : (
-                        <h5 className="mb-0 text-success">¥{formatPrice(orderData.totalPrice || orderData.total || 0)}</h5>
+                        <h5 className="mb-0 text-success">${formatPrice(orderData.totalPrice || orderData.total || 0)}</h5>
                       )}
                     </div>
                   </div>

@@ -67,83 +67,96 @@
     flex: 1;
 }
 
-/* 旅客选择器样式 */
+/* 旅客选择器样式 - 使用更高优先级 */
 .guest-selector-content {
-    padding: 20px;
-    min-width: 250px;
-    background-color: white;
-    z-index: 9999; /* 确保显示在最上层 */
+    padding: 20px !important;
+    min-width: 250px !important;
+    background-color: white !important;
+    z-index: 99999 !important; /* 使用更高的z-index */
+    border-radius: 8px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
 }
 
 .guest-type {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 20px !important;
 }
 
 .guest-type:last-child {
-    margin-bottom: 0;
+    margin-bottom: 0 !important;
 }
 
 .guest-type span {
-    font-size: 15px;
-    font-weight: 500;
-    color: #333;
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    color: #333 !important;
 }
 
 .guest-controls {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+    display: flex !important;
+    align-items: center !important;
+    gap: 15px !important;
 }
 
 .guest-btn {
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    border: 1px solid #0b80c3;
-    background-color: white;
-    color: #0b80c3;
-    font-size: 18px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    padding: 0;
-    line-height: 1;
+    width: 32px !important;
+    height: 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    border: 2px solid #0b80c3 !important;
+    background-color: white !important;
+    color: #0b80c3 !important;
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+    outline: none !important;
+    position: relative !important;
+    z-index: 1 !important;
 }
 
 .guest-btn span {
-    display: block;
-    line-height: 1;
-    height: 18px;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 100% !important;
+    line-height: 1 !important;
+    font-size: 16px !important;
+    font-weight: bold !important;
 }
 
-.guest-btn:hover {
-    background-color: #0b80c3;
-    color: white;
+.guest-btn:hover:not(:disabled) {
+    background-color: #0b80c3 !important;
+    color: white !important;
+    transform: scale(1.05) !important;
 }
 
 .guest-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    border-color: #ccc;
-    color: #999;
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+    border-color: #ddd !important;
+    color: #999 !important;
 }
 
 .guest-btn:disabled:hover {
-    background-color: white;
-    color: #999;
+    background-color: white !important;
+    color: #999 !important;
+    transform: none !important;
 }
 
 .guest-count {
-    font-size: 16px;
-    font-weight: 500;
-    color: #333;
-    min-width: 24px;
-    text-align: center;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    color: #333 !important;
+    min-width: 30px !important;
+    text-align: center !important;
 }
 
 .item-search .primaryBtn {
@@ -241,6 +254,8 @@
     justify-content: center;
     border: 1px solid rgba(255,255,255,0.2);
     transition: all 0.3s ease;
+    position: relative;
+    z-index: 10000; /* 提高banner的z-index */
 }
 
 .box-search-banner:hover {
@@ -476,6 +491,7 @@
 .keyword-input-container {
     position: relative;
     width: 100%;
+    z-index: 100000 !important; /* 提高容器的z-index */
 }
 
 /* 关键词输入框包装器 - 允许下拉按钮 */
@@ -530,12 +546,13 @@
 .keyword-search-container {
     position: relative;
     width: 100%;
-    margin-top: 5px;
+    z-index: 100000 !important; /* 提高容器的z-index */
 }
 
 .keyword-regular-input-container {
     position: relative;
     width: 100%;
+    z-index: 100000 !important; /* 提高容器的z-index */
 }
 
 .keyword-icon {
@@ -574,115 +591,79 @@
 
 /* 产品建议下拉菜单 - Banner版 */
 .tour-suggestions-dropdown {
-    position: absolute;
-    top: 110%;
-    left: 0;
-    width: 400px;
-    max-width: 100%;
-    max-height: 400px;
-    overflow-y: auto;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
-    z-index: 1000;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: white !important;
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+    z-index: 999999 !important;
+    max-height: 280px !important; /* 增加高度到280px */
+    overflow-y: auto !important;
+    margin-top: 4px !important;
 }
 
-/* 产品建议下拉菜单 - 常规版 */
-.tour-suggestions-dropdown-regular {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    width: 900px;
-    min-width: 600px;
-    max-height: 400px;
-    overflow-y: auto;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
-    margin-top: 10px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
+/* Banner版本的建议项目 - 更紧凑的样式 */
+.tour-suggestions-dropdown .tour-suggestion-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px !important; /* 稍微增加内边距 */
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    gap: 12px !important; /* 增加间距 */
 }
 
-/* 建议标题 */
-.suggestions-header {
-    padding: 10px 15px;
+.tour-suggestions-dropdown .tour-suggestion-img {
+    width: 45px !important; /* 稍微增大图片尺寸 */
+    height: 36px !important;
+    border-radius: 4px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background-color: #f0f0f0;
+}
+
+.tour-suggestions-dropdown .tour-suggestion-name {
+    font-size: 14px !important; /* 稍微增大字体 */
+    color: var(--textClr);
+    line-height: 1.4 !important;
+    flex: 1;
+    white-space: normal;
+    word-break: break-word;
+    padding-right: 8px !important;
+}
+
+.tour-suggestions-dropdown .tour-suggestion-type {
+    font-size: 11px !important; /* 减小标签字体 */
+    color: #0b80c3;
+    font-weight: 500;
+    background-color: rgba(11, 128, 195, 0.1);
+    padding: 1px 6px !important; /* 减小标签内边距 */
+    border-radius: 10px;
+    display: inline-block;
+    width: fit-content;
+}
+
+/* Banner版本的建议列表容器 */
+.tour-suggestions-dropdown .suggestions-list {
+    max-height: 220px !important; /* 相应增加列表高度 */
+    overflow-y: auto !important;
+    padding: 3px !important; /* 减小列表内边距 */
+}
+
+/* Banner版本的建议标题 */
+.tour-suggestions-dropdown .suggestions-header {
+    padding: 8px 12px !important; /* 减小标题内边距 */
     font-weight: 600;
     color: var(--textClr);
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     background-color: rgba(0, 0, 0, 0.03);
     position: sticky;
     top: 0;
-    z-index: 1;
-}
-
-/* 建议列表容器 */
-.suggestions-list {
-    max-height: 350px;
-    overflow-y: auto;
-    padding: 5px;
-}
-
-/* 产品建议项 */
-.tour-suggestion-item {
-    display: flex;
-    align-items: center;
-    padding: 15px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    border-radius: 6px;
-}
-
-.tour-suggestion-item:last-child {
-    border-bottom: none;
-}
-
-.tour-suggestion-item:hover {
-    background-color: rgba(200, 62, 62, 0.1);
-}
-
-.tour-suggestion-item.active {
-    background-color: rgba(200, 62, 62, 0.15);
-    position: relative;
-}
-
-.tour-suggestion-item.active::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background-color: var(--primaryClr);
-}
-
-.tour-suggestion-img {
-    width: 50px;
-    height: 50px;
-    margin-right: 12px;
-    border-radius: 4px;
-    overflow: hidden;
-    flex-shrink: 0;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.tour-suggestion-img img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.tour-suggestion-name {
-    font-size: 15px;
-    color: var(--textClr);
-    line-height: 1.5;
-    flex: 1;
-    white-space: normal;
-    word-break: break-word;
-    padding-right: 10px;
+    z-index: 999999;
+    font-size: 13px !important; /* 减小标题字体 */
 }
 
 /* 加载中状态 */
@@ -720,8 +701,8 @@
 }
 
 .search-keyword-content {
-    position: relative;
-    z-index: 10;
+    position: relative !important;
+    z-index: 100000 !important; /* 提高容器的z-index */
 }
 
 /* 其他搜索项减小宽度以腾出更多空间 */
@@ -800,17 +781,28 @@
 }
 
 @media (max-width: 767px) {
+    .tour-suggestions-dropdown,
+    .tour-suggestions-dropdown-regular {
+        max-height: 300px;
+    }
+    
+    .tour-suggestion-item {
+        padding: 10px 12px;
+        gap: 10px;
+    }
+    
     .tour-suggestion-img {
         width: 40px;
-        height: 40px;
+        height: 32px;
     }
     
     .tour-suggestion-name {
         font-size: 13px;
     }
     
-    .dropdown-toggle-btn {
-        font-size: 10px;
+    .tour-suggestion-type {
+        font-size: 11px;
+        padding: 1px 6px;
     }
 }
 
@@ -926,7 +918,7 @@
     margin-left: 8px;
 }
 
-/* 自定义下拉菜单样式 */
+/* 自定义下拉菜单样式 - 强制覆盖 */
 .dropdown-custom button {
     display: flex;
     align-items: center;
@@ -1059,44 +1051,179 @@
     transform: translateY(-50%) rotate(180deg);
 }
 
-/* 自定义下拉菜单样式 */
+/* 自定义下拉菜单样式 - 强制覆盖 */
 .dropdown-custom .dropdown-menu {
-    border-radius: 12px;
-    border: none;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-    margin-top: 10px;
-    padding: 0;
-    background: white;
-    overflow: hidden;
+    border: none !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+    border-radius: 12px !important;
+    padding: 0 !important;
+    z-index: 99999 !important; /* 使用更高的z-index */
+    overflow: visible !important;
+    margin-top: 4px !important;
+    background: white !important;
+    position: absolute !important;
 }
 
 .dropdown-custom.guest-dropdown .dropdown-menu {
-    padding: 0;
-    z-index: 9999;
+    z-index: 99999 !important; /* 旅客下拉菜单层级最高 */
+    min-width: 280px !important;
+    padding: 0 !important;
+    position: absolute !important;
 }
 
-/* 确保搜索框的下拉内容正确显示 */
+/* Banner区域的下拉菜单 - 更高层级 */
+.box-search-banner .dropdown-custom .dropdown-menu {
+    z-index: 99999 !important; /* Banner中的下拉菜单层级更高 */
+    position: absolute !important;
+}
+
+/* 确保搜索容器有正确的层级关系 */
 .search-keyword-content {
-    position: relative;
-    z-index: 10;
+    position: relative !important;
+    z-index: 100000 !important; /* 提高容器的z-index */
 }
 
 .keyword-input-container {
     position: relative;
     width: 100%;
+    z-index: 100000 !important; /* 提高容器的z-index */
 }
 
-/* 响应式调整 */
-@media (max-width: 1200px) {
-    .tour-suggestions-dropdown {
-        width: 350px;
-    }
+/* 确保banner区域的下拉菜单在正确的层级 */
+.box-search-banner {
+    position: relative !important;
+    z-index: 10000; /* 提高banner的z-index */
 }
 
+.box-search-banner .search-item {
+    position: relative;
+    z-index: 10001; /* 提高搜索项的z-index */
+}
+
+/* 强制覆盖Bootstrap的下拉菜单样式 */
+.dropdown-menu.show {
+    z-index: 99999 !important;
+    position: absolute !important;
+}
+
+/* 确保下拉菜单在移动设备上正确显示 */
 @media (max-width: 991px) {
-    .tour-suggestions-dropdown {
-        width: 100%;
+    .box-search-banner .dropdown-custom .dropdown-menu,
+    .dropdown-custom.guest-dropdown .dropdown-menu {
+        position: fixed !important;
+        top: auto !important;
+        left: 20px !important;
+        right: 20px !important;
+        width: calc(100vw - 40px) !important;
+        max-width: none !important;
+        z-index: 99999 !important;
+        bottom: 20px !important;
+        max-height: 50vh !important;
+        overflow-y: auto !important;
     }
+}
+
+/* 更具体的旅客选择器样式 - 确保在Banner中也能正确显示 */
+.dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content,
+.box-search-banner .dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content {
+    padding: 20px !important;
+    min-width: 250px !important;
+    background-color: white !important;
+    z-index: 99999 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content .guest-type,
+.box-search-banner .dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content .guest-type {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 20px !important;
+}
+
+.dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content .guest-type:last-child,
+.box-search-banner .dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content .guest-type:last-child {
+    margin-bottom: 0 !important;
+}
+
+.dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content .guest-type span,
+.box-search-banner .dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content .guest-type span {
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    color: #333 !important;
+}
+
+.dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content .guest-controls,
+.box-search-banner .dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content .guest-controls {
+    display: flex !important;
+    align-items: center !important;
+    gap: 15px !important;
+}
+
+.dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content .guest-btn,
+.box-search-banner .dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content .guest-btn {
+    width: 32px !important;
+    height: 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    border: 2px solid #0b80c3 !important;
+    background-color: white !important;
+    color: #0b80c3 !important;
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+    outline: none !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+.dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content .guest-btn span,
+.box-search-banner .dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content .guest-btn span {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 100% !important;
+    line-height: 1 !important;
+    font-size: 16px !important;
+    font-weight: bold !important;
+}
+
+.dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content .guest-btn:hover:not(:disabled),
+.box-search-banner .dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content .guest-btn:hover:not(:disabled) {
+    background-color: #0b80c3 !important;
+    color: white !important;
+    transform: scale(1.05) !important;
+}
+
+.dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content .guest-btn:disabled,
+.box-search-banner .dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content .guest-btn:disabled {
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+    border-color: #ddd !important;
+    color: #999 !important;
+}
+
+.dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content .guest-btn:disabled:hover,
+.box-search-banner .dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content .guest-btn:disabled:hover {
+    background-color: white !important;
+    color: #999 !important;
+    transform: none !important;
+}
+
+.dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content .guest-count,
+.box-search-banner .dropdown-custom.guest-dropdown .dropdown-menu .guest-selector-content .guest-count {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    color: #333 !important;
+    min-width: 30px !important;
+    text-align: center !important;
 }
 
 /* 紧凑模式布局调整 */
@@ -1279,6 +1406,215 @@
 
 .box-search-banner .dropdown-custom .dropdown-toggle::before {
     color: rgba(255, 255, 255, 0.9);
+}
+
+/* 为建议项添加产品类型显示样式 */
+.tour-suggestion-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+}
+
+/* 确保搜索容器有正确的层级关系 */
+.search-keyword-content {
+    position: relative !important;
+    z-index: 100000 !important; /* 提高容器的z-index */
+}
+
+/* 关键词输入框包装器 - 允许下拉按钮 */
+.keyword-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding-right: 30px; /* 为下拉按钮留出空间 */
+}
+
+/* 清理重复的dropdown-toggle-btn相关样式 */
+.dropdown-toggle-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    font-size: 12px;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: #999;
+}
+
+.dropdown-toggle-btn:hover {
+    color: #666;
+}
+
+.dropdown-toggle-btn.active {
+    transform: translateY(-50%) rotate(180deg);
+}
+
+/* 常规版的下拉按钮 */
+.dropdown-toggle-btn.regular {
+    color: var(--textClr);
+}
+
+.dropdown-toggle-btn.regular:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.dropdown-toggle-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.keyword-search-container {
+    position: relative;
+    width: 100%;
+    z-index: 100000 !important; /* 提高容器的z-index */
+}
+
+.keyword-regular-input-container {
+    position: relative;
+    width: 100%;
+    z-index: 100000 !important; /* 提高容器的z-index */
+}
+
+.keyword-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--textClr);
+    font-size: 14px;
+    z-index: 1;
+}
+
+.keyword-input-regular {
+    width: 100%;
+    border: none;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--textClr);
+    padding: 5px 0 5px 25px;
+    transition: all 0.3s ease;
+}
+
+.keyword-input-regular::placeholder {
+    color: rgba(51, 51, 51, 0.6);
+}
+
+.keyword-input-regular:focus {
+    outline: none;
+}
+
+.keyword-input-regular:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* 产品建议下拉菜单 - 常规版 */
+.tour-suggestions-dropdown-regular {
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: white !important;
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+    z-index: 999999 !important;
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    margin-top: 4px !important;
+}
+
+/* 最终的样式定义 - 应用于常规版和banner特定样式 */
+.tour-suggestion-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    gap: 12px;
+}
+
+.tour-suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.tour-suggestion-item:hover {
+    background-color: #f8f9fa;
+}
+
+.tour-suggestion-item.active {
+    background-color: rgba(11, 128, 195, 0.1);
+    border-left: 3px solid #0b80c3;
+}
+
+.tour-suggestion-img {
+    width: 50px;
+    height: 40px;
+    border-radius: 6px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background-color: #f0f0f0;
+}
+
+.tour-suggestion-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.2s ease;
+}
+
+.tour-suggestion-item:hover .tour-suggestion-img img {
+    transform: scale(1.05);
+}
+
+.tour-suggestion-name {
+    font-size: 15px;
+    color: var(--textClr);
+    line-height: 1.5;
+    flex: 1;
+    white-space: normal;
+    word-break: break-word;
+    padding-right: 10px;
+}
+
+.tour-suggestion-type {
+    font-size: 12px;
+    color: #0b80c3;
+    font-weight: 500;
+    background-color: rgba(11, 128, 195, 0.1);
+    padding: 2px 8px;
+    border-radius: 12px;
+    display: inline-block;
+    width: fit-content;
+}
+
+/* 建议标题和列表 */
+.suggestions-header {
+    padding: 10px 15px;
+    font-weight: 600;
+    color: var(--textClr);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    background-color: rgba(0, 0, 0, 0.03);
+    position: sticky;
+    top: 0;
+    z-index: 999999;
+}
+
+.suggestions-list {
+    max-height: 350px;
+    overflow-y: auto;
+    padding: 5px;
 }
 
 

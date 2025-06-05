@@ -492,7 +492,7 @@ export const generateOrderConfirmation = async (orderData) => {
  * @param {string} currency - 货币符号，默认为 '$'
  * @returns {string} 格式化后的价格字符串
  */
-export const formatPrice = (price, currency = '¥') => {
+export const formatPrice = (price, currency = '$') => {
   if (price === null || price === undefined) return `${currency}0`;
   
   // 确保price是数字

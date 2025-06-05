@@ -125,7 +125,7 @@ const Tours = () => {
     // 添加日志
     console.log('筛选参数:', params);
     
-    // 首先确认是否有旅游类型参数，这是最基本的筛选条件
+    // 检查是否有旅游类型参数
     if (!params.tourType) {
       console.log('没有指定旅游类型，无法获取数据');
       setDayTours([]);
@@ -134,291 +134,81 @@ const Tours = () => {
       return;
     }
     
-    // 设置旅游类型参数
-    apiParams.tourType = params.tourType;
-    
-    if (params.keyword) apiParams.keyword = params.keyword;
-    
-    // 地点参数 - 使用所有选择的地点（后端API支持多地点查询，使用逗号分隔）
-    if (params.location && params.location.length > 0) {
-      // 如果只选择了一个地点，才发送到后端
-      if (params.location.length === 1) {
-        apiParams.location = params.location[0];
-        console.log('发送单地点筛选参数到后端:', apiParams.location);
-      } else {
-        // 如果选择了多个地点，不发送地点参数到后端，而是在前端进行筛选
-        console.log('选择了多个地点，将在前端进行筛选:', params.location.join(','));
-      }
-    }
-    
-    // 主题参数 - 使用所有选择的主题
-    if (params.themes && params.themes.length > 0) {
-      // 将主题参数作为逗号分隔的字符串传递给API
-      apiParams.themes = params.themes.join(',');
-    }
-    
-    // 评分参数 - 使用最低评分要求，参数名调整为minRating
-    if (params.ratings && params.ratings.length > 0) {
-      apiParams.minRating = Math.min(...params.ratings);
-    }
-    
-    // 价格范围 - 使用所有选择的价格区间的最小值和最大值
-    if (params.priceRange && params.priceRange.length > 0) {
-      const minValues = [];
-      const maxValues = [];
-      
-      params.priceRange.forEach(range => {
-        if (range.includes('-')) {
-          const [min, max] = range.split('-').map(Number);
-          minValues.push(min);
-          maxValues.push(max);
-        } else if (range.includes('以上')) {
-          const min = parseFloat(range.replace(/[^\d.]/g, ''));
-          minValues.push(min);
-          // 最大值使用一个非常大的数字表示无上限
-          maxValues.push(99999);
-        }
-      });
-      
-      if (minValues.length > 0) {
-        apiParams.minPrice = Math.min(...minValues);
-      }
-      if (maxValues.length > 0 && maxValues.some(v => v !== 99999)) {
-        // 如果有除了"以上"之外的其他区间，才设置最大值
-        apiParams.maxPrice = Math.max(...maxValues);
-      }
-    }
-    
-    // 时长参数 - 处理所有选择的时长区间
-    if (params.duration && params.duration.length > 0) {
-      const minDurations = [];
-      const maxDurations = [];
-      const minDays = [];
-      const maxDays = [];
-      
-      params.duration.forEach(duration => {
-        // 根据不同类型的时长格式处理
-        if (params.tourType === 'day_tour') {
-          if (duration === "2-4小时") {
-            minDurations.push(2);
-            maxDurations.push(4);
-          } else if (duration === "4-6小时") {
-            minDurations.push(4);
-            maxDurations.push(6);
-          } else if (duration === "6-8小时") {
-            minDurations.push(6);
-            maxDurations.push(8);
-          } else if (duration === "8小时以上") {
-            minDurations.push(8);
-            // 最大值使用一个非常大的数字表示无上限
-            maxDurations.push(24);
-          }
-        } else if (params.tourType === 'group_tour') {
-          if (duration === "2-3天") {
-            minDays.push(2);
-            maxDays.push(3);
-          } else if (duration === "4-5天") {
-            minDays.push(4);
-            maxDays.push(5);
-          } else if (duration === "6-7天") {
-            minDays.push(6);
-            maxDays.push(7);
-          } else if (duration === "7天以上") {
-            minDays.push(7);
-            // 最大值使用一个非常大的数字表示无上限
-            maxDays.push(30);
-          }
-        }
-      });
-      
-      if (params.tourType === 'day_tour' && minDurations.length > 0) {
-        apiParams.minDuration = Math.min(...minDurations);
-        if (maxDurations.length > 0 && !maxDurations.every(d => d === 24)) {
-          // 如果有除了"以上"之外的其他区间，才设置最大值
-          apiParams.maxDuration = Math.max(...maxDurations.filter(d => d !== 24));
-        }
-      } else if (params.tourType === 'group_tour' && minDays.length > 0) {
-        apiParams.minDays = Math.min(...minDays);
-        if (maxDays.length > 0 && !maxDays.every(d => d === 30)) {
-          // 如果有除了"以上"之外的其他区间，才设置最大值
-          apiParams.maxDays = Math.max(...maxDays.filter(d => d !== 30));
-        }
-      }
-    }
-    
-    // 适合人群参数 - 使用所有选择的选项
-    if (params.suitableFor && params.suitableFor.length > 0) {
-      // 将适合人群参数作为逗号分隔的字符串传递给API
-      apiParams.suitableFor = params.suitableFor.join(',');
-    }
-    
-    // 将参数序列化为字符串，用于比较
-    const paramsString = JSON.stringify(apiParams);
-    
-    // 如果与上次请求参数相同，则跳过
-    if (previousSearchParams.current === paramsString) {
-      console.log('参数未变化，跳过重复请求');
-      return;
-    }
-    
-    // 更新请求参数缓存
-    previousSearchParams.current = paramsString;
-    
-    setLoading(true);
+    // 根据旅游类型获取数据
     try {
-      console.log('发送API请求，使用参数:', apiParams);
-      
-      // 获取旅游数据，根据类型决定是否请求特定类型
-      const requests = [];
-      
-      if (params.tourType === 'day_tour') {
-        // 一日游请求
-        requests.push(getAllDayTours(apiParams)
-          .then(response => {
-            if (response && response.code === 1) {
-              console.log('一日游数据:', response.data);
-              
-              // 确保是数组，并且每个项目都有ID
-              const dayToursData = Array.isArray(response.data) 
-                ? response.data 
-                : (response.data && Array.isArray(response.data.records) 
-                    ? response.data.records 
-                    : []);
-                    
-              setDayTours(dayToursData.map(tour => ({
-                ...tour,
-                id: tour.id || tour.tour_id,
-                type: 'day_tour'
-              })));
-              // 确保清空另一种类型的数据
-              setGroupTours([]);
-            } else {
-              console.error('获取一日游数据失败:', response);
-              setDayTours([]);
-              setGroupTours([]);
-            }
-          })
-          .catch(err => {
-            console.error('获取一日游数据错误:', err);
-            setDayTours([]);
-            setGroupTours([]);
-          })
-        );
+      if (params.tourType === 'all') {
+        // 获取所有类型的数据
+        console.log('获取所有类型的产品数据');
+        
+        // 同时请求一日游和跟团游数据
+        const [dayToursResponse, groupToursResponse] = await Promise.all([
+          getAllDayTours(apiParams),
+          getAllGroupTours(apiParams)
+        ]);
+        
+        // 处理一日游数据
+        if (dayToursResponse && dayToursResponse.code === 1 && dayToursResponse.data) {
+          const dayToursData = Array.isArray(dayToursResponse.data) 
+            ? dayToursResponse.data 
+            : (dayToursResponse.data.records || []);
+          setDayTours(dayToursData);
+          console.log('获取到一日游数据:', dayToursData.length, '条');
+        } else {
+          setDayTours([]);
+        }
+        
+        // 处理跟团游数据
+        if (groupToursResponse && groupToursResponse.code === 1 && groupToursResponse.data) {
+          const groupToursData = Array.isArray(groupToursResponse.data) 
+            ? groupToursResponse.data 
+            : (groupToursResponse.data.records || []);
+          setGroupTours(groupToursData);
+          console.log('获取到跟团游数据:', groupToursData.length, '条');
+        } else {
+          setGroupTours([]);
+        }
+        
+      } else if (params.tourType === 'day_tour') {
+        // 只获取一日游数据
+        setGroupTours([]); // 清空跟团游数据
+        
+        if (params.keyword) apiParams.keyword = params.keyword;
+        // 添加其他筛选参数...
+        
+        const response = await getAllDayTours(apiParams);
+        if (response && response.code === 1 && response.data) {
+          const toursData = Array.isArray(response.data) 
+            ? response.data 
+            : (response.data.records || []);
+          setDayTours(toursData);
+          console.log('获取到一日游数据:', toursData.length, '条');
+        } else {
+          setDayTours([]);
+        }
+        
       } else if (params.tourType === 'group_tour') {
-        // 跟团游请求
-        requests.push(getAllGroupTours(apiParams)
-          .then(response => {
-            if (response && response.code === 1) {
-              console.log('跟团游数据:', response.data);
-              
-              // 确保是数组，并且每个项目都有ID
-              const groupToursData = Array.isArray(response.data) 
-                ? response.data 
-                : (response.data && Array.isArray(response.data.records) 
-                    ? response.data.records 
-                    : []);
-                    
-              setGroupTours(groupToursData.map(tour => ({
-                ...tour,
-                id: tour.id || tour.tour_id,
-                type: 'group_tour'
-              })));
-              // 确保清空另一种类型的数据
-              setDayTours([]);
-            } else {
-              console.error('获取跟团游数据失败:', response);
-              setGroupTours([]);
-              setDayTours([]);
-            }
-          })
-          .catch(err => {
-            console.error('获取跟团游数据错误:', err);
-            setGroupTours([]);
-            setDayTours([]);
-          })
-        );
-      } else if (params.tourType === 'all') {
-        // 全部请求参数，请求所有类型的旅游数据
-        const dayTourParams = { ...apiParams };
-        const groupTourParams = { ...apiParams };
+        // 只获取跟团游数据
+        setDayTours([]); // 清空一日游数据
         
-        // 删除旅游类型参数
-        delete dayTourParams.tourType;
-        delete groupTourParams.tourType;
+        if (params.keyword) apiParams.keyword = params.keyword;
+        // 添加其他筛选参数...
         
-        // 获取一日游数据
-        requests.push(getAllDayTours(dayTourParams)
-          .then(response => {
-            if (response && response.code === 1) {
-              console.log('全部类型的旅游数据中一日游的数据:', response.data);
-              
-              // 确保是数组，并且每个项目都有ID
-              const dayToursData = Array.isArray(response.data) 
-                ? response.data 
-                : (response.data && Array.isArray(response.data.records) 
-                    ? response.data.records 
-                    : []);
-                    
-              setDayTours(dayToursData.map(tour => ({
-                ...tour,
-                id: tour.id || tour.tour_id,
-                type: 'day_tour'
-              })));
-            } else {
-              console.error('获取全部类型的旅游数据中一日游的数据失败:', response);
-              setDayTours([]);
-            }
-          })
-          .catch(err => {
-            console.error('获取全部类型的旅游数据中一日游的数据错误:', err);
-            setDayTours([]);
-          })
-        );
-        
-        // 获取跟团游数据
-        requests.push(getAllGroupTours(groupTourParams)
-          .then(response => {
-            if (response && response.code === 1) {
-              console.log('全部类型的旅游数据中跟团游的数据:', response.data);
-              
-              // 确保是数组，并且每个项目都有ID
-              const groupToursData = Array.isArray(response.data) 
-                ? response.data 
-                : (response.data && Array.isArray(response.data.records) 
-                    ? response.data.records 
-                    : []);
-                    
-              setGroupTours(groupToursData.map(tour => ({
-                ...tour,
-                id: tour.id || tour.tour_id,
-                type: 'group_tour'
-              })));
-            } else {
-              console.error('获取全部类型的旅游数据中跟团游的数据失败:', response);
-              setGroupTours([]);
-            }
-          })
-          .catch(err => {
-            console.error('获取全部类型的旅游数据中跟团游的数据错误:', err);
-            setGroupTours([]);
-          })
-        );
-      } else {
-        // 如果没有指定有效的类型，则不发送请求
-        console.log('未指定有效的旅游类型，不发送请求');
-        setDayTours([]);
-        setGroupTours([]);
-        setLoading(false);
-        return;
+        const response = await getAllGroupTours(apiParams);
+        if (response && response.code === 1 && response.data) {
+          const toursData = Array.isArray(response.data) 
+            ? response.data 
+            : (response.data.records || []);
+          setGroupTours(toursData);
+          console.log('获取到跟团游数据:', toursData.length, '条');
+        } else {
+          setGroupTours([]);
+        }
       }
-      
-      // 等待所有请求完成
-      await Promise.all(requests);
       
       setError(null);
-    } catch (err) {
-      console.error('获取旅游数据失败:', err);
-      setError('获取旅游数据失败，请稍后重试');
+    } catch (error) {
+      console.error('获取产品数据失败:', error);
+      setError('获取产品数据失败，请重试');
       setDayTours([]);
       setGroupTours([]);
     } finally {

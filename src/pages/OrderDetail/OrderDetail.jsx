@@ -973,7 +973,7 @@ const OrderDetail = () => {
                       )}
                           </div>
                     <div className="text-end">
-                      <div>¥{Number(orderData.totalPrice || 0).toFixed(2)}</div>
+                      <div>${Number(orderData.totalPrice || 0).toFixed(2)}</div>
                     </div>
                         </ListGroup.Item>
                   
@@ -989,7 +989,7 @@ const OrderDetail = () => {
                   {orderData.extraRoomFee > 0 && (
                     <ListGroup.Item className="d-flex justify-content-between px-0">
                       <div>单房差 {orderData.roomCount || 1}间 × {orderData.nights || 0}晚</div>
-                      <div className="text-end text-danger">+¥{Number(orderData.extraRoomFee).toFixed(2)}</div>
+                      <div className="text-end text-danger">+${Number(orderData.extraRoomFee).toFixed(2)}</div>
                     </ListGroup.Item>
                   )}
                   
@@ -998,7 +998,7 @@ const OrderDetail = () => {
                     <ListGroup.Item className="d-flex justify-content-between px-0 text-muted">
                       <div>非会员价</div>
                       <div className="text-end">
-                        <del>¥{Number(orderData.nonAgentPrice).toFixed(2)}</del>
+                        <del>${Number(orderData.nonAgentPrice).toFixed(2)}</del>
                       </div>
                     </ListGroup.Item>
                   )}
@@ -1008,7 +1008,7 @@ const OrderDetail = () => {
                     <ListGroup.Item className="d-flex justify-content-between px-0 text-muted">
                       <div>原价</div>
                       <div className="text-end">
-                        <del>¥{Number(orderData.originalPrice).toFixed(2)}</del>
+                        <del>${Number(orderData.originalPrice).toFixed(2)}</del>
                         {orderData.discountRate && 
                           <small className="ms-2 text-success">({(Number(orderData.discountRate) * 100).toFixed(0)}折)</small>
                         }
@@ -1022,7 +1022,7 @@ const OrderDetail = () => {
                     {isOperator() ? (
                       <span className="text-muted">价格已隐藏</span>
                     ) : (
-                      <span className="text-primary">¥{Number(orderData.totalPrice || 0).toFixed(2)}</span>
+                      <span className="text-primary">${Number(orderData.totalPrice || 0).toFixed(2)}</span>
                     )}
                   </ListGroup.Item>
                 </ListGroup>

@@ -592,7 +592,7 @@ const Orders = () => {
                 {isOperator() ? (
                   <h5 className="mb-0 text-muted">价格已隐藏</h5>
                 ) : (
-                  <h5 className="mb-0 text-success">¥{order.totalPrice?.toFixed(2) || '0.00'}</h5>
+                  <h5 className="mb-0 text-success">${order.totalPrice?.toFixed(2) || '0.00'}</h5>
                 )}
               </div>
             </Col>

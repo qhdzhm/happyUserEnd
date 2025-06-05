@@ -492,11 +492,11 @@ const AgentCenter = () => {
                   </ListGroup.Item>
                   <ListGroup.Item className="d-flex justify-content-between align-items-center">
                     <span>总交易金额</span>
-                    <span className="text-primary fw-bold">¥{stats.totalSales?.toFixed(2) || '0.00'}</span>
+                    <span className="text-primary fw-bold">${stats.totalSales?.toFixed(2) || '0.00'}</span>
                   </ListGroup.Item>
                   <ListGroup.Item className="d-flex justify-content-between align-items-center">
                     <span>折扣优惠总额</span>
-                    <span className="text-success fw-bold">¥{stats.savedAmount?.toFixed(2) || '0.00'}</span>
+                    <span className="text-success fw-bold">${stats.savedAmount?.toFixed(2) || '0.00'}</span>
                   </ListGroup.Item>
                   <ListGroup.Item className="d-flex justify-content-between align-items-center">
                     <span>当前折扣率</span>
@@ -504,7 +504,7 @@ const AgentCenter = () => {
                   </ListGroup.Item>
                   <ListGroup.Item className="d-flex justify-content-between align-items-center">
                     <span>可用信用额度</span>
-                    <span className="text-primary fw-bold">¥{creditInfo.availableCredit?.toFixed(2) || '0.00'}</span>
+                    <span className="text-primary fw-bold">${creditInfo.availableCredit?.toFixed(2) || '0.00'}</span>
                   </ListGroup.Item>
                 </ListGroup>
               )}
@@ -549,15 +549,15 @@ const AgentCenter = () => {
               <div className="mt-3">
                 <div className="d-flex justify-content-between">
                   <span className="small text-muted">总额度:</span>
-                  <span className="fw-bold">¥{creditInfo.totalCredit?.toFixed(2) || '0.00'}</span>
+                  <span className="fw-bold">${creditInfo.totalCredit?.toFixed(2) || '0.00'}</span>
                 </div>
                 <div className="d-flex justify-content-between">
                   <span className="small text-muted">已用额度:</span>
-                  <span className="fw-bold">¥{creditInfo.usedCredit?.toFixed(2) || '0.00'}</span>
+                  <span className="fw-bold">${creditInfo.usedCredit?.toFixed(2) || '0.00'}</span>
                 </div>
                 <div className="d-flex justify-content-between">
                   <span className="small text-muted">可用额度:</span>
-                  <span className="fw-bold text-success">¥{creditInfo.availableCredit?.toFixed(2) || '0.00'}</span>
+                  <span className="fw-bold text-success">${creditInfo.availableCredit?.toFixed(2) || '0.00'}</span>
                 </div>
               </div>
               

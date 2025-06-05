@@ -676,7 +676,7 @@ const EditBooking = () => {
                   <div className="mb-3">
                     <strong>订单金额:</strong>
                     <div className="text-primary fs-5">
-                      ¥{orderData.totalPrice?.toFixed(2) || '0.00'}
+                      $${orderData.totalPrice?.toFixed(2) || '0.00'}
                     </div>
                   </div>
                 )}

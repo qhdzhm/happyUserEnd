@@ -37,18 +37,16 @@ const Home = () => {
   const [loading, setLoading] = useState({
     dayTours: true,
     groupTours: true,
-    recommendedTours: false,
     hotTours: false,
-    themeTours: false
+    recommendedTours: false
   });
   
   // 错误状态
   const [error, setError] = useState({
     dayTours: null,
     groupTours: null,
-    recommendedTours: null,
     hotTours: null,
-    themeTours: null
+    recommendedTours: null
   });
   
   // 搜索状态
@@ -64,16 +62,7 @@ const Home = () => {
   const { isAuthenticated } = useSelector(state => state.auth);
   const currentTheme = preferences?.theme || 'light';
 
-  // 添加请求状态引用
-  const requestsInProgress = useRef({
-    dayTours: false,
-    groupTours: false,
-    hotTours: false,
-    recommendedTours: false
-  });
-
   const [discountPrices, setDiscountPrices] = useState({});
-  const [loadingDiscounts, setLoadingDiscounts] = useState(false);
   
   // 新增：当前显示的目的地索引
   const [activeDayTourIndex, setActiveDayTourIndex] = useState(0);
@@ -150,31 +139,30 @@ const Home = () => {
   useEffect(() => {
     // 获取一日游数据
     const fetchDayTours = async () => {
-      // 如果已经在请求中，则跳过
-      if (requestsInProgress.current.dayTours) {
-        console.log('一日游数据请求正在进行中，跳过重复请求');
-        return;
-      }
+      console.log('开始获取一日游数据...');
+      setLoading(prev => ({ ...prev, dayTours: true }));
+      setError(prev => ({ ...prev, dayTours: null }));
       
-      requestsInProgress.current.dayTours = true;
       try {
-        // 设置超时处理
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('请求超时')), 8000)
-        );
-        
-        console.log('开始获取一日游数据...');
-        const fetchPromise = api.getAllDayTours();
-        const response = await Promise.race([fetchPromise, timeoutPromise]);
+        const response = await api.getAllDayTours({ _source: 'home' });
+        console.log('一日游API响应:', response);
+        console.log('一日游API响应类型:', typeof response);
+        console.log('一日游API响应code:', response?.code);
+        console.log('一日游API响应data:', response?.data);
+        console.log('一日游API响应data类型:', typeof response?.data);
         
         // 处理响应数据
         if (response && response.code === 1 && response.data) {
           // 从 response.data 中获取 records
           const records = response.data.records || response.data;
+          console.log('一日游records:', records);
+          console.log('一日游records类型:', typeof records);
+          console.log('一日游records是否为数组:', Array.isArray(records));
+          console.log('一日游records长度:', records?.length);
           
           if (Array.isArray(records) && records.length > 0) {
             setDayTours(records);
-            console.log(records);
+            console.log('成功设置一日游数据:', records.length, '条');
             
             // 如果是代理商，获取折扣价格
             const userType = localStorage.getItem('userType');
@@ -199,158 +187,140 @@ const Home = () => {
                   }));
                 }
               } catch (discountError) {
-                console.error('计算折扣价格失败:', discountError);
+                console.error('获取折扣价格失败:', discountError);
               }
             }
           } else {
-            console.warn("API返回的一日游数据为空");
+            console.warn("API返回的一日游数据为空或不是数组");
+            console.warn("实际数据:", records);
             setDayTours([]);
           }
         } else {
-          console.warn("API返回错误", response);
+          console.warn("一日游API返回错误", response);
+          console.warn("检查条件: response存在?", !!response, "code===1?", response?.code === 1, "data存在?", !!response?.data);
           setDayTours([]);
         }
-        setLoading(prev => ({ ...prev, dayTours: false }));
       } catch (err) {
         console.error("获取一日游失败:", err);
         setDayTours([]);
         setError(prev => ({ ...prev, dayTours: "获取一日游数据失败" }));
-        setLoading(prev => ({ ...prev, dayTours: false }));
       } finally {
-        requestsInProgress.current.dayTours = false;
+        setLoading(prev => ({ ...prev, dayTours: false }));
       }
     };
-    
-    console.log(dayTours);
-    
+
     // 获取跟团游数据
     const fetchGroupTours = async () => {
-      // 如果已经在请求中，则跳过
-      if (requestsInProgress.current.groupTours) {
-        console.log('跟团游数据请求正在进行中，跳过重复请求');
-        return;
-      }
+      console.log('开始获取跟团游数据...');
+      setLoading(prev => ({ ...prev, groupTours: true }));
+      setError(prev => ({ ...prev, groupTours: null }));
       
-      requestsInProgress.current.groupTours = true;
       try {
-        // 设置超时处理
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('请求超时')), 8000)
-        );
-        
-        const fetchPromise = api.getAllGroupTours();
-        const response = await Promise.race([fetchPromise, timeoutPromise]);
+        const response = await api.getAllGroupTours({ _source: 'home' });
+        console.log('跟团游API响应:', response);
+        console.log('跟团游API响应类型:', typeof response);
+        console.log('跟团游API响应code:', response?.code);
+        console.log('跟团游API响应data:', response?.data);
+        console.log('跟团游API响应data类型:', typeof response?.data);
         
         // 处理响应数据
         if (response && response.code === 1 && response.data) {
           // 从 response.data 中获取 records
           const records = response.data.records || response.data;
+          console.log('跟团游records:', records);
+          console.log('跟团游records类型:', typeof records);
+          console.log('跟团游records是否为数组:', Array.isArray(records));
+          console.log('跟团游records长度:', records?.length);
           
           if (Array.isArray(records) && records.length > 0) {
             setGroupTours(records);
+            console.log('成功设置跟团游数据:', records.length, '条');
           } else {
-            console.warn("API返回的跟团游数据为空");
+            console.warn("API返回的跟团游数据为空或不是数组");
+            console.warn("实际数据:", records);
             setGroupTours([]);
           }
         } else {
-          console.warn("API返回错误", response);
+          console.warn("跟团游API返回错误", response);
+          console.warn("检查条件: response存在?", !!response, "code===1?", response?.code === 1, "data存在?", !!response?.data);
           setGroupTours([]);
         }
-        setLoading(prev => ({ ...prev, groupTours: false }));
       } catch (err) {
         console.error("获取跟团游失败:", err);
         setGroupTours([]);
         setError(prev => ({ ...prev, groupTours: "获取跟团游数据失败" }));
-        setLoading(prev => ({ ...prev, groupTours: false }));
       } finally {
-        requestsInProgress.current.groupTours = false;
+        setLoading(prev => ({ ...prev, groupTours: false }));
       }
     };
 
     // 获取热门旅游数据
     const fetchHotTours = async () => {
-      // 如果已经在请求中，则跳过
-      if (requestsInProgress.current.hotTours) {
-        console.log('热门旅游数据请求正在进行中，跳过重复请求');
-        return;
-      }
+      console.log('开始获取热门旅游数据...');
+      setLoading(prev => ({ ...prev, hotTours: true }));
+      setError(prev => ({ ...prev, hotTours: null }));
       
-      requestsInProgress.current.hotTours = true;
       try {
-        // 设置超时处理
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('请求超时')), 8000)
-        );
-        
-        const fetchPromise = api.getHotTours(6);
-        const response = await Promise.race([fetchPromise, timeoutPromise]);
+        const response = await api.getHotTours(6);
+        console.log('热门旅游API响应:', response);
         
         // Spring Boot返回的数据结构是 { code, msg, data }
         if (response && response.code === 1) {
           const data = response.data;
           if (Array.isArray(data) && data.length > 0) {
             setHotTours(data);
+            console.log('成功设置热门旅游数据:', data.length, '条');
           } else {
             console.warn("API返回的热门旅游数据为空");
             setHotTours([]);
           }
         } else {
-          console.warn("API返回错误", response);
+          console.warn("热门旅游API返回错误", response);
           setHotTours([]);
         }
-        setLoading(prev => ({ ...prev, hotTours: false }));
       } catch (err) {
         console.error("获取热门旅游失败:", err);
         setHotTours([]);
         setError(prev => ({ ...prev, hotTours: "获取热门旅游数据失败" }));
-        setLoading(prev => ({ ...prev, hotTours: false }));
       } finally {
-        requestsInProgress.current.hotTours = false;
+        setLoading(prev => ({ ...prev, hotTours: false }));
       }
     };
 
     // 获取推荐旅游数据
     const fetchRecommendedTours = async () => {
-      // 如果已经在请求中，则跳过
-      if (requestsInProgress.current.recommendedTours) {
-        console.log('推荐旅游数据请求正在进行中，跳过重复请求');
-        return;
-      }
+      console.log('开始获取推荐旅游数据...');
+      setLoading(prev => ({ ...prev, recommendedTours: true }));
+      setError(prev => ({ ...prev, recommendedTours: null }));
       
-      requestsInProgress.current.recommendedTours = true;
       try {
-        // 设置超时处理
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('请求超时')), 8000)
-        );
-        
-        const fetchPromise = api.getRecommendedTours(6);
-        const response = await Promise.race([fetchPromise, timeoutPromise]);
+        const response = await api.getRecommendedTours(6);
+        console.log('推荐旅游API响应:', response);
         
         // Spring Boot返回的数据结构是 { code, msg, data }
         if (response && response.code === 1) {
           const data = response.data;
           if (Array.isArray(data) && data.length > 0) {
             setRecommendedTours(data);
+            console.log('成功设置推荐旅游数据:', data.length, '条');
           } else {
             console.warn("API返回的推荐旅游数据为空");
             setRecommendedTours([]);
           }
         } else {
-          console.warn("API返回错误", response);
+          console.warn("推荐旅游API返回错误", response);
           setRecommendedTours([]);
         }
-        setLoading(prev => ({ ...prev, recommendedTours: false }));
       } catch (err) {
         console.error("获取推荐旅游失败:", err);
         setRecommendedTours([]);
         setError(prev => ({ ...prev, recommendedTours: "获取推荐旅游数据失败" }));
-        setLoading(prev => ({ ...prev, recommendedTours: false }));
       } finally {
-        requestsInProgress.current.recommendedTours = false;
+        setLoading(prev => ({ ...prev, recommendedTours: false }));
       }
     };
 
+    // 立即开始所有数据获取
     fetchDayTours();
     fetchGroupTours();
     fetchHotTours();
@@ -538,14 +508,18 @@ const Home = () => {
       return {
         opacity: 1,
         transform: 'translateY(0)',
-        transition: 'opacity 0.8s ease-out, transform 0.8s ease-out'
+        transitionProperty: 'opacity, transform',
+        transitionDuration: '0.8s',
+        transitionTimingFunction: 'ease-out'
       };
     }
     // 否则返回初始样式（隐藏并向下偏移）
     return {
       opacity: 0,
       transform: 'translateY(50px)',
-      transition: 'opacity 0.8s ease-out, transform 0.8s ease-out'
+      transitionProperty: 'opacity, transform',
+      transitionDuration: '0.8s',
+      transitionTimingFunction: 'ease-out'
     };
   };
   
@@ -559,37 +533,49 @@ const Home = () => {
           return { 
             opacity: 0,
             transform: 'translateY(50px)',
-            transition: 'opacity 0.8s ease-out, transform 0.8s ease-out'
+            transitionProperty: 'opacity, transform',
+            transitionDuration: '0.8s',
+            transitionTimingFunction: 'ease-out'
           };
         case 'slide-left':
           return {
             opacity: 0,
             transform: 'translateX(-100px)',
-            transition: 'opacity 0.8s ease-out, transform 0.8s ease-out'
+            transitionProperty: 'opacity, transform',
+            transitionDuration: '0.8s',
+            transitionTimingFunction: 'ease-out'
           };
         case 'slide-right':
           return {
             opacity: 0,
             transform: 'translateX(100px)',
-            transition: 'opacity 0.8s ease-out, transform 0.8s ease-out'
+            transitionProperty: 'opacity, transform',
+            transitionDuration: '0.8s',
+            transitionTimingFunction: 'ease-out'
           };
         case 'scale':
           return {
             opacity: 0,
             transform: 'scale(0.8)',
-            transition: 'opacity 0.8s ease-out, transform 0.8s ease-out'
+            transitionProperty: 'opacity, transform',
+            transitionDuration: '0.8s',
+            transitionTimingFunction: 'ease-out'
           };
         case 'rotate':
           return {
             opacity: 0,
             transform: 'rotate(-10deg) scale(0.9)',
-            transition: 'opacity 0.8s ease-out, transform 0.8s ease-out'
+            transitionProperty: 'opacity, transform',
+            transitionDuration: '0.8s',
+            transitionTimingFunction: 'ease-out'
           };
         default:
           return {
             opacity: 0,
             transform: 'translateY(50px)',
-            transition: 'opacity 0.8s ease-out, transform 0.8s ease-out'
+            transitionProperty: 'opacity, transform',
+            transitionDuration: '0.8s',
+            transitionTimingFunction: 'ease-out'
           };
       }
     }
@@ -598,7 +584,9 @@ const Home = () => {
     return {
       opacity: 1,
       transform: 'translateY(0) translateX(0) rotate(0) scale(1)',
-      transition: 'opacity 0.8s ease-out, transform 0.8s ease-out',
+      transitionProperty: 'opacity, transform',
+      transitionDuration: '0.8s',
+      transitionTimingFunction: 'ease-out',
       transitionDelay: `${index * 0.1}s`
     };
   };

@@ -75,6 +75,60 @@ const TourDetails = () => {
   const { isAuthenticated, user, userType } = useSelector(state => state.auth);
   const dispatch = useDispatch();
   
+  // 处理搜索参数
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    
+    // 从搜索参数中获取并设置相关值
+    const fromSearch = searchParams.get('fromSearch');
+    if (fromSearch === 'true') {
+      console.log('从搜索页面跳转，处理搜索参数...');
+      
+      // 处理日期参数
+      const startDateParam = searchParams.get('startDate');
+      if (startDateParam) {
+        const parsedStartDate = new Date(startDateParam);
+        if (!isNaN(parsedStartDate.getTime())) {
+          setStartDate(parsedStartDate);
+          setSelectedDate(parsedStartDate);
+          console.log('设置开始日期:', parsedStartDate);
+        }
+      }
+      
+      const endDateParam = searchParams.get('endDate');
+      if (endDateParam) {
+        const parsedEndDate = new Date(endDateParam);
+        if (!isNaN(parsedEndDate.getTime())) {
+          setEndDate(parsedEndDate);
+          console.log('设置结束日期:', parsedEndDate);
+        }
+      }
+      
+      // 处理人数参数
+      const adultsParam = searchParams.get('adults');
+      if (adultsParam && !isNaN(parseInt(adultsParam))) {
+        const adults = parseInt(adultsParam);
+        setAdultCount(adults);
+        setSelectedAdultCount(adults);
+        console.log('设置成人数量:', adults);
+      }
+      
+      const childrenParam = searchParams.get('children');
+      if (childrenParam && !isNaN(parseInt(childrenParam))) {
+        const children = parseInt(childrenParam);
+        setChildCount(children);
+        setSelectedChildCount(children);
+        console.log('设置儿童数量:', children);
+        
+        // 如果有儿童，需要设置年龄输入
+        if (children > 0) {
+          setShowChildAgeInputs(true);
+          setChildrenAges(new Array(children).fill(8)); // 默认年龄为8岁
+        }
+      }
+    }
+  }, [location.search]);
+  
   // 从URL路径和查询参数中确定类型
   const determineType = () => {
     // 1. 首先从路径中判断，这是最优先的
@@ -1053,10 +1107,10 @@ const TourDetails = () => {
                                     <div className="d-flex align-items-center mb-2">
                                       <FaPercent className="text-primary me-2" />
                                       <span>
-                                        代理商价格：<strong>¥{calculatedPrice.totalPrice.toFixed(2)}</strong>
+                                        代理商价格：<strong>${calculatedPrice.totalPrice.toFixed(2)}</strong>
                                         {calculatedPrice.nonAgentPrice > calculatedPrice.totalPrice && (
                                           <span className="text-success ms-1 fw-bold">
-                                            (节省 ¥{(calculatedPrice.nonAgentPrice - calculatedPrice.totalPrice).toFixed(2)})
+                                            (节省 ${(calculatedPrice.nonAgentPrice - calculatedPrice.totalPrice).toFixed(2)})
                                           </span>
                                         )}
                                       </span>
@@ -1069,12 +1123,12 @@ const TourDetails = () => {
                                       当前选择：<strong>{selectedHotelLevel}</strong> 
                                       {calculatedPrice && calculatedPrice.hotelPriceDifference > 0 && 
                                         <span className="text-danger ms-1 fw-bold">
-                                          (+¥{Math.abs(calculatedPrice.hotelPriceDifference).toFixed(2)}/晚)
+                                          (+${Math.abs(calculatedPrice.hotelPriceDifference).toFixed(2)}/晚)
                                         </span>
                                       }
                                       {calculatedPrice?.hotelPriceDifference < 0 && 
                                         <span className="text-success ms-1 fw-bold">
-                                          (-¥{Math.abs(calculatedPrice.hotelPriceDifference).toFixed(2)}/晚)
+                                          (-${Math.abs(calculatedPrice.hotelPriceDifference).toFixed(2)}/晚)
                                         </span>
                                       }
                                       {(calculatedPrice?.hotelPriceDifference === 0 || calculatedPrice?.hotelPriceDifference === undefined) && 
@@ -1096,7 +1150,7 @@ const TourDetails = () => {
                                     <div className="d-flex align-items-center mt-2">
                                       <FaHotel className="text-success me-2" />
                                       <span>
-                                        单房差：<strong>¥{calculatedPrice.extraRoomFee.toFixed(2)}</strong>
+                                        单房差：<strong>${calculatedPrice.extraRoomFee.toFixed(2)}</strong>
                                       </span>
                                     </div>
                                   )}
@@ -1210,8 +1264,8 @@ const TourDetails = () => {
                                             {hotel.isBaseLevel ? 
                                               '(基准价)' : 
                                               hotel.priceDifference > 0 ? 
-                                                `(+¥${hotel.priceDifference}/晚)` : 
-                                                `(-¥${Math.abs(hotel.priceDifference)}/晚)`
+                                                `(+${hotel.priceDifference}/晚)` : 
+                                                `(-${Math.abs(hotel.priceDifference)}/晚)`
                                             }
                                           </span>
                                           <div className="small text-muted">{hotel.description}</div>
@@ -1229,7 +1283,7 @@ const TourDetails = () => {
                                       type="radio"
                                       id="hotel-3"
                                       name="hotelLevel"
-                                      label={<>3星酒店 (-¥60/晚)<div className="small text-muted">标准三星级酒店</div></>}
+                                      label={<>3星酒店 (-$60/晚)<div className="small text-muted">标准三星级酒店</div></>}
                                       value="3星"
                                       checked={selectedHotelLevel === '3星'}
                                       onChange={handleHotelLevelChange}
@@ -1249,7 +1303,7 @@ const TourDetails = () => {
                                       type="radio"
                                       id="hotel-4.5"
                                       name="hotelLevel"
-                                      label={<>4.5星酒店 (+¥140/晚)<div className="small text-muted">高级四星半级酒店</div></>}
+                                      label={<>4.5星酒店 (+$140/晚)<div className="small text-muted">高级四星半级酒店</div></>}
                                       value="4.5星"
                                       checked={selectedHotelLevel === '4.5星'}
                                       onChange={handleHotelLevelChange}
@@ -1259,7 +1313,7 @@ const TourDetails = () => {
                                       type="radio"
                                       id="hotel-5"
                                       name="hotelLevel"
-                                      label={<>5星酒店 (+¥240/晚)<div className="small text-muted">豪华五星级酒店</div></>}
+                                      label={<>5星酒店 (+$240/晚)<div className="small text-muted">豪华五星级酒店</div></>}
                                       value="5星"
                                       checked={selectedHotelLevel === '5星'}
                                       onChange={handleHotelLevelChange}

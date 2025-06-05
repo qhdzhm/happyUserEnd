@@ -206,47 +206,87 @@
 }
 
 /* 文本解析器卡片样式 */
+/*
 .text-parser-card {
-  border: 1px dashed var(--primary-color);
-  border-radius: 8px;
-  background-color: rgba(37, 99, 235, 0.03);
+  border: 2px dashed #007bff;
+  border-radius: 10px;
+  background: #f8f9ff;
   transition: all 0.3s ease;
 }
 
 .text-parser-card:hover {
-  background-color: rgba(37, 99, 235, 0.05);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #0056b3;
+  background: #f0f2ff;
 }
 
 .text-parser-card textarea {
-  border: 1px solid #dee2e6;
-  background-color: #fff;
-  font-family: monospace;
-  font-size: 0.9rem;
+  border: none;
+  background: transparent;
   resize: vertical;
+  min-height: 150px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
 }
 
 .text-parser-card textarea:focus {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+  box-shadow: none;
+  background: transparent;
 }
+*/
 
-/* 快速填充按钮样式 */
+/* 快速解析按钮样式 */
+/*
 .quick-parse-btn {
+  background: linear-gradient(45deg, #007bff, #0056b3);
+  border: none;
+  border-radius: 25px;
   padding: 10px 20px;
-  font-size: 1rem;
-  font-weight: 600;
-  background-color: var(--primary-color);
-  border-color: var(--primary-color);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  color: white;
+  font-weight: 500;
+  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
   transition: all 0.3s ease;
 }
 
 .quick-parse-btn:hover {
-  background-color: var(--primary-dark);
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+  background: linear-gradient(45deg, #0056b3, #003d82);
 }
+*/
+
+/* 解析文本框样式 */
+/*
+.parse-textarea {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  border: 2px dashed #007bff;
+  border-radius: 8px;
+  background: #f8f9ff;
+  transition: all 0.3s ease;
+}
+
+.parse-textarea:focus {
+  border-color: #0056b3;
+  background: #ffffff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+*/
+
+/* 快速填充按钮样式 */
+/*
+.quick-parse-btn {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  border: none;
+  border-radius: 50px;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.quick-parse-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3);
+}
+*/
 
 /* 解析模态窗样式 */
 .modal-content {
@@ -679,8 +719,8 @@
 }
 
 .booking-title {
-  font-weight: 700;
-  color: #0B5ED7;
+  font-weight: 600;
+  color: #343a40;
   margin-bottom: 1.5rem;
 }
 
@@ -890,6 +930,7 @@
 }
 
 /* 步骤指示器样式 */
+/*
 .booking-steps {
   margin-bottom: 2rem;
 }
@@ -944,6 +985,7 @@
   color: #0d6efd;
   font-weight: 600;
 }
+*/
 
 /* 产品信息卡片样式 */
 .tour-info-card {
@@ -1090,6 +1132,7 @@
 
 /* 响应式调整 */
 @media (max-width: 768px) {
+  /*
   .booking-step::after {
     right: -25%;
     width: 50%;
@@ -1104,6 +1147,7 @@
   .step-name {
     font-size: 0.8rem;
   }
+  */
   
   .booking-tabs .nav-link {
     padding: 0.5rem 0.75rem;
@@ -1182,6 +1226,7 @@
 
 /* 针对特小屏幕设备的优化 */
 @media (max-width: 576px) {
+  /*
   .booking-steps .step-circle {
     width: 28px;
     height: 28px;
@@ -1191,6 +1236,7 @@
   .booking-steps .step-name {
     font-size: 0.7rem;
   }
+  */
   
   /* 减小表单标题的大小 */
   .form-section h5 {
@@ -1427,6 +1473,7 @@
   font-weight: 600;
 }
 
+/*
 .booking-steps {
   margin-bottom: 2rem;
 }
@@ -1464,6 +1511,7 @@
   color: #007bff;
   font-weight: 600;
 }
+*/
 
 /* 价格列表样式 */
 .price-list .list-group-item {
@@ -1484,25 +1532,29 @@
 }
 
 /* 快速填充按钮 */
+/*
 .quick-parse-btn {
-  border-radius: 25px;
-  padding: 10px 20px;
-  font-weight: 500;
-  box-shadow: 0 2px 10px rgba(0,123,255,0.3);
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  border: none;
+  border-radius: 50px;
+  color: white;
   transition: all 0.3s ease;
 }
 
 .quick-parse-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(0,123,255,0.4);
+  box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3);
 }
+*/
 
 /* 文本解析弹窗 */
+/*
 .parse-textarea {
-  font-family: 'Courier New', monospace;
-  font-size: 0.9rem;
-  line-height: 1.4;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.5;
 }
+*/
 
 /* 乘客卡片样式 */
 .passenger-card {
@@ -1560,6 +1612,7 @@
 
 /* 响应式调整 */
 @media (max-width: 767.98px) {
+  /*
   .booking-steps .col {
     margin-bottom: 1rem;
   }
@@ -1573,16 +1626,19 @@
   .step-name {
     font-size: 0.75rem;
   }
+  */
   
   .form-section {
     margin-bottom: 1rem;
     padding: 1rem;
   }
   
+  /*
   .quick-parse-btn {
     font-size: 0.875rem;
     padding: 8px 16px;
   }
+  */
 }
 
 /* 确保粘性元素在正确的层级 */

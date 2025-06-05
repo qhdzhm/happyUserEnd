@@ -3,7 +3,7 @@ import Breadcrumbs from "../../components/Breadcrumbs/Breadcrumbs";
 import { Col, Container, Form, Row, Card, ListGroup, Alert, Button, Badge, Tabs, Tab, Modal } from "react-bootstrap";
 import DatePicker from "react-datepicker";
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { FaPlus, FaMinus, FaInfoCircle, FaCalendarAlt, FaCheck, FaRegCreditCard, FaShieldAlt, FaHotel, FaCar, FaUserFriends, FaUser, FaBuilding, FaLightbulb, FaTimes, FaBed, FaTicketAlt, FaMapMarkerAlt, FaClock, FaStar, FaUtensils, FaUsers, FaCalendarDay, FaRoute, FaArrowLeft, FaLock, FaHeadset, FaPhone, FaWeixin, FaExclamationTriangle, FaPaste, FaMagic } from 'react-icons/fa';
+import { FaPlus, FaMinus, FaInfoCircle, FaCalendarAlt, FaCheck, FaRegCreditCard, FaShieldAlt, FaHotel, FaCar, FaUserFriends, FaUser, FaBuilding, FaLightbulb, FaTimes, FaBed, FaTicketAlt, FaMapMarkerAlt, FaClock, FaStar, FaUtensils, FaUsers, FaCalendarDay, FaRoute, FaArrowLeft, FaLock, FaHeadset, FaPhone, FaWeixin, FaExclamationTriangle /*, FaPaste, FaMagic*/ } from 'react-icons/fa';
 import "../Booking/booking.css";
 import { calculateTourDiscount, getTourById } from "../../utils/api";
 import { useSelector } from 'react-redux';
@@ -244,9 +244,9 @@ const Booking = () => {
   // 价格计算状态
   const [isPriceLoading, setIsPriceLoading] = useState(false);
   // 文本解析状态
-  const [parseText, setParseText] = useState('');
+  // const [parseText, setParseText] = useState('');
   // 添加弹窗状态
-  const [showParseModal, setShowParseModal] = useState(false);
+  // const [showParseModal, setShowParseModal] = useState(false);
   
   // 从URL参数获取产品信息
   const price = queryParams.get('price');
@@ -2677,6 +2677,7 @@ const Booking = () => {
 
   // 处理文本解析并填充表单
   const handleParseBookingText = () => {
+    /*
     if (!parseText.trim()) {
       toast.error('请先粘贴预订文本信息');
       return;
@@ -2917,6 +2918,7 @@ const Booking = () => {
       console.error('解析预订文本失败:', error);
       toast.error('解析文本失败，请检查格式或手动填写');
     }
+    */
   };
 
   // 处理表单字段变化
@@ -2968,6 +2970,7 @@ const Booking = () => {
         </h2>
         
         {/* 添加快速填充按钮 */}
+        {/*
         <div className="text-center mb-4">
           <Button 
             variant="primary" 
@@ -2977,6 +2980,7 @@ const Booking = () => {
             <FaPaste className="me-2" /> 快速填充预订信息
           </Button>
         </div>
+        */}
 
         {/* 错误信息显示 */}
         {(error || submitError) && (
@@ -3002,6 +3006,7 @@ const Booking = () => {
         </div>
 
         {/* 文本解析模态弹窗 */}
+        {/*
         <Modal 
           show={showParseModal} 
           onHide={() => setShowParseModal(false)}
@@ -3049,36 +3054,7 @@ const Booking = () => {
             </Button>
           </Modal.Footer>
         </Modal>
-
-        {/* 预订步骤 */}
-        <div className="booking-steps mb-5">
-          <Row className="justify-content-center">
-            <Col xs={3} md={2}>
-              <div className="booking-step text-center">
-                <div className="step-circle">1</div>
-                <div className="step-name">选择产品</div>
-              </div>
-            </Col>
-            <Col xs={3} md={2}>
-              <div className="booking-step active text-center">
-                <div className="step-circle">2</div>
-                <div className="step-name">填写订单</div>
-              </div>
-            </Col>
-            <Col xs={3} md={2}>
-              <div className="booking-step text-center">
-                <div className="step-circle">3</div>
-                <div className="step-name">支付确认</div>
-              </div>
-            </Col>
-            <Col xs={3} md={2}>
-              <div className="booking-step text-center">
-                <div className="step-circle">4</div>
-                <div className="step-name">预订成功</div>
-              </div>
-            </Col>
-          </Row>
-        </div>
+        */}
 
         <Form onSubmit={handleSubmit}>
           <Row>
@@ -3432,7 +3408,7 @@ const Booking = () => {
                             )}
                             {tourDetails?.price && (
                               <span className="text-primary">
-                                <small>起价¥{tourDetails.price}</small>
+                                <small>起价${tourDetails.price}</small>
                               </span>
                             )}
                           </div>
@@ -3520,13 +3496,13 @@ const Booking = () => {
                         <>
                           <div className="price-item d-flex justify-content-between">
                             <span>成人 × {priceDetails.adultCount || formData.adult_count}</span>
-                            <span>¥{(priceDetails.adultTotalPrice || priceDetails.basePrice || 0).toFixed(2)}</span>
+                            <span>${(priceDetails.adultTotalPrice || priceDetails.basePrice || 0).toFixed(2)}</span>
                           </div>
                           
                           {(priceDetails.childCount || formData.child_count) > 0 && (
                             <div className="price-item d-flex justify-content-between">
                               <span>儿童 × {priceDetails.childCount || formData.child_count}</span>
-                              <span>¥{(priceDetails.childrenTotalPrice || 0).toFixed(2)}</span>
+                              <span>${(priceDetails.childrenTotalPrice || 0).toFixed(2)}</span>
                             </div>
                           )}
 
@@ -3537,7 +3513,7 @@ const Booking = () => {
                                 <i className="fas fa-bed me-1"></i>
                                 单房差 × {priceDetails.extraRooms || 1}间
                               </span>
-                              <span>+¥{priceDetails.extraRoomFee.toFixed(2)}</span>
+                              <span>+${priceDetails.extraRoomFee.toFixed(2)}</span>
                             </div>
                           )}
 
@@ -3549,7 +3525,7 @@ const Booking = () => {
                                 <i className="fas fa-star me-1"></i>
                                 酒店升级
                               </span>
-                              <span>+¥{(priceDetails.hotelPriceDifference * (priceDetails.roomCount || 1) * getHotelNights()).toFixed(2)}</span>
+                              <span>+${(priceDetails.hotelPriceDifference * (priceDetails.roomCount || 1) * getHotelNights()).toFixed(2)}</span>
                             </div>
                           )}
 
@@ -3560,7 +3536,7 @@ const Booking = () => {
                                 <i className="fas fa-percentage me-1"></i>
                                 代理商折扣
                               </span>
-                              <span>-¥{priceDetails.agentDiscount.toFixed(2)}</span>
+                              <span>-${priceDetails.agentDiscount.toFixed(2)}</span>
                             </div>
                           )}
                         </>
@@ -3577,7 +3553,7 @@ const Booking = () => {
                         <span className="fs-6 fw-bold">总计</span>
                         {!isOperator() ? (
                           <span className="total-price">
-                            ¥{calculateTotalPrice()}
+                            ${calculateTotalPrice()}
                           </span>
                         ) : (
                           <span className="text-muted">价格已隐藏</span>
@@ -3637,7 +3613,7 @@ const Booking = () => {
               <span className="fw-bold">总计:</span>
               {!isOperator() ? (
                 <span className="fs-5 text-primary fw-bold">
-                  ¥{calculateTotalPrice()}
+                  ${calculateTotalPrice()}
                 </span>
               ) : (
                 <span className="fs-5 text-muted fw-bold">价格已隐藏</span>

@@ -113,9 +113,9 @@ const Cart = () => {
                         </div>
                       </Col>
                       <Col xs={6} md={2} className="text-start text-md-end mt-3 mt-md-0">
-                        <h5>¥{item.price.toFixed(2)}</h5>
+                        <h5>${item.price.toFixed(2)}</h5>
                         <p className="text-muted mb-0">
-                          小计: ¥{(item.price * item.quantity).toFixed(2)}
+                          小计: ${(item.price * item.quantity).toFixed(2)}
                         </p>
                       </Col>
                       <Col xs={6} md={2} className="text-end mt-3 mt-md-0">
@@ -150,21 +150,21 @@ const Cart = () => {
               <ListGroup variant="flush">
                 <ListGroup.Item className="d-flex justify-content-between">
                   <span>商品总额</span>
-                  <span>¥{cartTotal.toFixed(2)}</span>
+                  <span>${cartTotal.toFixed(2)}</span>
                 </ListGroup.Item>
                 <ListGroup.Item className="d-flex justify-content-between">
                   <span>折扣</span>
-                  <span>-¥0.00</span>
+                  <span>-$0.00</span>
                 </ListGroup.Item>
                 <ListGroup.Item className="d-flex justify-content-between">
                   <span>服务费</span>
-                  <span>¥0.00</span>
+                  <span>$0.00</span>
                 </ListGroup.Item>
               </ListGroup>
               <hr />
               <div className="d-flex justify-content-between align-items-center mb-4">
                 <h5 className="mb-0">总计</h5>
-                <h4 className="mb-0">¥{cartTotal.toFixed(2)}</h4>
+                <h4 className="mb-0">${cartTotal.toFixed(2)}</h4>
               </div>
               <Link to="/checkout">
                 <Button variant="primary" size="lg" className="w-100">

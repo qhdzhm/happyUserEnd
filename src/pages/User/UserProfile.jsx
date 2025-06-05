@@ -528,7 +528,7 @@ const UserProfile = () => {
                 <div className="stat-circle mb-2 bg-primary d-flex align-items-center justify-content-center">
                   <FaMoneyBillWave size={24} className="text-white" />
                 </div>
-                <h3>¥{userData.balance?.toFixed(2) || '0.00'}</h3>
+                <h3>${userData.balance?.toFixed(2) || '0.00'}</h3>
                 <p className="text-muted">信用额度</p>
               </div>
             </Col>
@@ -847,7 +847,7 @@ const UserProfile = () => {
               <h4 className="mb-0">当前可用信用额度</h4>
               <p className="text-muted mb-0">您可以用于预订的信用额度</p>
             </div>
-            <h3 className="text-success mb-0">¥{userData.balance?.toFixed(2) || '0.00'}</h3>
+            <h3 className="text-success mb-0">${userData.balance?.toFixed(2) || '0.00'}</h3>
           </div>
         </div>
         
