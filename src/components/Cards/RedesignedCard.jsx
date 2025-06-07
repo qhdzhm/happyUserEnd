@@ -21,16 +21,16 @@ const RedesignedCard = ({ tour: destination }) => {
       return destination.duration;
     } else if (destination.days) {
       return `${destination.days}天${destination.nights || destination.days - 1}晚`;
-    } else {
+        } else {
       return `${destination.hours || 8}小时`;
     }
   };
-  
+
   // 检查是否有图片
   const hasImage = () => {
     return getImageUrl(destination) !== '';
-  };
-  
+    };
+
   // 根据产品类型生成详情页链接
   const getDetailLink = () => {
     if (!destination || !destination.id) return '/';
@@ -137,9 +137,9 @@ const RedesignedCard = ({ tour: destination }) => {
         {/* 半透明覆盖层 - 包含价格和按钮 */}
         <div className="overlay-content">
           {/* 价格显示 */}
-          <div className="redesigned-tour-price">
-            <span className="redesigned-price-amount">${destination.price ? destination.price.toFixed(2) : '0.00'}</span>
-          </div>
+            <div className="redesigned-tour-price">
+              <span className="redesigned-price-amount">${destination.price ? destination.price.toFixed(2) : '0.00'}</span>
+            </div>
           
           {/* 按钮区域 */}
           <div className="redesigned-tour-buttons">

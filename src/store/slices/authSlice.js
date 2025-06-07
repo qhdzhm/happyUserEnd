@@ -444,6 +444,13 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.error = null;
       state.tokenValidated = true;
+      
+      // 触发登出状态变化事件，通知其他组件
+      setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('logoutStateChanged'));
+        }
+      }, 100);
     },
     // 清除错误
     clearError: (state) => {

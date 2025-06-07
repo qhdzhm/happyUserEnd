@@ -231,10 +231,22 @@ const ChatBot = ({ userType = 1, userId = null }) => {
             checkLoginStatus();
         };
         
+        // 添加自定义事件监听，用于同tab内的登录状态变化通知
+        const handleLoginStateChange = () => {
+            console.log('监听到登录状态变化事件');
+            setTimeout(() => {
+                checkLoginStatus();
+            }, 100); // 延迟100ms确保localStorage已更新
+        };
+        
         window.addEventListener('storage', handleStorageChange);
+        window.addEventListener('loginStateChanged', handleLoginStateChange);
+        window.addEventListener('logoutStateChanged', handleLoginStateChange);
         
         return () => {
             window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener('loginStateChanged', handleLoginStateChange);
+            window.removeEventListener('logoutStateChanged', handleLoginStateChange);
         };
     }, []); // 确保依赖数组为空，避免重复创建定时器
 
@@ -782,6 +794,11 @@ const ChatBot = ({ userType = 1, userId = null }) => {
     // 优化点击处理函数，防止重渲染
     const handleFloatBtnClick = useCallback(() => {
         setVisible(true);
+        setUnreadCount(0);
+        // 打开聊天窗口时自动滚动到底部
+        setTimeout(() => {
+            scrollToBottom();
+        }, 100);
     }, []);
     
     // 清空聊天记录（内部方法）
@@ -884,6 +901,23 @@ const ChatBot = ({ userType = 1, userId = null }) => {
         const aiConfig = getCurrentAIConfig();
         setCurrentAIProvider(aiConfig.provider);
     }, []);
+    
+    // 点击外部关闭聊天窗口
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (visible && !event.target.closest('.chatbot-window') && !event.target.closest('.chatbot-float-container')) {
+                setVisible(false);
+            }
+        };
+
+        if (visible) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [visible]);
     
     // 处理AI提供商变更
     const handleAIProviderChange = (newProvider) => {

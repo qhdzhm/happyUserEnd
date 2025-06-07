@@ -10,13 +10,22 @@ const Filters = forwardRef(({ onApplyFilters, searchLoading }, ref) => {
   const queryParams = new URLSearchParams(location.search);
 
   // 筛选选项数据状态
-  const [tourTypes, setTourTypes] = useState(['一日游', '跟团游', '全部']); // 固定选项
-  const [locations, setLocations] = useState([]);
+  const [tourTypes] = useState(['一日游', '跟团游', '全部']); // 固定选项
+  const [locations] = useState([
+    "塔斯马尼亚北部", "塔斯马尼亚南部", "塔斯马尼亚东部", 
+    "塔斯马尼亚西部", "塔斯马尼亚中部", "塔斯马尼亚东南部", "霍巴特"
+  ]); // 静态地点数据
   const [dayTourThemes, setDayTourThemes] = useState([]);
   const [groupTourThemes, setGroupTourThemes] = useState([]);
-  const [dayTourDurations, setDayTourDurations] = useState([]);
-  const [groupTourDurations, setGroupTourDurations] = useState([]);
-  const [priceRanges, setPriceRanges] = useState([]);
+  const [dayTourDurations] = useState([
+    "2-4小时", "4-6小时", "6-8小时", "8小时以上"
+  ]); // 静态一日游时长数据
+  const [groupTourDurations] = useState([
+    "2-3天", "4-5天", "6-7天", "7天以上"
+  ]); // 静态跟团游时长数据
+  const [priceRanges] = useState([
+    "0-500", "500-1000", "1000-2000", "2000-3000", "3000以上"
+  ]); // 静态价格范围数据
   const [suitableForOptions, setSuitableForOptions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dayTours, setDayTours] = useState([]); // 添加一日游产品列表状态
@@ -77,23 +86,7 @@ const Filters = forwardRef(({ onApplyFilters, searchLoading }, ref) => {
     const fetchFilterData = async () => {
       setIsLoading(true);
       try {
-        // 设置静态选项数据
-        setLocations([
-          "塔斯马尼亚北部", "塔斯马尼亚南部", "塔斯马尼亚东部", 
-          "塔斯马尼亚西部", "塔斯马尼亚中部", "塔斯马尼亚东南部", "霍巴特"
-        ]);
-        
-        setDayTourDurations([
-          "2-4小时", "4-6小时", "6-8小时", "8小时以上"
-        ]);
-        
-        setGroupTourDurations([
-          "2-3天", "4-5天", "6-7天", "7天以上"
-        ]);
-        
-        setPriceRanges([
-          "0-500", "500-1000", "1000-2000", "2000-3000", "3000以上"
-        ]);
+        // 静态选项数据已在useState中直接设置，无需动态设置
         
         // 设置默认值，防止API请求失败情况
         setDayTourThemes(["自然风光", "城市观光", "历史文化", "美食体验", "摄影之旅", "户外活动"]);
@@ -254,126 +247,74 @@ const Filters = forwardRef(({ onApplyFilters, searchLoading }, ref) => {
 
   // 处理旅游类型选择 - 修改为单选，并在选择后自动应用
   const handleTourTypeChange = (tourType) => {
-    // 如果点击当前已选中的类型，则取消选择
-    if (selectedTourType === tourType) {
-      setSelectedTourType('');
-      
-      // 清除所有筛选条件
+    // 选择新的类型
+    setSelectedTourType(tourType);
+    
+    // 如果选择的是'全部'类型，清除所有筛选条件
+    if (tourType === '全部') {
       setSelectedLocation([]);
       setSelectedThemes([]);
       setSelectedDuration([]);
       setSelectedPriceRange([]);
       setSelectedRatings([]);
       setSelectedSuitableFor([]);
-      
-      // 当清除旅游类型时，自动应用筛选
-      setTimeout(() => {
-        const params = new URLSearchParams();
-        
-        // 保留原有的查询参数
-        const startDate = queryParams.get('startDate');
-        const endDate = queryParams.get('endDate');
-        const adults = queryParams.get('adults');
-        const children = queryParams.get('children');
-        
-        if (startDate) params.append('startDate', startDate);
-        if (endDate) params.append('endDate', endDate);
-        if (adults) params.append('adults', adults);
-        if (children) params.append('children', children);
-        
-        // 更新URL
-        navigate({ search: params.toString() });
-        
-        // 调用父组件的回调函数
-        if (onApplyFilters) {
-          onApplyFilters();
-        }
-      }, 0);
-    } else {
-      // 否则选择新的类型
-      setSelectedTourType(tourType);
-      
-      // 如果选择的是'全部'类型，清除所有筛选条件
-      if (tourType === '全部') {
-        setSelectedLocation([]);
-        setSelectedThemes([]);
-        setSelectedDuration([]);
-        setSelectedPriceRange([]);
-        setSelectedRatings([]);
-        setSelectedSuitableFor([]);
-      }
-      // 否则，清除之前可能选择的不兼容筛选条件
-      else {
-        setSelectedThemes([]);
-        setSelectedDuration([]);
-        
-        // 如果从一日游切换到跟团游，清除地点筛选
-        if (tourType === '跟团游') {
-          setSelectedLocation([]);
-        }
-      }
-      
-      // 当选择了新的旅游类型时，自动应用筛选
-      setTimeout(() => {
-        const params = new URLSearchParams();
-        
-        // 保留原有的查询参数
-        const startDate = queryParams.get('startDate');
-        const endDate = queryParams.get('endDate');
-        const adults = queryParams.get('adults');
-        const children = queryParams.get('children');
-        
-        if (startDate) params.append('startDate', startDate);
-        if (endDate) params.append('endDate', endDate);
-        if (adults) params.append('adults', adults);
-        if (children) params.append('children', children);
-        
-        // 添加新选择的旅游类型
-        if (tourType === '一日游') {
-          params.append('tourTypes', 'day_tour');
-        } else if (tourType === '跟团游') {
-          params.append('tourTypes', 'group_tour');
-        } else if (tourType === '全部') {
-          params.append('tourTypes', 'all');
-          
-          // 确保清除所有筛选参数
-          params.delete('location');
-          params.delete('duration');
-          params.delete('priceRange');
-          params.delete('ratings');
-          params.delete('themes');
-          params.delete('suitableFor');
-          params.delete('tourIds');
-          params.delete('keyword');
-        }
-        
-        // 更新URL
-        navigate({ search: params.toString() });
-        
-        // 调用父组件的回调函数
-        if (onApplyFilters) {
-          onApplyFilters();
-        }
-      }, 0);
     }
-  };
-
-  // 处理地点选择
-  const handleLocationChange = (e) => {
-    const { value, checked } = e.target;
-    const newLocations = checked 
-      ? [...selectedLocation, value] 
-      : selectedLocation.filter(loc => loc !== value);
+    // 否则，清除之前可能选择的不兼容筛选条件
+    else {
+      setSelectedThemes([]);
+      setSelectedDuration([]);
+      
+      // 如果从一日游切换到跟团游，清除地点筛选
+      if (tourType === '跟团游') {
+        setSelectedLocation([]);
+      }
+    }
     
-    setSelectedLocation(newLocations);
-    
-    // 立即应用筛选
+    // 当选择了新的旅游类型时，自动应用筛选
     setTimeout(() => {
-      updateFiltersAndNavigate({
-        location: newLocations
-      });
+      const params = new URLSearchParams();
+      
+      // 保留原有的查询参数
+      const startDate = queryParams.get('startDate');
+      const endDate = queryParams.get('endDate');
+      const adults = queryParams.get('adults');
+      const children = queryParams.get('children');
+      
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      if (adults) params.append('adults', adults);
+      if (children) params.append('children', children);
+      
+      // 添加新选择的旅游类型
+      if (tourType === '一日游') {
+        params.append('tourTypes', 'day_tour');
+      } else if (tourType === '跟团游') {
+        params.append('tourTypes', 'group_tour');
+      } else if (tourType === '全部') {
+        params.append('tourTypes', 'all');
+        
+        // 确保清除所有筛选参数
+        params.delete('location');
+        params.delete('duration');
+        params.delete('priceRange');
+        params.delete('ratings');
+        params.delete('themes');
+        params.delete('suitableFor');
+        params.delete('tourIds');
+        params.delete('keyword');
+      }
+      
+      // 更新URL
+      navigate({ search: params.toString() });
+      
+      // 调用父组件的回调函数
+      if (onApplyFilters) {
+        onApplyFilters();
+      }
     }, 0);
   };
+
+  // 地点选择处理函数已移除（未使用）
 
   // 处理时长选择
   const handleDurationChange = (e) => {
@@ -392,74 +333,13 @@ const Filters = forwardRef(({ onApplyFilters, searchLoading }, ref) => {
     }, 0);
   };
 
-  // 处理价格范围选择
-  const handlePriceRangeChange = (e) => {
-    const { value, checked } = e.target;
-    const newPriceRanges = checked
-      ? [...selectedPriceRange, value]
-      : selectedPriceRange.filter(range => range !== value);
-    
-    setSelectedPriceRange(newPriceRanges);
-    
-    // 立即应用筛选
-    setTimeout(() => {
-      updateFiltersAndNavigate({
-        priceRange: newPriceRanges
-      });
-    }, 0);
-  };
+  // 价格范围选择处理函数已移除（未使用）
 
-  // 处理评分选择
-  const handleRatingChange = (e) => {
-    const { value, checked } = e.target;
-    const ratingValue = Number(value);
-    const newRatings = checked
-      ? [...selectedRatings, ratingValue]
-      : selectedRatings.filter(rating => rating !== ratingValue);
-    
-    setSelectedRatings(newRatings);
-    
-    // 立即应用筛选
-    setTimeout(() => {
-      updateFiltersAndNavigate({
-        ratings: newRatings
-      });
-    }, 0);
-  };
+  // 评分选择处理函数已移除（未使用）
 
-  // 处理主题选择
-  const handleThemeChange = (e) => {
-    const { value, checked } = e.target;
-    const newThemes = checked
-      ? [...selectedThemes, value]
-      : selectedThemes.filter(theme => theme !== value);
-    
-    setSelectedThemes(newThemes);
-    
-    // 立即应用筛选
-    setTimeout(() => {
-      updateFiltersAndNavigate({
-        themes: newThemes
-      });
-    }, 0);
-  };
+  // 主题选择处理函数已移除（未使用）
 
-  // 处理适合人群选择
-  const handleSuitableForChange = (e) => {
-    const { value, checked } = e.target;
-    const newSuitableFor = checked
-      ? [...selectedSuitableFor, value]
-      : selectedSuitableFor.filter(suitable => suitable !== value);
-    
-    setSelectedSuitableFor(newSuitableFor);
-    
-    // 立即应用筛选
-    setTimeout(() => {
-      updateFiltersAndNavigate({
-        suitableFor: newSuitableFor
-      });
-    }, 0);
-  };
+  // 适合人群选择处理函数已移除（未使用）
 
   // 新增一个帮助函数来更新URL和触发导航
   const updateFiltersAndNavigate = (changedFilters) => {
@@ -530,30 +410,6 @@ const Filters = forwardRef(({ onApplyFilters, searchLoading }, ref) => {
     if (onApplyFilters) {
       onApplyFilters();
     }
-  };
-
-  // 根据选择的旅游类型获取对应的主题选项
-  const getThemeOptions = () => {
-    if (selectedTourType === '一日游') {
-      return dayTourThemes || [];
-    } else if (selectedTourType === '跟团游') {
-      return groupTourThemes || [];
-    } else if (selectedTourType === '全部') {
-      return [...dayTourThemes, ...groupTourThemes];
-    }
-    return [];
-  };
-
-  // 根据选择的旅游类型获取对应的时长选项
-  const getDurationOptions = () => {
-    if (selectedTourType === '一日游') {
-      return dayTourDurations || [];
-    } else if (selectedTourType === '跟团游') {
-      return groupTourDurations || [];
-    } else if (selectedTourType === '全部') {
-      return [...dayTourDurations, ...groupTourDurations];
-    }
-    return [];
   };
 
   // 应用筛选 - 点击按钮时手动触发

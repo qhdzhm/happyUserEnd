@@ -107,8 +107,8 @@ function App() {
       <Router>
         <MainLayout>
           {(loading || !tokenValidated) ? <Loading /> : <AppRoutes />}
-          <GlobalChatBot />
         </MainLayout>
+        <GlobalChatBot />
       </Router>
     </ErrorHandler>
   );

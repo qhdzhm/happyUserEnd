@@ -109,6 +109,11 @@ const Login = () => {
       
       // 分发登录action
       await dispatch(loginUser(loginData)).unwrap();
+      
+      // 触发登录状态变化事件，通知其他组件
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('loginStateChanged'));
+      }, 100);
     } catch (error) {
       // 错误会被authSlice中的rejected处理器捕获并显示
       console.error('登录错误:', error);

@@ -1,17 +1,13 @@
 import axios from 'axios';
 import { getCache, setCache, removeCache } from './cache';
 import { STORAGE_KEYS, PUBLIC_APIS } from './constants';
-import { clearToken } from './auth';
-
-// 是否启用开发模式下的模拟数据
-const USE_MOCK_DATA = false; // 禁用模拟数据，总是使用真实API
+// import { getToken } from './auth'; // 暂时注释掉未使用的导入
 
 // 处理中的请求缓存，防止重复请求
 const pendingRequests = new Map();
 const completedRequests = new Map();
 const responseCache = new Map(); // 响应数据缓存
 const REQUEST_THROTTLE_MS = 300; // 相同请求的最小间隔时间（毫秒）
-const CACHE_EXPIRATION = 5 * 60 * 1000; // 缓存过期时间：5分钟
 
 // 不使用缓存的URL列表
 const NO_CACHE_URLS = [
@@ -19,14 +15,58 @@ const NO_CACHE_URLS = [
   '/orders/list'
 ];
 
+// 设置 axios 全局默认配置
+axios.defaults.method = 'GET';
+axios.defaults.timeout = 15000;
+
 // 创建axios实例
 const instance = axios.create({
   baseURL: '/api', // 使用代理前缀
   timeout: 15000, // 增加超时时间
+  method: 'GET', // 设置默认HTTP方法
   headers: {
     'Content-Type': 'application/json'
   }
 });
+
+// 强制设置实例的默认方法
+instance.defaults.method = 'GET';
+
+// 🔧 添加底层错误拦截器，处理 toUpperCase 错误
+const originalRequest = instance.request;
+instance.request = function(config) {
+  // 确保配置对象存在
+  config = config || {};
+  
+  // 强制设置方法
+  if (!config.method) {
+    config.method = 'GET';
+    console.warn('🚨 底层修复: 强制设置缺失的HTTP方法为GET');
+  }
+  
+  // 确保方法是字符串
+  if (typeof config.method !== 'string') {
+    config.method = 'GET';
+    console.warn('🚨 底层修复: 修复非字符串HTTP方法为GET');
+  }
+  
+  try {
+    return originalRequest.call(this, config);
+  } catch (error) {
+    if (error.message && error.message.includes('toUpperCase')) {
+      console.error('🚨 捕获到 toUpperCase 错误，使用默认配置重试');
+      // 使用安全配置重试
+      const safeConfig = {
+        ...config,
+        method: 'GET',
+        url: config.url || '/api/test',
+        timeout: 15000
+      };
+      return originalRequest.call(this, safeConfig);
+    }
+    throw error;
+  }
+};
 
 // 修改 require 语句，重新引入 showNotification
 const { setLoading, showNotification } = require('../store/slices/uiSlice');
@@ -36,19 +76,24 @@ const safeMethod = (config) => {
   // 如果config不存在，返回默认方法
   if (!config) return 'GET';
   
-  // 如果config.method不存在，返回默认方法
-  if (!config || config.method === undefined || config.method === null) return 'GET';
+  // 如果config.method不存在、为null、undefined或空字符串，返回默认方法
+  if (!config.method || config.method === undefined || config.method === null || config.method === '') {
+    return 'GET';
+  }
   
   try {
     // 检查类型，安全转换
-    if (typeof config.method === 'string') {
-      return config.method.toUpperCase();
-    } else {
+    if (typeof config.method === 'string' && config.method.trim() !== '') {
+      return config.method.trim().toUpperCase();
+    } else if (config.method !== null && config.method !== undefined) {
       // 尝试转换为字符串
-      return String(config.method).toUpperCase();
+      const methodStr = String(config.method).trim();
+      return methodStr !== '' ? methodStr.toUpperCase() : 'GET';
+    } else {
+      return 'GET';
     }
   } catch (err) {
-    console.error('无法安全转换请求方法:', err);
+    console.error('无法安全转换请求方法:', err, 'config.method:', config.method);
     return 'GET'; // 出错时返回默认GET方法
   }
 };
@@ -56,6 +101,20 @@ const safeMethod = (config) => {
 // 请求拦截器
 instance.interceptors.request.use(
   config => {
+    // 🔧 CRITICAL FIX: 立即强制设置方法，确保绝对不会是undefined
+    config.method = config.method || 'GET';
+    
+    // 🔧 强制修复：确保所有请求都有明确的HTTP方法
+    if (!config.method || config.method === undefined || config.method === null || config.method === '') {
+      config.method = 'GET'; // 默认使用GET方法
+      console.log(`🔧 自动修复未设置的HTTP方法为GET: ${config.url}`);
+    }
+    
+    // 🔧 额外保护：确保method是字符串类型
+    if (typeof config.method !== 'string') {
+      config.method = 'GET';
+      console.log(`🔧 修复非字符串HTTP方法为GET: ${config.url}`);
+    }
     // 动态导入 store 以避免循环依赖
     const store = require('../store').default;
     
@@ -94,7 +153,9 @@ instance.interceptors.request.use(
     }
     
     // 创建精简的请求标识 - 只使用URL和参数，不包括完整data
-    let requestId = `${config.method}:${config.url}`;
+    // 安全获取HTTP方法，避免undefined导致的toUpperCase错误
+    const method = safeMethod(config);
+    let requestId = `${method}:${config.url}`;
     
     // 为GET请求添加params
     if (config.params && Object.keys(config.params).length > 0) {
@@ -139,8 +200,11 @@ instance.interceptors.request.use(
         setTimeout(() => {
           // 移除时间限制，允许请求
           completedRequests.delete(requestId);
-          // 重新调用请求
-          resolve(axios.request(config));
+          // 重新调用请求，确保method被正确设置
+          if (!config.method || typeof config.method !== 'string') {
+            config.method = 'GET';
+          }
+          resolve(instance.request(config));
         }, REQUEST_THROTTLE_MS - (now - lastCompletedTime));
       });
     }
@@ -232,6 +296,15 @@ instance.interceptors.request.use(
     config.headers['X-Requested-With'] = 'XMLHttpRequest';
     config.headers['Accept'] = 'application/json';
     
+    // 🔧 最后一道防线：确保method在最后是正确的
+    if (!config.method || typeof config.method !== 'string' || config.method === '') {
+      config.method = 'GET';
+      console.warn(`🚨 最后修复: 强制设置HTTP方法为GET: ${config.url}`);
+    }
+    
+    // 🔧 确保method是大写的，这很重要
+    config.method = config.method.toUpperCase();
+    
     return config;
   },
   error => {
@@ -293,17 +366,6 @@ instance.interceptors.response.use(
     
     // 处理认证错误
     if (status === 401 || status === 403) {
-      // 导入清除token函数
-      const { clearToken } = require('./auth');
-      
-      // 判断是否已经显示过未授权提示，使用更具体的键名避免冲突
-      if (!window.authErrorHandled) {
-        window.authErrorHandled = true;
-        
-        // 不显示错误消息，静默处理
-        // 清除所有认证信息
-        clearToken();
-        
         // 派发退出action
         store.dispatch({ type: 'auth/logout' });
         
@@ -312,12 +374,6 @@ instance.interceptors.response.use(
         if (currentPath !== '/login' && currentPath !== '/register') {
           // 立即跳转，无延迟
           window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
-        }
-        
-        // 短时间后重置标志，允许下次处理
-        setTimeout(() => {
-          window.authErrorHandled = false;
-        }, 1000);
       }
       
       // 直接返回reject，不显示错误通知
@@ -386,6 +442,12 @@ export const request = {
    * @returns {Promise} - 请求Promise
    */
   get: function(url, options = {}) {
+    // 🔧 参数安全验证
+    if (typeof url !== 'string' || !url) {
+      console.error('🚨 GET请求URL无效:', url);
+      return Promise.reject(new Error('GET请求URL无效'));
+    }
+    
     // 确保options对象存在，即使调用时传入null或undefined
     options = options || {};
     
@@ -407,6 +469,10 @@ export const request = {
     }
     
     const { params = {}, useCache = false, cacheTime, requireAuth = false, headers = {} } = options;
+    
+    // 🔧 确保params是安全的对象
+    const safeParams = params && typeof params === 'object' && !Array.isArray(params) ? params : {};
+    const safeHeaders = headers && typeof headers === 'object' && !Array.isArray(headers) ? headers : {};
     
     // 酒店价格API特殊处理
     if (url.includes('/hotel-prices')) {
@@ -433,11 +499,13 @@ export const request = {
         const attemptRequest = () => {
           console.log(`酒店价格API请求尝试 #${retryCount + 1}`);
           
-          // 使用标准axios实例发送请求
-          instance.get(url, { 
-            params, 
+          // 使用标准axios实例发送请求，明确指定GET方法
+          instance.request({
+            url,
+            method: 'GET', // 明确指定方法为字符串
+            params: safeParams, 
             requireAuth,
-            headers,
+            headers: safeHeaders,
             // 增加超时时间
             timeout: 20000
           })
@@ -510,18 +578,20 @@ export const request = {
           
           try {
             if (useMethod === 'GET') {
-              requestPromise = instance.get(url, { 
-                params, 
+              requestPromise = instance.request({
+                url,
+                method: 'GET', // 明确指定方法为字符串
+                params: safeParams, 
                 requireAuth,
-                headers,
+                headers: safeHeaders,
                 timeout: 20000
               });
             } else {
               // 对于POST请求，将params作为URL参数，保持body为空
-              const queryUrl = `${url}?${new URLSearchParams(params).toString()}`;
+              const queryUrl = `${url}?${new URLSearchParams(safeParams).toString()}`;
               requestPromise = instance.post(queryUrl, null, { 
                 requireAuth,
-                headers,
+                headers: safeHeaders,
                 timeout: 20000
               });
             }
@@ -602,22 +672,45 @@ export const request = {
       }
       
       // 如果没有缓存，发起请求并缓存结果
-      return instance.get(url, { 
-        params, 
-        requireAuth,
-        headers // 传递自定义请求头
-      }).then(response => {
-        setCache(cacheKey, response, cacheTime);
-        return response;
-      });
+      try {
+        return instance.request({
+          url,
+          method: 'GET', // 明确指定方法为字符串
+          params: safeParams, 
+          requireAuth,
+          headers: safeHeaders
+        }).then(response => {
+          setCache(cacheKey, response, cacheTime);
+          return response;
+        });
+      } catch (err) {
+        console.error('执行带缓存的GET请求错误:', err);
+        return Promise.reject({
+          code: 0,
+          message: err.message || '请求执行错误',
+          data: null
+        });
+      }
     }
     
     // 不使用缓存，直接发起请求
-    return instance.get(url, { 
-      params, 
-      requireAuth,
-      headers // 传递自定义请求头
+    // 明确使用GET方法，避免undefined错误
+    try {
+      return instance.request({
+        url,
+        method: 'GET', // 明确指定方法为字符串
+        params: safeParams, 
+        requireAuth,
+        headers: safeHeaders
+      });
+    } catch (err) {
+      console.error('执行GET请求错误:', err);
+      return Promise.reject({
+        code: 0,
+        message: err.message || '请求执行错误',
+        data: null
     });
+    }
   },
   
   post: (url, data = {}, options = {}) => {
@@ -702,10 +795,31 @@ export const request = {
   },
   
   patch: (url, data, options = {}) => {
-    const { requireAuth = false } = options;
+    // 确保options对象存在
+    options = options || {};
+    
+    const { requireAuth = false, headers = {} } = options;
+    
     // 更新操作后清除相关缓存
     removeCache(url);
-    return instance.patch(url, data, { requireAuth });
+    
+    // 明确使用PATCH方法，避免undefined错误
+    try {
+      return instance.request({
+        url,
+        method: 'PATCH', // 明确指定方法为字符串
+        data,
+        requireAuth,
+        headers
+      });
+    } catch (err) {
+      console.error('执行PATCH请求错误:', err);
+      return Promise.reject({
+        code: 0,
+        message: err.message || '请求执行错误',
+        data: null
+      });
+    }
   },
   
   /**
@@ -723,7 +837,7 @@ export const request = {
         });
         
         // 同时从内存缓存中清除
-        for (const [key, value] of responseCache.entries()) {
+        for (const [key] of responseCache.entries()) {
           if (key.includes(url)) {
             responseCache.delete(key);
           }

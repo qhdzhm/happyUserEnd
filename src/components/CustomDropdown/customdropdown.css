@@ -33,8 +33,9 @@
 
 .dropdown-custom .dropdown-toggle::before {
     position: absolute;
-    left: 0px;
-    bottom: 6px;
+    left: 6px;
+    top: 50%;
+    transform: translateY(-50%);
     content: "\f52a";
     font-size: var(--bodyText);
     color: var(--textClr);   

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import "./footer.css"
 import { Col, Container, Row, Form, Button } from "react-bootstrap";
 import { NavLink, useLocation } from "react-router-dom";
@@ -6,35 +6,8 @@ import tasmaniaVideo from "../../../assets/videos/footer.mp4";
 import logo from "../../../assets/images/logo/logo.png";
 
 const Footer = () => {
-  const [visible, setVisible]=useState(false);
   const location = useLocation();
   const isHomePage = location.pathname === '/';
-
-  const toggleVisible=()=>{
-    const scrolled = document.documentElement.scrollTop;
-    if(scrolled > 300){
-      setVisible(true)
-    }
-   else if(scrolled  <= 300){
-      setVisible(false)
-    }
-  }
-
-  const scrollTop =()=>{
-    window.scrollTo({
-      top:0,
-      behavior:"smooth"
-    })
-  }
-
-  useEffect(() => {
-  if(typeof window !== "undefined"){
-      window.addEventListener("scroll", toggleVisible);
-      return () => {
-        window.removeEventListener("scroll", toggleVisible);
-      };
-  }
-  }, []);
 
   return (
     <>
@@ -119,20 +92,16 @@ const Footer = () => {
               </Col>
             </Row>
             
-            <div className="footer-copyright">
-              <p>HAPPY TASSIE TRAVEL</p>
-              <p>版权所有 © 2024 澳大利亚塔斯马尼亚旅行社</p>
-            </div>
           </div>
         </Container>
+        
+        <div className="footer-copyright">
+          <p>HAPPY TASSIE TRAVEL | 版权所有 © 2024 澳大利亚塔斯马尼亚旅行社</p>
+        </div>
       </div>
     </footer>
 
-    <div id="back-top"
-      onClick={scrollTop}
-      className={visible ? "active" : ""}>
-      <i className="bi bi-arrow-up"></i>
-    </div>
+
     </>
   );
 };

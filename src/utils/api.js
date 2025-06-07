@@ -1,21 +1,9 @@
-import { request } from './request';
-import axios from 'axios';
+import request from './request';
 import { STORAGE_KEYS } from './constants';
-import { toast } from 'react-toastify';
-
-// API基础URL
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 
 // 默认不打折的折扣率
 const DEFAULT_DISCOUNT_RATE = 1.0;
 const AGENT_DEFAULT_DISCOUNT_RATE = 0.9;
-
-// API 请求缓存
-const apiCache = new Map();
-// 正在进行中的请求
-const pendingRequests = new Map();
-// 缓存过期时间 (30分钟)
-const CACHE_EXPIRATION = 30 * 60 * 1000;
 
 // ==================== 折扣计算相关配置 ====================
 // 全局折扣价格缓存
@@ -397,11 +385,55 @@ export const changePassword = (passwordData) => {
 };
 
 // ==================== 一日游相关 API ====================
-export const getAllDayTours = (params) => {
+// 🔧 完全重写的安全版本
+export const getAllDayTours = (params = {}) => {
   console.log('[API] 获取一日游列表，参数:', params);
-  return request.get('/user/day-tours', { 
-    params, 
-    useCache: false 
+  
+  // 🔧 参数安全化处理
+  const safeParams = {};
+  
+  // 只添加有效的参数
+  if (params && typeof params === 'object') {
+    if (params.keyword && typeof params.keyword === 'string') {
+      safeParams.keyword = params.keyword.trim();
+    }
+    if (params.page && typeof params.page === 'number') {
+      safeParams.page = params.page;
+    }
+    if (params.size && typeof params.size === 'number') {
+      safeParams.size = params.size;
+    }
+    if (params.sortBy && typeof params.sortBy === 'string') {
+      safeParams.sortBy = params.sortBy;
+    }
+  }
+  
+  // 🔧 使用原生 fetch 而不是 request.get，避免复杂的拦截器问题
+  return fetch('/api/user/day-tours' + (Object.keys(safeParams).length > 0 ? '?' + new URLSearchParams(safeParams).toString() : ''), {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    }
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  })
+  .then(data => {
+    console.log('[API] 一日游列表响应:', data);
+    return data;
+  })
+  .catch(error => {
+    console.error('[API] 获取一日游列表失败:', error);
+    // 返回友好的错误响应而不是抛出错误
+    return {
+      code: 0,
+      msg: '获取一日游列表失败，请稍后重试',
+      data: []
+    };
   });
 };
 

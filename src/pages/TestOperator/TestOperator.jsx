@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Alert } from 'react-bootstrap';
+import React, { useState } from 'react';
+import { Container, Row, Col, Card, Alert } from 'react-bootstrap';
 import UserInfo from '../../components/UserInfo/UserInfo';
 import PriceDisplay from '../../components/PriceDisplay';
 import { 
